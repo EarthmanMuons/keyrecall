@@ -73,6 +73,17 @@ void main() {
       );
     });
 
+    test('a resized keyboard leaves the practice screen its room', () {
+      final upright = at(390, 844);
+
+      expect(upright.instrumentMaxHeight(760), greaterThan(300));
+      expect(
+        upright.instrumentMaxHeight(400),
+        upright.instrumentHeight,
+        reason: 'never smaller than the default',
+      );
+    });
+
     test('gutters widen with the window', () {
       expect(at(390, 844).gutter, lessThan(at(1194, 834).gutter));
     });

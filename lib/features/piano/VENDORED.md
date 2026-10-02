@@ -22,27 +22,34 @@ API.
 
 - `models/piano_key_decoration.dart`
 - `models/piano_palette.dart`
+- `models/piano_view_settings.dart`
 - `services/piano_geometry.dart`
 - `services/piano_scroll_policy.dart`
 - `widgets/piano_keyboard/piano_keyboard.dart`
 - `widgets/piano_keyboard/piano_keyboard_painter.dart`
 - `widgets/piano_keyboard/scrollable_piano_keyboard.dart`
+- `widgets/piano_resize_handle.dart`
 
 `piano_scroll_policy.dart` adds `frameTarget`, where the keyboard rests on an
-exercise known in advance. `scrollable_piano_keyboard.dart` is adapted rather
-than copied: no pinch zoom, size reset, or idle recentering, since those read
-WhatChord's settings and input providers; caller decorations in place of the
-middle-C marker; and it rests on `frameNoteNumbers`, keeping `anchorNoteNumbers`
-in view, recentering whenever either changes.
+exercise known in advance.
+
+The two widgets are adapted rather than copied, because upstream reads
+WhatChord's settings and input providers directly. Here the host passes the size
+in and takes changes back through callbacks (`onWidthScaleChanged`,
+`onResetSize`, `onHeightChanged`, `onReset`), since KeyRecall stores the size
+per profile. The scrollable keyboard also has no idle recentering, takes caller
+decorations in place of the middle-C marker, and rests on `frameNoteNumbers`,
+keeping `anchorNoteNumbers` in view, recentering whenever either changes or the
+visible key count does.
 
 `piano.dart` is a KeyRecall barrel and is not vendored.
 
 ## What was deliberately left behind
 
-`piano_view_metrics.dart`, `piano_view_settings.dart`, the settings notifier,
-and `piano_resize_handle.dart`. They exist so a keyboard can be resized by hand.
-KeyRecall sizes keys from the keyboard's height instead, in
-`exercise_presentation.dart`.
+`piano_view_metrics.dart`, the settings notifier, and its preference keys.
+KeyRecall resolves key width and height in `KeyboardScale`, from the keyboard's
+default height rather than a fixed key count, and stores each profile's settings
+in `practice/keyboard_size.dart`.
 
 ## If it needs to change
 

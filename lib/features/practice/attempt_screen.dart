@@ -33,6 +33,7 @@ import 'hands_icon.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
 import 'goal_screen.dart';
+import 'keyboard_size.dart';
 import 'practice_providers.dart';
 import 'presentation_exposure.dart';
 import 'presentation_policy.dart';
@@ -275,8 +276,15 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 /// noteheads have no semantics, and the ones a renderer does supply would be a
 /// second, ungoverned account of what is on screen. A null description leaves
 /// the surface out of the tree entirely, which is what a withdrawn cue is.
+///
+/// A surface that is also something to operate keeps its controls reachable
+/// with [keepsControls]. Its painting still says nothing of its own.
 class _Described extends StatelessWidget {
-  const _Described(this.fragments, {required this.child});
+  const _Described(
+    this.fragments, {
+    required this.child,
+    this.keepsControls = false,
+  });
 
   /// What this surface is saying, one fragment per channel. Each is null when
   /// its channel is closed, so a withdrawn cue takes its sentence with it and
@@ -285,10 +293,13 @@ class _Described extends StatelessWidget {
 
   final Widget child;
 
+  /// Whether the controls on the surface stay in the semantics tree.
+  final bool keepsControls;
+
   @override
   Widget build(BuildContext context) {
     final said = fragments.nonNulls.join(' ');
-    final painted = ExcludeSemantics(child: child);
+    final painted = keepsControls ? child : ExcludeSemantics(child: child);
     return said.isEmpty
         ? painted
         : Semantics(container: true, label: said, child: painted);
@@ -1343,7 +1354,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         ],
       ),
     );
-    final instrument = _Described(
+    Widget instrument(double maxHeight) => _Described(
       // Two channels on one surface. The cue only where the keyboard carries
       // it: elsewhere it is an instrument with nothing written on it, and
       // describing it would name notes the presentation withheld. The echo
@@ -1353,12 +1364,17 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         if (showsCue && cueOnKeyboard(presentation.cueModality)) spokenCue,
         spokenEcho,
       ],
+      keepsControls: true,
       child: _Instrument(
         exercise: exercise,
         showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
         echoes: echoes,
         showsFingering: presentation.motorCue == MotorCue.fingering,
-        height: layout.instrumentHeight,
+        // Sized only before an attempt: a gesture during one is a hand
+        // reaching for the screen, not a request to change it.
+        adjustable: _phase == _Phase.ready,
+        baseHeight: layout.instrumentHeight,
+        maxHeight: maxHeight,
       ),
     );
     // Sized to what the phase actually needs, and animated between them: the
@@ -1399,59 +1415,63 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _phase == _Phase.countIn ? _pause : null,
-      child: Column(
-        children: [
-          // The task, the material, and what to do about it. Stacked while
-          // there is height for it, and side by side when there is not: a
-          // window on its side has no room to put a scale and a button under
-          // each other, and one wide enough to would be leaving the width
-          // empty.
-          Expanded(
-            child: SafeArea(
-              top: false,
-              bottom: staffCarriesTranscript,
-              child: layout.hasRoomBeside
-                  ? Row(
-                      // Stretched, so each pane is handed the full height to
-                      // lay itself out in.
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // The task takes what the control leaves and
-                              // scrolls inside it: a window on its side can be
-                              // shorter than the two of them together.
-                              Expanded(
-                                child: SingleChildScrollView(child: task),
-                              ),
-                              controls,
-                            ],
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          children: [
+            // The task, the material, and what to do about it. Stacked while
+            // there is height for it, and side by side when there is not: a
+            // window on its side has no room to put a scale and a button under
+            // each other, and one wide enough to would be leaving the width
+            // empty.
+            Expanded(
+              child: SafeArea(
+                top: false,
+                bottom: staffCarriesTranscript,
+                child: layout.hasRoomBeside
+                    ? Row(
+                        // Stretched, so each pane is handed the full height to
+                        // lay itself out in.
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // The task takes what the control leaves and
+                                // scrolls inside it: a window on its side can be
+                                // shorter than the two of them together.
+                                Expanded(
+                                  child: SingleChildScrollView(child: task),
+                                ),
+                                controls,
+                              ],
+                            ),
                           ),
-                        ),
-                        Expanded(flex: 2, child: notation),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        task,
-                        Expanded(child: notation),
-                        controls,
-                      ],
-                    ),
+                          Expanded(flex: 2, child: notation),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          task,
+                          Expanded(child: notation),
+                          controls,
+                        ],
+                      ),
+              ),
             ),
-          ),
-          // The instrument sits at the bottom edge, full width, the way a
-          // keyboard does: it is where playing shows up, so it stays put while
-          // everything above it changes. It runs past the safe area rather than
-          // stopping short of it: it is a diagram, nothing on it is touched,
-          // and the strip below it is height the music does not have.
-          //
-          // Where the rung has no further use for it, it leaves downward with
-          // the rest of the movement rather than vanishing under the count.
-          _slot(instrument),
-        ],
+            // The instrument sits at the bottom edge, full width, the way a
+            // keyboard does: it is where playing shows up, so it stays put while
+            // everything above it changes. It runs past the safe area rather than
+            // stopping short of it: the strip below it is height the music does
+            // not have.
+            //
+            // Where the rung has no further use for it, it leaves downward with
+            // the rest of the movement rather than vanishing under the count.
+            _slot(
+              instrument(layout.instrumentMaxHeight(constraints.maxHeight)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1950,13 +1970,18 @@ class _TaskStatement extends StatelessWidget {
 /// for and are what guidance withdraws; the lit keys say what the instrument
 /// is sending and are the learner's own playing coming back to them. Neither
 /// is derived from the other, and nothing here judges what arrives.
+///
+/// Sized by the active profile: pinching widens the keys and the handle on the
+/// band above it grows the keyboard, both from the layout's default.
 class _Instrument extends ConsumerWidget {
   const _Instrument({
     required this.exercise,
     required this.showsCue,
     required this.echoes,
     required this.showsFingering,
-    required this.height,
+    required this.adjustable,
+    required this.baseHeight,
+    required this.maxHeight,
   });
 
   final Exercise exercise;
@@ -1970,14 +1995,31 @@ class _Instrument extends ConsumerWidget {
   /// Whether the fingers are named on the marked keys.
   final bool showsFingering;
 
-  /// How tall the diagram is drawn.
-  final double height;
+  /// Whether the keyboard can be zoomed and resized right now.
+  final bool adjustable;
+
+  /// How tall the keyboard is drawn by default, and at its smallest.
+  final double baseHeight;
+
+  /// The most room the band and keyboard together may take.
+  final double maxHeight;
+
+  static const double _bandHeight = 7;
+  static const double _lineHeight = 1;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final sounding = echoes
         ? ref.watch(inputActivityProvider).soundingNoteNumbers
         : const <int>{};
+    final profileId = ref.watch(practiceLoopProvider).value?.profile.id;
+    final settings = profileId == null
+        ? const PianoViewSettings.defaults()
+        : ref.watch(keyboardSizeProvider(profileId));
+    final size = profileId == null || !adjustable
+        ? null
+        : ref.read(keyboardSizeProvider(profileId).notifier);
 
     // Fingering rides with the cue: it is execution support, and withdrawing
     // the notes while leaving the fingers would be telling a learner which
@@ -1991,16 +2033,18 @@ class _Instrument extends ConsumerWidget {
         showsCue && showsFingering && realization.hands.length == 1
         ? fingeringByKeyFor(exercise, realization.hands.single)
         : const <int, int>{};
-
     final diagram = KeyboardDiagram.forExercise(exercise);
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final ceiling = maxHeight - _bandHeight - _lineHeight;
         final scale = KeyboardScale.forSize(
           width: constraints.maxWidth,
-          height: height,
+          baseHeight: baseHeight,
+          maxHeight: ceiling,
+          settings: settings,
         );
-        return ScrollablePianoKeyboard(
+        final keyboard = ScrollablePianoKeyboard(
           visibleWhiteKeyCount: scale.visibleWhiteKeyCount,
           frameNoteNumbers: diagram.memberNotes,
           anchorNoteNumbers: diagram.startingNotes,
@@ -2018,7 +2062,55 @@ class _Instrument extends ConsumerWidget {
           // No pitch-class filter: a wrong note lights up like any other.
           // Marking it as out of scale would be evaluative feedback, which no
           // rung offers yet and which changes what an attempt observes.
-          height: height,
+          height: scale.height,
+          enableZoom: size != null,
+          widthScale: settings.widthScale,
+          onWidthScaleChanged: size?.setWidthScale,
+          onResetSize: size == null || settings.isDefault ? null : size.reset,
+        );
+
+        final column = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(height: _bandHeight, color: cs.surfaceContainerHighest),
+            Container(height: _lineHeight, color: cs.outlineVariant),
+            SizedBox(
+              height: scale.height,
+              child: ClipRect(child: keyboard),
+            ),
+          ],
+        );
+        if (size == null || ceiling <= baseHeight + 0.5) return column;
+
+        // The splitter rides on the band, just above the line, and its touch
+        // target reaches down over the keys.
+        const aboveKeys =
+            PianoResizeHandle.splitterInset +
+            PianoResizeHandle.splitterHeight +
+            _lineHeight +
+            _lineHeight;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            column,
+            Positioned(
+              left: 0,
+              right: 0,
+              height: PianoResizeHandle.hitHeight,
+              bottom: scale.height - PianoResizeHandle.hitHeight + aboveKeys,
+              child: Center(
+                child: PianoResizeHandle(
+                  baseHeight: baseHeight,
+                  currentHeight: scale.height,
+                  maxHeight: ceiling,
+                  onHeightChanged: (height) =>
+                      size.setHeightScale(height / baseHeight),
+                  onReset: settings.isDefault ? null : size.reset,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

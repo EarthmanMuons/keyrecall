@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 /// How much room the window has across.
@@ -141,6 +143,15 @@ class Layout {
     WindowHeightClass.medium => 160,
     WindowHeightClass.expanded => 200,
   };
+
+  /// The tallest the on-screen keyboard may be resized to, out of [available].
+  ///
+  /// Leaves the practice screen what it cannot work without: the task, the
+  /// control, and about one line of music when they are stacked, or the
+  /// control pane when they sit beside each other. Never below
+  /// [instrumentHeight], which is the default and the smallest it gets.
+  double instrumentMaxHeight(double available) =>
+      math.max(instrumentHeight, available - (hasRoomBeside ? 180 : 440));
 
   @override
   bool operator ==(Object other) =>

@@ -11,10 +11,12 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../preferences.dart';
 import '../input/input.dart';
 import 'attempt_diagnosis.dart';
 import 'attempt_feedback.dart';
 import 'attempt_transcript.dart';
+import 'keyboard_size.dart';
 import 'practice_failure.dart';
 import 'practice_ownership.dart';
 import 'profile_color.dart';
@@ -579,6 +581,8 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
       _mutate((lifecycle) async {
         final active = await _isActive(lifecycle.repository, profileId);
         await lifecycle.delete(profileId);
+        final preferences = ref.read(sharedPreferencesProvider);
+        await forgetKeyboardSize(preferences, profileId);
         return (active, const ProfileChanged<void>(null));
       });
 

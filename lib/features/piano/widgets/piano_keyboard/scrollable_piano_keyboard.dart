@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/piano_key_decoration.dart';
@@ -10,7 +13,25 @@ import '../../services/piano_scroll_policy.dart';
 import 'piano_keyboard.dart';
 
 /// Actions offered by the keyboard's long-press menu.
-enum _PianoQuickAction { center }
+enum _PianoQuickAction { center, resetSize }
+
+/// Scale recognizer tuned to coexist with the keyboard's horizontal scroll view.
+///
+/// A single finger is left entirely to the scroll view (its movement is
+/// ignored), so one-finger drags scroll as usual. As soon as a second finger
+/// lands, the recognizer claims the gesture arena outright: otherwise the
+/// scroll view's (greedy) horizontal drag recognizer wins the moment a finger
+/// crosses touch
+/// slop, stealing the pinch before its scale delta grows enough to assert
+/// itself. Two fingers always means zoom; one finger always means scroll.
+class _PinchScaleGestureRecognizer extends ScaleGestureRecognizer {
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent && pointerCount < 2) return;
+    super.handleEvent(event);
+    if (pointerCount >= 2) resolve(GestureDisposition.accepted);
+  }
+}
 
 class ScrollablePianoKeyboard extends StatefulWidget {
   const ScrollablePianoKeyboard({
@@ -28,6 +49,10 @@ class ScrollablePianoKeyboard extends StatefulWidget {
     this.scaleNoteNumbers = const <int>{},
     this.normalHighlightPitchClasses,
     this.tonicPitchClass,
+    this.enableZoom = false,
+    this.widthScale = 1.0,
+    this.onWidthScaleChanged,
+    this.onResetSize,
   }) : assert(visibleWhiteKeyCount > 0);
 
   /// How many white keys should be visible in the viewport width.
@@ -71,6 +96,21 @@ class ScrollablePianoKeyboard extends StatefulWidget {
   /// dot. Null marks every member with a dot.
   final int? tonicPitchClass;
 
+  /// When true, a two-finger pinch widens/narrows the keys via
+  /// [onWidthScaleChanged]. Single-finger drags still scroll.
+  final bool enableZoom;
+
+  /// Current horizontal zoom factor, used as the basis for pinch deltas.
+  final double widthScale;
+
+  /// Called with the new (unclamped) width scale during a pinch. The host is
+  /// responsible for clamping/persisting and feeding back a new
+  /// [visibleWhiteKeyCount].
+  final ValueChanged<double>? onWidthScaleChanged;
+
+  /// Restores the default keyboard size. Null hides the reset action.
+  final VoidCallback? onResetSize;
+
   @override
   State<ScrollablePianoKeyboard> createState() =>
       _ScrollablePianoKeyboardState();
@@ -90,6 +130,36 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
 
   // True while a programmatic scroll animation is in flight.
   bool _isAutoScrolling = false;
+
+  // Width scale captured at the start of a pinch; deltas multiply from here.
+  double _zoomStartScale = 1.0;
+
+  void _onScaleStart(ScaleStartDetails _) {
+    _zoomStartScale = widget.widthScale;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (details.pointerCount < 2) return;
+    widget.onWidthScaleChanged?.call(_zoomStartScale * details.scale);
+  }
+
+  Widget _wrapWithZoom(Widget child) {
+    if (!widget.enableZoom || widget.onWidthScaleChanged == null) return child;
+    return RawGestureDetector(
+      gestures: <Type, GestureRecognizerFactory>{
+        _PinchScaleGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<_PinchScaleGestureRecognizer>(
+              _PinchScaleGestureRecognizer.new,
+              (recognizer) {
+                recognizer
+                  ..onStart = _onScaleStart
+                  ..onUpdate = _onScaleUpdate;
+              },
+            ),
+      },
+      child: child,
+    );
+  }
 
   @override
   void initState() {
@@ -208,8 +278,9 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
     );
   }
 
-  /// Long-press context menu surfacing the keyboard's otherwise-hidden
-  /// recenter action (also the body double-tap).
+  /// Long-press context menu surfacing the keyboard's otherwise-hidden view
+  /// actions: recenter (also the body double-tap) and reset size (also the
+  /// handle double-tap). Reset is enabled only where [onResetSize] is given.
   Future<void> _showQuickActions(LongPressStartDetails details) async {
     if (!mounted) return;
     final overlay =
@@ -217,6 +288,8 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
     if (overlay == null) return;
 
     unawaited(Feedback.forLongPress(context));
+
+    final canResetSize = widget.onResetSize != null;
 
     final position = RelativeRect.fromRect(
       details.globalPosition & const Size(40, 40),
@@ -234,6 +307,14 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
             label: 'Recenter keyboard',
           ),
         ),
+        PopupMenuItem<_PianoQuickAction>(
+          value: _PianoQuickAction.resetSize,
+          enabled: canResetSize,
+          child: const _QuickActionRow(
+            icon: Icons.straighten_outlined,
+            label: 'Reset keyboard size',
+          ),
+        ),
       ],
     );
 
@@ -241,7 +322,14 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
     switch (action) {
       case _PianoQuickAction.center:
         _centerNow();
+      case _PianoQuickAction.resetSize:
+        _resetKeyboardSize();
     }
+  }
+
+  void _resetKeyboardSize() {
+    widget.onResetSize?.call();
+    unawaited(HapticFeedback.selectionClick());
   }
 
   @override
@@ -265,11 +353,13 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
       });
     }
 
-    // If visible key count changed (rotation), keep things stable by recentering.
+    // If visible key count changed (rotation, zoom), keep things stable by
+    // recentering, on the exercise while nothing is sounding.
     if (oldWidget.visibleWhiteKeyCount != widget.visibleWhiteKeyCount) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _autoCenterIfNeeded(force: true),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _focusNotes.isEmpty ? _centerNow() : _autoCenterIfNeeded(force: true);
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateIndicatorState();
       });
@@ -377,6 +467,10 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Reset is offered as an accessibility action (mirroring the long-press
+    // menu) only where sizing is adjustable and not already at the default.
+    final canResetSize = widget.onResetSize != null;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportWidth = constraints.maxWidth;
@@ -419,6 +513,9 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
                 customSemanticsActions: {
                   const CustomSemanticsAction(label: 'Recenter keyboard'):
                       _centerNow,
+                  if (canResetSize)
+                    const CustomSemanticsAction(label: 'Reset keyboard size'):
+                        _resetKeyboardSize,
                 },
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
@@ -436,23 +533,26 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
                       }
                       return false;
                     },
-                    child: SingleChildScrollView(
-                      controller: _ctl,
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: SizedBox(
-                        width: contentWidth,
-                        height: widget.height,
-                        child: PianoKeyboard(
-                          whiteKeyCount: widget.fullWhiteKeyCount,
-                          firstMidiNote: widget.lowestNoteNumber,
-                          highlightedNoteNumbers: widget.highlightedNoteNumbers,
-                          scaleNoteNumbers: widget.scaleNoteNumbers,
-                          normalHighlightPitchClasses:
-                              widget.normalHighlightPitchClasses,
-                          tonicPitchClass: widget.tonicPitchClass,
+                    child: _wrapWithZoom(
+                      SingleChildScrollView(
+                        controller: _ctl,
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: SizedBox(
+                          width: contentWidth,
                           height: widget.height,
-                          decorations: widget.decorations,
+                          child: PianoKeyboard(
+                            whiteKeyCount: widget.fullWhiteKeyCount,
+                            firstMidiNote: widget.lowestNoteNumber,
+                            highlightedNoteNumbers:
+                                widget.highlightedNoteNumbers,
+                            scaleNoteNumbers: widget.scaleNoteNumbers,
+                            normalHighlightPitchClasses:
+                                widget.normalHighlightPitchClasses,
+                            tonicPitchClass: widget.tonicPitchClass,
+                            height: widget.height,
+                            decorations: widget.decorations,
+                          ),
                         ),
                       ),
                     ),

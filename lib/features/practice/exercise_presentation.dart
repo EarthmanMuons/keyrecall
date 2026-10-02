@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
+import '../piano/models/piano_view_settings.dart';
 import '../piano/services/piano_geometry.dart';
 
 /// How an exercise reads and looks to a learner.
@@ -198,12 +201,14 @@ class KeyboardDiagram {
   }
 }
 
-/// How large a keyboard's keys are drawn, from the space it is given.
+/// How large a keyboard is drawn, from the space it is given and what the
+/// learner asked for.
 ///
 /// Never from the exercise, so the keys stay the same shape from one exercise
-/// to the next and only what is in view changes. White keys are a quarter of
-/// the keyboard's height wide until the whole piano fits, and wider only on a
-/// window too wide for even that.
+/// to the next and only what is in view changes. By default white keys are a
+/// quarter of [baseHeight] wide until the whole piano fits, and wider only on a
+/// window too wide for even that. Zooming widens them from there, and resizing
+/// grows the keyboard's height without touching their width.
 class KeyboardScale {
   /// How many white keys fit across the keyboard at once.
   final int visibleWhiteKeyCount;
@@ -211,28 +216,43 @@ class KeyboardScale {
   /// How wide each white key is drawn.
   final double whiteKeyWidth;
 
+  /// How tall the keyboard is drawn.
+  final double height;
+
   const KeyboardScale({
     required this.visibleWhiteKeyCount,
     required this.whiteKeyWidth,
+    required this.height,
   });
 
-  /// How many times taller than wide a white key is, at its widest.
+  /// How many times taller than wide a white key is, at its widest by default.
   static const double minKeyAspect = 4;
+
+  /// The fewest white keys zooming in leaves on screen.
+  static const int minZoomedWhiteKeyCount = 8;
 
   /// The narrowest white key a finger number fits on.
   static const double minFingeringKeyWidth = 28;
 
   factory KeyboardScale.forSize({
     required double width,
-    required double height,
+    required double baseHeight,
+    double? maxHeight,
+    PianoViewSettings settings = const PianoViewSettings.defaults(),
   }) {
-    final count = (width * minKeyAspect / height).ceil().clamp(
+    final base = (width * minKeyAspect / baseHeight).ceil().clamp(
       1,
       PianoGeometry.fullKeyboardWhiteKeyCount,
     );
+    final int count = (base / settings.widthScale).round().clamp(
+      math.min(minZoomedWhiteKeyCount, base),
+      base,
+    );
+    final ceiling = math.max(baseHeight, maxHeight ?? baseHeight);
     return KeyboardScale(
       visibleWhiteKeyCount: count,
       whiteKeyWidth: width / count,
+      height: (baseHeight * settings.heightScale).clamp(baseHeight, ceiling),
     );
   }
 

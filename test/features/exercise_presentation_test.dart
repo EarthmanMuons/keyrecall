@@ -142,8 +142,8 @@ void main() {
 
   group('keyboard scale', () {
     test('keeps the keys one shape whatever the width', () {
-      final portrait = KeyboardScale.forSize(width: 400, height: 160);
-      final landscape = KeyboardScale.forSize(width: 900, height: 120);
+      final portrait = KeyboardScale.forSize(width: 400, baseHeight: 160);
+      final landscape = KeyboardScale.forSize(width: 900, baseHeight: 120);
 
       expect(portrait.visibleWhiteKeyCount, 10);
       expect(portrait.whiteKeyWidth, 40, reason: 'a quarter of the height');
@@ -151,7 +151,7 @@ void main() {
     });
 
     test('rounds toward more keys rather than wider ones', () {
-      final scale = KeyboardScale.forSize(width: 462, height: 200);
+      final scale = KeyboardScale.forSize(width: 462, baseHeight: 200);
 
       expect(scale.visibleWhiteKeyCount, 10);
       expect(scale.whiteKeyWidth, lessThanOrEqualTo(50));
@@ -159,22 +159,70 @@ void main() {
 
     test('names fingers only on keys wide enough to hold them', () {
       expect(
-        KeyboardScale.forSize(width: 400, height: 160).holdsFingering,
+        KeyboardScale.forSize(width: 400, baseHeight: 160).holdsFingering,
         isTrue,
       );
       expect(
-        KeyboardScale.forSize(width: 400, height: 100).holdsFingering,
+        KeyboardScale.forSize(width: 400, baseHeight: 100).holdsFingering,
         isFalse,
       );
     });
 
     test('shows the whole piano at most', () {
-      final scale = KeyboardScale.forSize(width: 5000, height: 100);
+      final scale = KeyboardScale.forSize(width: 5000, baseHeight: 100);
 
       expect(
         scale.visibleWhiteKeyCount,
         PianoGeometry.fullKeyboardWhiteKeyCount,
       );
+    });
+
+    test('zooms the keys wider without growing the keyboard', () {
+      final scale = KeyboardScale.forSize(
+        width: 900,
+        baseHeight: 120,
+        settings: const PianoViewSettings(widthScale: 2, heightScale: 1),
+      );
+
+      expect(scale.visibleWhiteKeyCount, 15);
+      expect(scale.height, 120);
+    });
+
+    test('zooms in no further than a handful of keys', () {
+      final scale = KeyboardScale.forSize(
+        width: 900,
+        baseHeight: 200,
+        settings: const PianoViewSettings(widthScale: 3, heightScale: 1),
+      );
+
+      expect(
+        scale.visibleWhiteKeyCount,
+        KeyboardScale.minZoomedWhiteKeyCount,
+        reason: '18 keys at triple width would be 6, but the floor is 8',
+      );
+    });
+
+    test('grows the keyboard without widening the keys', () {
+      final scale = KeyboardScale.forSize(
+        width: 400,
+        baseHeight: 160,
+        maxHeight: 400,
+        settings: const PianoViewSettings(widthScale: 1, heightScale: 1.5),
+      );
+
+      expect(scale.height, 240);
+      expect(scale.whiteKeyWidth, 40);
+    });
+
+    test('clamps a grown keyboard to the room there is', () {
+      final scale = KeyboardScale.forSize(
+        width: 400,
+        baseHeight: 160,
+        maxHeight: 200,
+        settings: const PianoViewSettings(widthScale: 1, heightScale: 3),
+      );
+
+      expect(scale.height, 200);
     });
   });
 
