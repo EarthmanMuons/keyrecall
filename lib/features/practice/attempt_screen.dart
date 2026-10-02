@@ -1975,7 +1975,6 @@ class _Instrument extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final diagram = KeyboardDiagram.forExercise(exercise);
     final sounding = echoes
         ? ref.watch(inputActivityProvider).soundingNoteNumbers
         : const <int>{};
@@ -1993,20 +1992,33 @@ class _Instrument extends ConsumerWidget {
         ? fingeringByKeyFor(exercise, realization.hands.single)
         : const <int, int>{};
 
-    return PianoKeyboard(
-      whiteKeyCount: diagram.whiteKeyCount,
-      firstMidiNote: diagram.firstWhiteMidi,
-      scaleNoteNumbers: showsCue ? diagram.memberNotes : const {},
-      tonicPitchClass: showsCue ? diagram.tonicPitchClass : null,
-      highlightedNoteNumbers: sounding,
-      decorations: [
-        for (final entry in fingering.entries)
-          PianoKeyDecoration(midiNote: entry.key, label: '${entry.value}'),
-      ],
-      // No pitch-class filter: a wrong note lights up like any other. Marking
-      // it as out of scale would be evaluative feedback, which no rung offers
-      // yet and which changes what an attempt observes.
-      height: height,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final diagram = KeyboardDiagram.forExercise(
+          exercise,
+          width: constraints.maxWidth,
+          height: height,
+        );
+        return PianoKeyboard(
+          whiteKeyCount: diagram.whiteKeyCount,
+          firstMidiNote: diagram.firstWhiteMidi,
+          scaleNoteNumbers: showsCue ? diagram.memberNotes : const {},
+          tonicPitchClass: showsCue ? diagram.tonicPitchClass : null,
+          highlightedNoteNumbers: sounding,
+          decorations: [
+            if (diagram.holdsFingering)
+              for (final entry in fingering.entries)
+                PianoKeyDecoration(
+                  midiNote: entry.key,
+                  label: '${entry.value}',
+                ),
+          ],
+          // No pitch-class filter: a wrong note lights up like any other.
+          // Marking it as out of scale would be evaluative feedback, which no
+          // rung offers yet and which changes what an attempt observes.
+          height: height,
+        );
+      },
     );
   }
 }

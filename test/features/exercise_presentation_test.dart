@@ -74,10 +74,17 @@ void main() {
       octaves: octaves,
     );
 
+    KeyboardDiagram diagramOf(
+      Exercise exercise, {
+      double width = 400,
+      double height = 160,
+    }) => KeyboardDiagram.forExercise(exercise, width: width, height: height);
+
+    int lastWhiteOf(KeyboardDiagram diagram) =>
+        _whiteMidiAfter(diagram.firstWhiteMidi, diagram.whiteKeyCount - 1);
+
     test('marks the member notes of the requested range', () {
-      final surface = KeyboardDiagram.forExercise(
-        exerciseOf('C', ScaleForm.major, octaves: 1),
-      );
+      final surface = diagramOf(exerciseOf('C', ScaleForm.major, octaves: 1));
 
       expect(surface.memberNotes, {
         60,
@@ -93,7 +100,7 @@ void main() {
     });
 
     test('takes the accidentals from the form, not just the key', () {
-      final surface = KeyboardDiagram.forExercise(
+      final surface = diagramOf(
         exerciseOf('D', ScaleForm.harmonicMinor, octaves: 1),
       );
 
@@ -105,13 +112,13 @@ void main() {
     });
 
     test('puts each hand in its own register and spans both together', () {
-      final right = KeyboardDiagram.forExercise(
+      final right = diagramOf(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.right),
       );
-      final left = KeyboardDiagram.forExercise(
+      final left = diagramOf(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.left),
       );
-      final together = KeyboardDiagram.forExercise(
+      final together = diagramOf(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
       );
 
@@ -131,16 +138,66 @@ void main() {
     });
 
     test('draws a window wide enough to hold the range', () {
-      final surface = KeyboardDiagram.forExercise(
+      final surface = diagramOf(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
-      );
-      final lastWhite = _whiteMidiAfter(
-        surface.firstWhiteMidi,
-        surface.whiteKeyCount - 1,
+        width: 1200,
       );
 
-      expect(surface.firstWhiteMidi, lessThan(48));
-      expect(lastWhite, greaterThan(84));
+      expect(surface.firstWhiteMidi, lessThan(36));
+      expect(lastWhiteOf(surface), greaterThan(84));
+    });
+
+    test('keeps the keys one width across exercises that fit', () {
+      final c = diagramOf(exerciseOf('C', ScaleForm.major, octaves: 1));
+      final eFlat = diagramOf(exerciseOf('Eb', ScaleForm.major, octaves: 1));
+
+      expect(c.whiteKeyWidth, 40, reason: 'a quarter of the height');
+      expect(eFlat.whiteKeyWidth, c.whiteKeyWidth);
+      expect(c.holdsFingering, isTrue);
+    });
+
+    test('shows the keyboard around a short exercise', () {
+      final surface = diagramOf(
+        exerciseOf('C', ScaleForm.major, octaves: 1),
+        width: 900,
+        height: 120,
+      );
+
+      expect(surface.whiteKeyWidth, 30);
+      expect(
+        60 - surface.firstWhiteMidi,
+        closeTo(lastWhiteOf(surface) - 72, 2),
+        reason: 'the exercise sits in the middle of the window',
+      );
+    });
+
+    test('narrows the keys for a wide exercise, dropping fingering', () {
+      final surface = diagramOf(exerciseOf('C', ScaleForm.major));
+
+      expect(surface.whiteKeyCount, 17, reason: 'B3 through D6');
+      expect(surface.whiteKeyWidth, lessThan(40));
+      expect(surface.holdsFingering, isFalse);
+    });
+
+    test('shows the middle of an exercise too wide for the narrowest keys', () {
+      final surface = diagramOf(
+        exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
+      );
+
+      expect(surface.whiteKeyWidth, KeyboardDiagram.minWhiteKeyWidth);
+      expect(surface.firstWhiteMidi, greaterThan(36));
+      expect(lastWhiteOf(surface), lessThan(84));
+    });
+
+    test('never draws past the ends of a piano', () {
+      final surface = diagramOf(
+        exerciseOf('C', ScaleForm.major, octaves: 1),
+        width: 5000,
+        height: 100,
+      );
+
+      expect(surface.whiteKeyCount, 52);
+      expect(surface.firstWhiteMidi, 21);
     });
   });
 

@@ -1,5 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+
+import '../piano/services/piano_geometry.dart';
 
 /// How an exercise reads and looks to a learner.
 ///
@@ -170,12 +174,21 @@ const Set<int> _whitePitchClasses = {0, 2, 4, 5, 7, 9, 11};
 /// table here: what an exercise asks for has one definition, in the domain.
 /// The marks are a set, so a diagram cannot say where in the scale the learner
 /// is; a surface that shows progress needs the ordered moments instead.
+///
+/// Sized from the space it is drawn in rather than from the exercise, so the
+/// keys stay the same shape from one exercise to the next and a short exercise
+/// shows more of the keyboard around it. Only an exercise too wide for that
+/// shape narrows the keys, never below [minWhiteKeyWidth]; one too wide even
+/// for that is shown from its middle.
 class KeyboardDiagram {
   /// MIDI note of the leftmost *white* key drawn.
   final int firstWhiteMidi;
 
   /// How many white keys the diagram spans.
   final int whiteKeyCount;
+
+  /// How wide each white key is drawn.
+  final double whiteKeyWidth;
 
   /// Every note the exercise asks for.
   final Set<int> memberNotes;
@@ -186,27 +199,77 @@ class KeyboardDiagram {
   const KeyboardDiagram({
     required this.firstWhiteMidi,
     required this.whiteKeyCount,
+    required this.whiteKeyWidth,
     required this.memberNotes,
     required this.tonicPitchClass,
   });
 
-  /// A diagram wide enough for what [exercise] asks for.
-  factory KeyboardDiagram.forExercise(Exercise exercise) {
+  /// How many times taller than wide a white key is, at its widest.
+  static const double minKeyAspect = 4;
+
+  /// The narrowest white key whose marks still read.
+  static const double minWhiteKeyWidth = 20;
+
+  /// The narrowest white key a finger number fits on.
+  static const double minFingeringKeyWidth = 28;
+
+  /// A diagram of [exercise] for a keyboard [width] wide and [height] tall,
+  /// centered on what the exercise asks for.
+  factory KeyboardDiagram.forExercise(
+    Exercise exercise, {
+    required double width,
+    required double height,
+  }) {
     final realization = realize(exercise);
 
     // A key on either side, so the outermost notes do not sit flush against
     // the edge of the diagram.
-    final firstWhite = _whiteAtOrBelow(realization.lowestPitch - 1);
-    final lastWhite = _whiteAtOrAbove(realization.highestPitch + 1);
+    final first = _whiteIndexOf(_whiteAtOrBelow(realization.lowestPitch - 1));
+    final last = _whiteIndexOf(_whiteAtOrAbove(realization.highestPitch + 1));
+    final needed = last - first + 1;
+
+    final fewest = math.max(1, (width * minKeyAspect / height).ceil());
+    final most = PianoGeometry.visibleWhiteKeyCountForViewport(
+      viewportWidth: width,
+      minWhiteKeyWidth: minWhiteKeyWidth,
+    );
+    final count = math.min(
+      needed <= fewest ? fewest : math.min(needed, most),
+      _whiteMidis.length,
+    );
+
+    final start = (first - (count - needed) ~/ 2).clamp(
+      0,
+      _whiteMidis.length - count,
+    );
 
     return KeyboardDiagram(
-      firstWhiteMidi: firstWhite,
-      whiteKeyCount: _whiteKeysThrough(firstWhite, lastWhite),
+      firstWhiteMidi: _whiteMidis[start],
+      whiteKeyCount: count,
+      whiteKeyWidth: width / count,
       memberNotes: realization.pitches,
       tonicPitchClass: pitchClassOf(exercise.material.tonic),
     );
   }
+
+  /// Whether a finger number fits on a key at this width.
+  bool get holdsFingering => whiteKeyWidth >= minFingeringKeyWidth;
 }
+
+/// Every white key on a piano, lowest first.
+final List<int> _whiteMidis = [
+  for (
+    var midi = PianoGeometry.fullKeyboardLowestMidi;
+    midi <= PianoGeometry.fullKeyboardHighestMidi;
+    midi++
+  )
+    if (_whitePitchClasses.contains(midi % 12)) midi,
+];
+
+int _whiteIndexOf(int whiteMidi) => _whiteMidis
+    .where((midi) => midi < whiteMidi)
+    .length
+    .clamp(0, _whiteMidis.length - 1);
 
 int _whiteAtOrBelow(int midi) {
   while (!_whitePitchClasses.contains(midi % 12)) {
@@ -220,12 +283,4 @@ int _whiteAtOrAbove(int midi) {
     midi++;
   }
   return midi;
-}
-
-int _whiteKeysThrough(int firstWhite, int lastWhite) {
-  var count = 0;
-  for (var midi = firstWhite; midi <= lastWhite; midi++) {
-    if (_whitePitchClasses.contains(midi % 12)) count++;
-  }
-  return count;
 }
