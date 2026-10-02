@@ -35,14 +35,20 @@ void main() {
 
   test('a new profile does not take a color already in use', () {
     final here = [
-      profileNamed('Alice', hint: ProfileColor.amber.name),
+      profileNamed('Alice', hint: ProfileColor.green.name),
       profileNamed('Bob', hint: ProfileColor.teal.name),
     ];
 
     final next = ProfileColor.unusedAmong(here);
 
-    expect(next, isNot(ProfileColor.amber));
+    expect(next, isNot(ProfileColor.green));
     expect(next, isNot(ProfileColor.teal));
+  });
+
+  test('a second profile gets the color farthest from the first', () {
+    final here = [profileNamed('Alice', hint: ProfileColor.values.first.name)];
+
+    expect(ProfileColor.unusedAmong(here), ProfileColor.values.last);
   });
 
   test('more people than colors wraps rather than refusing', () {
