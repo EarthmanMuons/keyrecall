@@ -415,8 +415,8 @@ class _ProfileDialogState extends State<_ProfileDialog> {
           Text('Color', style: theme.textTheme.labelLarge),
           const SizedBox(height: 12),
           // The palette is the whole choice. A color is what a profile is
-          // picked out by at a glance, so the six that stay apart are the six
-          // on offer.
+          // picked out by at a glance, so the eight that stay apart are the
+          // eight on offer.
           Wrap(
             spacing: 16,
             runSpacing: 16,
@@ -427,17 +427,11 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                   radius: 28,
                   child: CircleAvatar(
                     radius: 22,
-                    backgroundColor: color.color,
+                    backgroundColor: color.color(theme.brightness),
                     child: color == _color
                         ? Icon(
                             Icons.check,
-                            color:
-                                ThemeData.estimateBrightnessForColor(
-                                      color.color,
-                                    ) ==
-                                    Brightness.dark
-                                ? Colors.white
-                                : Colors.black87,
+                            color: color.onColor(theme.brightness),
                           )
                         : null,
                   ),

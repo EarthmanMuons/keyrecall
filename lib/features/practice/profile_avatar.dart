@@ -16,19 +16,17 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = ProfileColor.of(profile).color;
-    // Fixed against the disc rather than taken from the scheme: the disc is
-    // the same color in either theme, so a mark that followed the theme would
-    // go unreadable in one of them.
-    final onColor =
-        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-        ? Colors.white
-        : Colors.black87;
+    final brightness = Theme.of(context).brightness;
+    final color = ProfileColor.of(profile);
 
     return CircleAvatar(
       radius: radius,
-      backgroundColor: color,
-      child: Icon(Icons.person, size: radius * 1.2, color: onColor),
+      backgroundColor: color.color(brightness),
+      child: Icon(
+        Icons.person,
+        size: radius * 1.2,
+        color: color.onColor(brightness),
+      ),
     );
   }
 }
