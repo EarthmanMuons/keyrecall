@@ -53,6 +53,11 @@ GLYPHS = {
 # sidebearings because an engraver spaces them.
 SIDE_PAD = 50
 
+# A stem as the leftmost ink reads closer to the letter before it than the
+# open side of a sharp does, so those glyphs take more room on the left.
+STEM_LEFT_PAD = 80
+STEM_FIRST = {0x266D, 0x266E, 0x1D12B}
+
 BOLD_STRENGTH = 20
 
 # The platform UI fonts split their extent about 4:1 above and below the
@@ -185,22 +190,22 @@ def embolden(font: TTFont, glyph: str) -> None:
     set_outline(font, glyph, builder.resolve(), font["hmtx"][glyph][0])
 
 
-def pad_sides(font: TTFont, glyph: str) -> None:
+def pad_sides(font: TTFont, glyph: str, left_pad: int) -> None:
     glyph_set = font.getGlyphSet()
     bounds = BoundsPen(glyph_set)
     glyph_set[glyph].draw(bounds)
     if bounds.bounds is None:
-        font["hmtx"][glyph] = (2 * SIDE_PAD, SIDE_PAD)
+        font["hmtx"][glyph] = (left_pad + SIDE_PAD, left_pad)
         return
     left, _, right, _ = bounds.bounds
-    shift = SIDE_PAD - left
-    advance = round(right - left + 2 * SIDE_PAD)
+    shift = left_pad - left
+    advance = round(right - left + left_pad + SIDE_PAD)
     path = pathops.Path()
     glyph_set[glyph].draw(
         TransformPen(path.getPen(glyphSet=glyph_set), (1, 0, 0, 1, shift, 0))
     )
     set_outline(font, glyph, path, advance)
-    font["hmtx"][glyph] = (advance, SIDE_PAD)
+    font["hmtx"][glyph] = (advance, left_pad)
 
 
 def recompute_bounds(font: TTFont) -> None:
@@ -241,10 +246,11 @@ def build(inst: Instance) -> Path:
     font["cmap"] = build_cmap(targets)
     set_identity(font, inst)
     set_vertical_metrics(font)
+    stem_first = {targets[target] for target in STEM_FIRST}
     for glyph in font.getGlyphOrder():
         if inst.bold:
             embolden(font, glyph)
-        pad_sides(font, glyph)
+        pad_sides(font, glyph, STEM_LEFT_PAD if glyph in stem_first else SIDE_PAD)
     recompute_bounds(font)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
