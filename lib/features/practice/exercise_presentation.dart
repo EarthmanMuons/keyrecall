@@ -137,6 +137,22 @@ String declineLabel(GuidanceContext guidance, {required bool metBefore}) =>
       (_, false) => "I don't know this yet",
     };
 
+/// What a guidance rung asks of the learner, before they start.
+String guidanceInstruction(GuidanceContext guidance) =>
+    switch (guidance.independence) {
+      0 => 'The notes stay on screen while you play.',
+      1 => 'Study it. The notes go away when you start.',
+      _ => 'Play it from memory.',
+    };
+
+/// [guidanceInstruction] in a few words, for where a sentence costs a line.
+String guidanceLabel(GuidanceContext guidance) =>
+    switch (guidance.independence) {
+      0 => 'Cues stay on',
+      1 => 'Preview only',
+      _ => 'From memory',
+    };
+
 /// The learner-facing name of a guidance rung.
 String guidanceName(GuidanceContext guidance) =>
     switch (guidance.independence) {

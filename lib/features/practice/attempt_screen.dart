@@ -1400,7 +1400,9 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         padding: EdgeInsets.fromLTRB(
           layout.gutter,
           layout.isShort
-              ? (_backCrowdsTask ? kMinInteractiveDimension : 8)
+              ? (_backCrowdsTask
+                    ? _cornerTop + kMinInteractiveDimension
+                    : _shortTop)
               : 16,
           layout.gutter,
           0,
@@ -1517,6 +1519,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Status(
+              compact: layout.isShort,
               phase: _phase,
               guidance: guidance,
               selfPaced: _isSelfPaced,
@@ -1641,6 +1644,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           'measure timing again.',
   };
 
+  /// The room above a short window's task statement.
+  static const double _shortTop = 18;
+
+  /// How far below the top the corner controls sit, which keeps the way back
+  /// level with the title.
+  static const double _cornerTop = _shortTop - 8;
+
   /// Whether a way back is offered, for a screen with no bar to offer it.
   bool get _leaves => ModalRoute.of(context)?.impliesAppBarDismissal ?? false;
 
@@ -1674,13 +1684,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     return [
       if (_leaves)
         Positioned(
-          top: padding.top,
+          top: padding.top + _cornerTop,
           left: inside(padding.left),
           child: corner(const BackButton()),
         ),
       if (widget.menu case final menu?)
         Positioned(
-          top: padding.top,
+          top: padding.top + _cornerTop,
           right: inside(padding.right),
           child: corner(menu),
         ),
@@ -2330,12 +2340,17 @@ class _Status extends StatelessWidget {
   const _Status({
     required this.phase,
     required this.guidance,
+    this.compact = false,
     this.selfPaced = false,
     this.traversals = 1,
   });
 
   final _Phase phase;
   final GuidanceContext guidance;
+
+  /// Whether the instruction before an attempt is cut to a label, with the
+  /// sentence a tap away.
+  final bool compact;
 
   /// Whether no tempo was asked for.
   final bool selfPaced;
@@ -2345,6 +2360,19 @@ class _Status extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (compact && phase == _Phase.ready) {
+      return Tooltip(
+        message: selfPaced
+            ? selfPacedInstruction(traversals)
+            : guidanceInstruction(guidance),
+        triggerMode: TooltipTriggerMode.tap,
+        child: Text(
+          selfPaced ? 'At your own pace' : guidanceLabel(guidance),
+          style: Theme.of(context).textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
     if (selfPaced && (phase == _Phase.ready || phase == _Phase.playing)) {
       // The running line says the pace is the learner's rather than only
       // saying the screen is live: with no pulse and no tempo anywhere,
@@ -2368,11 +2396,7 @@ class _Status extends StatelessWidget {
     if (phase != _Phase.ready) return const SizedBox(height: 20);
 
     return Text(
-      switch (guidance.independence) {
-        0 => 'The notes stay on screen while you play.',
-        1 => 'Study it. The notes go away when you start.',
-        _ => 'Play it from memory.',
-      },
+      guidanceInstruction(guidance),
       style: Theme.of(context).textTheme.bodyMedium,
       textAlign: TextAlign.center,
     );
