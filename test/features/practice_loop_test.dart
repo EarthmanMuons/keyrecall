@@ -7,11 +7,13 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_failure.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+import 'package:keyrecall/preferences.dart';
 
 import '../support/scheduler_override.dart';
 
@@ -348,9 +350,12 @@ void main() {
 
   group('over real storage', () {
     late Directory root;
+    late SharedPreferences preferences;
 
-    setUp(() {
+    setUp(() async {
       root = Directory.systemTemp.createTempSync('keyrecall_startup_test');
+      SharedPreferences.setMockInitialValues({});
+      preferences = await SharedPreferences.getInstance();
     });
 
     tearDown(() {
@@ -362,6 +367,7 @@ void main() {
         overrides: [
           storageRootProvider.overrideWith((ref) async => root),
           inProcessScheduling,
+          sharedPreferencesProvider.overrideWithValue(preferences),
         ],
       );
       addTearDown(container.dispose);

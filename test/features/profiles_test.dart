@@ -4,9 +4,12 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:keyrecall/features/practice/keyboard_size.dart';
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+import 'package:keyrecall/preferences.dart';
 
 import '../support/scheduler_override.dart';
 
@@ -246,11 +249,13 @@ void main() {
         placement: PlacementTier.someExperience,
       );
       final store = _FailingEraseStore(InMemoryPracticeStore());
+      final preferences = await _preferencesSizing(profile.id);
       final container = ProviderContainer(
         overrides: [
           profileRepositoryProvider.overrideWith((ref) async => repository),
           inProcessScheduling,
           practiceStoreProvider.overrideWith((ref) async => store),
+          sharedPreferencesProvider.overrideWithValue(preferences),
         ],
       );
       addTearDown(container.dispose);
@@ -265,6 +270,7 @@ void main() {
       // still there, and so is the intent that names it.
       expect(await repository.find(profile.id), isNull);
       expect(await repository.pendingDeletions(), [profile.id]);
+      expect(_sizeKeysOf(preferences, profile.id), isEmpty);
 
       final resumed = ProfileLifecycle(
         repository: repository,
@@ -274,7 +280,48 @@ void main() {
       expect(await repository.pendingDeletions(), isEmpty);
     },
   );
+
+  test('a deletion finished at startup forgets the keyboard size', () async {
+    final repository = InMemoryProfileRepository();
+    final profile = await repository.create(
+      displayName: 'Alice',
+      placement: PlacementTier.someExperience,
+    );
+    await repository.beginDelete(profile.id);
+    final preferences = await _preferencesSizing(profile.id);
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => repository),
+        practiceStoreProvider.overrideWith(
+          (ref) async => InMemoryPracticeStore(),
+        ),
+        sharedPreferencesProvider.overrideWithValue(preferences),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(profileLifecycleProvider.future);
+
+    expect(_sizeKeysOf(preferences, profile.id), isEmpty);
+  });
 }
+
+/// Preferences holding a resized keyboard for [profileId].
+Future<SharedPreferences> _preferencesSizing(String profileId) async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final container = ProviderContainer(
+    overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+  );
+  await container
+      .read(keyboardSizeProvider(profileId).notifier)
+      .setWidthScale(2);
+  container.dispose();
+  return preferences;
+}
+
+Iterable<String> _sizeKeysOf(SharedPreferences preferences, String profileId) =>
+    preferences.getKeys().where((key) => key.contains(profileId));
 
 class _FailingEraseStore with UnretiredLifetimes implements PracticeStore {
   @override

@@ -70,6 +70,15 @@ class _PianoResizeHandleState extends State<PianoResizeHandle> {
     _dragHeight = null;
   }
 
+  /// How far one assistive-technology adjustment moves the height.
+  double get _step => widget.baseHeight * 0.1;
+
+  double _stepped(double delta) =>
+      (widget.currentHeight + delta).clamp(widget.baseHeight, widget.maxHeight);
+
+  String _percent(double height) =>
+      '${(height / widget.baseHeight * 100).round()}%';
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -78,6 +87,15 @@ class _PianoResizeHandleState extends State<PianoResizeHandle> {
       slider: true,
       label: 'Resize keyboard',
       hint: 'Drag up or down to resize. Double tap to reset.',
+      value: _percent(widget.currentHeight),
+      increasedValue: _percent(_stepped(_step)),
+      decreasedValue: _percent(_stepped(-_step)),
+      onIncrease: widget.currentHeight < widget.maxHeight
+          ? () => widget.onHeightChanged(_stepped(_step))
+          : null,
+      onDecrease: widget.currentHeight > widget.baseHeight
+          ? () => widget.onHeightChanged(_stepped(-_step))
+          : null,
       child: MouseRegion(
         cursor: SystemMouseCursors.resizeUpDown,
         child: GestureDetector(

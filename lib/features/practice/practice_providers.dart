@@ -84,7 +84,10 @@ final profileLifecycleRawProvider = FutureProvider<ProfileLifecycle>(
 /// decided to forget.
 final profileLifecycleProvider = FutureProvider<ProfileLifecycle>((ref) async {
   final lifecycle = await ref.watch(profileLifecycleRawProvider.future);
-  await lifecycle.resumeDeletions();
+  for (final profileId in await lifecycle.resumeDeletions()) {
+    final preferences = ref.read(sharedPreferencesProvider);
+    await forgetKeyboardSize(preferences, profileId);
+  }
   return lifecycle;
 }, retry: (_, _) => null);
 
@@ -580,9 +583,11 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   Future<ProfileMutation<void>> remove(String profileId) =>
       _mutate((lifecycle) async {
         final active = await _isActive(lifecycle.repository, profileId);
-        await lifecycle.delete(profileId);
+        // Before the deletion intent, so no interruption can strand them:
+        // one after it is finished at startup, which forgets them again.
         final preferences = ref.read(sharedPreferencesProvider);
         await forgetKeyboardSize(preferences, profileId);
+        await lifecycle.delete(profileId);
         return (active, const ProfileChanged<void>(null));
       });
 
