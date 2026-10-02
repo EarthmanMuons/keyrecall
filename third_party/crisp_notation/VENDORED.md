@@ -106,3 +106,6 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
   layouts and their views. It widens every system, the last included, and
   justification stretches up from it, so music drawn smaller than its width
   allows can still fill that width.
+- Let the wrapped single-staff and grand staff layouts and their views leave the
+  first system's time signature undrawn, as later systems already do, while it
+  still governs beaming.

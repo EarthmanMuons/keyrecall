@@ -141,6 +141,8 @@ class MultiSystemLayout {
 ///
 /// [spacingStretch] widens the note spacing of every system, the last
 /// included, before any justification; justification only stretches further.
+/// With [drawTimeSignature] false the first system leaves out its time
+/// signature, which still governs beaming; explicit changes are still drawn.
 ///
 /// Every system restates the clef and key signature current at its first
 /// measure; the time signature appears only on the first system and at
@@ -158,6 +160,7 @@ MultiSystemLayout layoutSystems(
   required double maxWidth,
   bool justify = true,
   double spacingStretch = 1.0,
+  bool drawTimeSignature = true,
   Set<int> systemBreaks = const {},
   bool showNoteNames = false,
   bool showNoteOctaves = false,
@@ -186,7 +189,8 @@ MultiSystemLayout layoutSystems(
   // starts on an explicit change (the change glyph moves into the leading
   // segment).
   bool drawTimeFor(int firstMeasure) =>
-      firstMeasure == 0 || score.measures[firstMeasure].timeChange != null;
+      (firstMeasure == 0 && drawTimeSignature) ||
+      score.measures[firstMeasure].timeChange != null;
 
   // The system's leading segment (clef/key/time restatement) is re-laid
   // per system; measure a one-measure probe for its exact width.
@@ -322,6 +326,8 @@ class GrandStaffSystems {
 ///
 /// [spacingStretch] widens the note spacing of every system, the last
 /// included, before any justification; justification only stretches further.
+/// With [drawTimeSignature] false the first system leaves out its time
+/// signature, which still governs beaming; explicit changes are still drawn.
 ///
 /// Cross-staff beams are not carried onto wrapped systems (use a single-system
 /// [layoutGrandStaff] for those). Throws if the staves disagree on measure
@@ -333,6 +339,7 @@ GrandStaffSystems layoutGrandStaffSystems(
   double staffGap = 4.0,
   bool justify = true,
   double spacingStretch = 1.0,
+  bool drawTimeSignature = true,
   bool gridAlign = true,
   bool showNoteNames = false,
   bool showNoteOctaves = false,
@@ -348,10 +355,10 @@ GrandStaffSystems layoutGrandStaffSystems(
         '(${upper.measures.length} vs ${lower.measures.length})');
   }
   const engine = LayoutEngine();
-  final naturalU =
-      engine.layout(upper, settings, spacingStretch: spacingStretch);
-  final naturalL =
-      engine.layout(lower, settings, spacingStretch: spacingStretch);
+  final naturalU = engine.layout(upper, settings,
+      spacingStretch: spacingStretch, drawTimeSignature: drawTimeSignature);
+  final naturalL = engine.layout(lower, settings,
+      spacingStretch: spacingStretch, drawTimeSignature: drawTimeSignature);
   final n = upper.measures.length;
 
   double measureWidth(ScoreLayout layout, int i) =>
@@ -377,7 +384,7 @@ GrandStaffSystems layoutGrandStaffSystems(
       end++;
       used += combined[end];
     }
-    final drawTime = start == 0 ||
+    final drawTime = (start == 0 && drawTimeSignature) ||
         upper.measures[start].timeChange != null ||
         lower.measures[start].timeChange != null;
     final isLast = end == n - 1;

@@ -307,6 +307,21 @@ void main() {
       }
     });
 
+    test('drawTimeSignature: false leaves it off but keeps its beaming', () {
+      final score = Score.simple(
+        timeSignature: const TimeSignature(3, 4),
+        notes: 'c4:e d4 e4 f4 g4 a4 | c4:h.',
+      );
+      final drawn = layoutSystems(score, settings, maxWidth: 1000);
+      final hidden = layoutSystems(score, settings,
+          maxWidth: 1000, drawTimeSignature: false);
+      final layout = hidden.systems.single.layout;
+
+      expect(glyphsNamed(layout, SmuflGlyph.timeSigDigit(3)), isEmpty);
+      expect(layout.width, lessThan(drawn.systems.single.layout.width));
+      expect(layout.primitives.whereType<BeamPrimitive>(), hasLength(3));
+    });
+
     test(
         'a mid-score clef change landing on a break becomes the leading '
         'clef of the next system', () {

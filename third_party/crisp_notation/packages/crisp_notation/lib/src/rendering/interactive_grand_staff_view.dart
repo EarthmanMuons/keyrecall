@@ -49,6 +49,10 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
   /// (at least 1.0), for music spread wider than its natural spacing.
   final double spacingStretch;
 
+  /// Whether the first system draws its time signature, which governs beaming
+  /// either way.
+  final bool drawTimeSignature;
+
   /// Whether to align simultaneous notes vertically across the two staves
   /// (cross-staff onset gridding). Single-voice staves only.
   final bool gridAlign;
@@ -142,6 +146,7 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
     this.systemGap = 6.0,
     this.justify = true,
     this.spacingStretch = 1.0,
+    this.drawTimeSignature = true,
     this.gridAlign = true,
     this.highlightedIds = const {},
     this.elementColors = const {},
@@ -175,6 +180,7 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
         systemGap: systemGap,
         justify: justify,
         spacingStretch: spacingStretch,
+        drawTimeSignature: drawTimeSignature,
         gridAlign: gridAlign,
         highlightedIds: highlightedIds,
         elementColors: elementColors,
@@ -211,6 +217,7 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
       ..systemGap = systemGap
       ..justify = justify
       ..spacingStretch = spacingStretch
+      ..drawTimeSignature = drawTimeSignature
       ..gridAlign = gridAlign
       ..highlightedIds = highlightedIds
       ..elementColors = elementColors
@@ -247,6 +254,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
     required double systemGap,
     required bool justify,
     double spacingStretch = 1.0,
+    bool drawTimeSignature = true,
     required bool gridAlign,
     required Set<String> highlightedIds,
     Map<String, Color> elementColors = const {},
@@ -257,6 +265,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
         _systemGap = systemGap,
         _justify = justify,
         _spacingStretch = spacingStretch,
+        _drawTimeSignature = drawTimeSignature,
         _gridAlign = gridAlign,
         _highlightedIds = highlightedIds,
         _elementColors = elementColors {
@@ -459,6 +468,16 @@ class RenderInteractiveGrandStaffView extends RenderBox
     markNeedsLayout();
   }
 
+  bool _drawTimeSignature;
+
+  /// Whether the first system draws its time signature.
+  bool get drawTimeSignature => _drawTimeSignature;
+  set drawTimeSignature(bool value) {
+    if (value == _drawTimeSignature) return;
+    _drawTimeSignature = value;
+    markNeedsLayout();
+  }
+
   bool _gridAlign;
 
   /// Whether simultaneous notes align across the two staves.
@@ -640,6 +659,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
       staffGap: _staffGap,
       justify: _justify,
       spacingStretch: _spacingStretch,
+      drawTimeSignature: _drawTimeSignature,
       gridAlign: _gridAlign,
       showNoteNames: _showNoteNames,
       showNoteOctaves: _showNoteOctaves,
