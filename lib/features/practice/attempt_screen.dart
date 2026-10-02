@@ -1992,21 +1992,23 @@ class _Instrument extends ConsumerWidget {
         ? fingeringByKeyFor(exercise, realization.hands.single)
         : const <int, int>{};
 
+    final diagram = KeyboardDiagram.forExercise(exercise);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final diagram = KeyboardDiagram.forExercise(
-          exercise,
+        final scale = KeyboardScale.forSize(
           width: constraints.maxWidth,
           height: height,
         );
-        return PianoKeyboard(
-          whiteKeyCount: diagram.whiteKeyCount,
-          firstMidiNote: diagram.firstWhiteMidi,
+        return ScrollablePianoKeyboard(
+          visibleWhiteKeyCount: scale.visibleWhiteKeyCount,
+          frameNoteNumbers: diagram.memberNotes,
+          anchorNoteNumbers: diagram.startingNotes,
           scaleNoteNumbers: showsCue ? diagram.memberNotes : const {},
           tonicPitchClass: showsCue ? diagram.tonicPitchClass : null,
           highlightedNoteNumbers: sounding,
           decorations: [
-            if (diagram.holdsFingering)
+            if (scale.holdsFingering)
               for (final entry in fingering.entries)
                 PianoKeyDecoration(
                   midiNote: entry.key,

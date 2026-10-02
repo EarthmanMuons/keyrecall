@@ -23,23 +23,26 @@ API.
 - `models/piano_key_decoration.dart`
 - `models/piano_palette.dart`
 - `services/piano_geometry.dart`
+- `services/piano_scroll_policy.dart`
 - `widgets/piano_keyboard/piano_keyboard.dart`
 - `widgets/piano_keyboard/piano_keyboard_painter.dart`
+- `widgets/piano_keyboard/scrollable_piano_keyboard.dart`
 
-Unmodified so far, so a diff against upstream is currently empty. Record any
-adjustment here when that changes.
+`piano_scroll_policy.dart` adds `frameTarget`, where the keyboard rests on an
+exercise known in advance. `scrollable_piano_keyboard.dart` is adapted rather
+than copied: no pinch zoom, size reset, or idle recentering, since those read
+WhatChord's settings and input providers; caller decorations in place of the
+middle-C marker; and it rests on `frameNoteNumbers`, keeping `anchorNoteNumbers`
+in view, recentering whenever either changes.
 
 `piano.dart` is a KeyRecall barrel and is not vendored.
 
 ## What was deliberately left behind
 
-`scrollable_piano_keyboard.dart`, `piano_scroll_policy.dart`,
 `piano_view_metrics.dart`, `piano_view_settings.dart`, the settings notifier,
-and `piano_resize_handle.dart`. All of that exists so a keyboard can follow live
-playing and be resized by hand. A KeyRecall exercise has a range that is known
-before the attempt starts, so the diagram is sized once to fit it. Pull the
-scrolling layer over if a wide hands-together span turns out not to fit, rather
-than in advance.
+and `piano_resize_handle.dart`. They exist so a keyboard can be resized by hand.
+KeyRecall sizes keys from the keyboard's height instead, in
+`exercise_presentation.dart`.
 
 ## If it needs to change
 

@@ -5,6 +5,7 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
+import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/exercise_presentation.dart';
 import 'package:keyrecall/features/practice/presentation_policy.dart';
 
@@ -74,17 +75,10 @@ void main() {
       octaves: octaves,
     );
 
-    KeyboardDiagram diagramOf(
-      Exercise exercise, {
-      double width = 400,
-      double height = 160,
-    }) => KeyboardDiagram.forExercise(exercise, width: width, height: height);
-
-    int lastWhiteOf(KeyboardDiagram diagram) =>
-        _whiteMidiAfter(diagram.firstWhiteMidi, diagram.whiteKeyCount - 1);
-
     test('marks the member notes of the requested range', () {
-      final surface = diagramOf(exerciseOf('C', ScaleForm.major, octaves: 1));
+      final surface = KeyboardDiagram.forExercise(
+        exerciseOf('C', ScaleForm.major, octaves: 1),
+      );
 
       expect(surface.memberNotes, {
         60,
@@ -100,7 +94,7 @@ void main() {
     });
 
     test('takes the accidentals from the form, not just the key', () {
-      final surface = diagramOf(
+      final surface = KeyboardDiagram.forExercise(
         exerciseOf('D', ScaleForm.harmonicMinor, octaves: 1),
       );
 
@@ -112,13 +106,13 @@ void main() {
     });
 
     test('puts each hand in its own register and spans both together', () {
-      final right = diagramOf(
+      final right = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.right),
       );
-      final left = diagramOf(
+      final left = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.left),
       );
-      final together = diagramOf(
+      final together = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
       );
 
@@ -137,67 +131,50 @@ void main() {
       );
     });
 
-    test('draws a window wide enough to hold the range', () {
-      final surface = diagramOf(
+    test('starts each hand where its part begins', () {
+      final together = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
-        width: 1200,
       );
 
-      expect(surface.firstWhiteMidi, lessThan(36));
-      expect(lastWhiteOf(surface), greaterThan(84));
+      expect(together.startingNotes, {36, 60});
+    });
+  });
+
+  group('keyboard scale', () {
+    test('keeps the keys one shape whatever the width', () {
+      final portrait = KeyboardScale.forSize(width: 400, height: 160);
+      final landscape = KeyboardScale.forSize(width: 900, height: 120);
+
+      expect(portrait.visibleWhiteKeyCount, 10);
+      expect(portrait.whiteKeyWidth, 40, reason: 'a quarter of the height');
+      expect(landscape.whiteKeyWidth, 30);
     });
 
-    test('keeps the keys one width across exercises that fit', () {
-      final c = diagramOf(exerciseOf('C', ScaleForm.major, octaves: 1));
-      final eFlat = diagramOf(exerciseOf('Eb', ScaleForm.major, octaves: 1));
+    test('rounds toward more keys rather than wider ones', () {
+      final scale = KeyboardScale.forSize(width: 462, height: 200);
 
-      expect(c.whiteKeyWidth, 40, reason: 'a quarter of the height');
-      expect(eFlat.whiteKeyWidth, c.whiteKeyWidth);
-      expect(c.holdsFingering, isTrue);
+      expect(scale.visibleWhiteKeyCount, 10);
+      expect(scale.whiteKeyWidth, lessThanOrEqualTo(50));
     });
 
-    test('shows the keyboard around a short exercise', () {
-      final surface = diagramOf(
-        exerciseOf('C', ScaleForm.major, octaves: 1),
-        width: 900,
-        height: 120,
-      );
-
-      expect(surface.whiteKeyWidth, 30);
+    test('names fingers only on keys wide enough to hold them', () {
       expect(
-        60 - surface.firstWhiteMidi,
-        closeTo(lastWhiteOf(surface) - 72, 2),
-        reason: 'the exercise sits in the middle of the window',
+        KeyboardScale.forSize(width: 400, height: 160).holdsFingering,
+        isTrue,
+      );
+      expect(
+        KeyboardScale.forSize(width: 400, height: 100).holdsFingering,
+        isFalse,
       );
     });
 
-    test('narrows the keys for a wide exercise, dropping fingering', () {
-      final surface = diagramOf(exerciseOf('C', ScaleForm.major));
+    test('shows the whole piano at most', () {
+      final scale = KeyboardScale.forSize(width: 5000, height: 100);
 
-      expect(surface.whiteKeyCount, 17, reason: 'B3 through D6');
-      expect(surface.whiteKeyWidth, lessThan(40));
-      expect(surface.holdsFingering, isFalse);
-    });
-
-    test('shows the middle of an exercise too wide for the narrowest keys', () {
-      final surface = diagramOf(
-        exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
+      expect(
+        scale.visibleWhiteKeyCount,
+        PianoGeometry.fullKeyboardWhiteKeyCount,
       );
-
-      expect(surface.whiteKeyWidth, KeyboardDiagram.minWhiteKeyWidth);
-      expect(surface.firstWhiteMidi, greaterThan(36));
-      expect(lastWhiteOf(surface), lessThan(84));
-    });
-
-    test('never draws past the ends of a piano', () {
-      final surface = diagramOf(
-        exerciseOf('C', ScaleForm.major, octaves: 1),
-        width: 5000,
-        height: 100,
-      );
-
-      expect(surface.whiteKeyCount, 52);
-      expect(surface.firstWhiteMidi, 21);
     });
   });
 
@@ -679,13 +656,3 @@ void main() {
 }
 
 /// The MIDI note [steps] white keys above [firstWhiteMidi].
-int _whiteMidiAfter(int firstWhiteMidi, int steps) {
-  const whites = {0, 2, 4, 5, 7, 9, 11};
-  var midi = firstWhiteMidi;
-  var seen = 0;
-  while (seen < steps) {
-    midi++;
-    if (whites.contains(midi % 12)) seen++;
-  }
-  return midi;
-}
