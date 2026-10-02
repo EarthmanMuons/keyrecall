@@ -77,3 +77,10 @@ flutter:
 
   assets:
     - assets/icon/keyrecall-badge.webp
+
+  fonts:
+    - family: KeyRecall Symbols
+      fonts:
+        - asset: assets/fonts/KeyRecallSymbols-Regular.otf
+        - asset: assets/fonts/KeyRecallSymbols-Bold.otf
+          weight: 700

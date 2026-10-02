@@ -137,19 +137,54 @@ const _tertiaryFixedDim = Color(0xFFE8DAAA);
 const _onTertiaryFixed = Color(0xFF4B421F);
 const _onTertiaryFixedVariant = Color(0xFF695F38);
 
+/// The family that draws the accidentals in running text.
+///
+/// It holds only those glyphs, so it leads every text style with the
+/// platform's own family behind it to draw everything else.
+const symbolsFontFamily = 'KeyRecall Symbols';
+
 /// The app's theme for one of the two schemes.
 ///
 /// The bar sits a step off the surface behind it, so the app's own edge is
 /// distinct from what is being practised on: the same step the status bar
 /// above it takes, since the bar paints behind that inset.
-ThemeData keyRecallTheme(ColorScheme scheme) => ThemeData(
-  colorScheme: scheme,
-  // One color, scrolled under or not. The elevation tint Material applies
-  // when content passes beneath the bar arrives in a step rather than a
-  // gradient, which reads as the bar changing rather than as depth.
-  appBarTheme: AppBarTheme(
-    backgroundColor: scheme.surfaceContainerLow,
-    scrolledUnderElevation: 0,
-    surfaceTintColor: Colors.transparent,
-  ),
+ThemeData keyRecallTheme(ColorScheme scheme) {
+  final theme = ThemeData(
+    colorScheme: scheme,
+    // One color, scrolled under or not. The elevation tint Material applies
+    // when content passes beneath the bar arrives in a step rather than a
+    // gradient, which reads as the bar changing rather than as depth.
+    appBarTheme: AppBarTheme(
+      backgroundColor: scheme.surfaceContainerLow,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+    ),
+  );
+  return theme.copyWith(
+    textTheme: _withSymbols(theme.textTheme),
+    primaryTextTheme: _withSymbols(theme.primaryTextTheme),
+  );
+}
+
+TextTheme _withSymbols(TextTheme theme) => TextTheme(
+  displayLarge: _withSymbolsFirst(theme.displayLarge),
+  displayMedium: _withSymbolsFirst(theme.displayMedium),
+  displaySmall: _withSymbolsFirst(theme.displaySmall),
+  headlineLarge: _withSymbolsFirst(theme.headlineLarge),
+  headlineMedium: _withSymbolsFirst(theme.headlineMedium),
+  headlineSmall: _withSymbolsFirst(theme.headlineSmall),
+  titleLarge: _withSymbolsFirst(theme.titleLarge),
+  titleMedium: _withSymbolsFirst(theme.titleMedium),
+  titleSmall: _withSymbolsFirst(theme.titleSmall),
+  bodyLarge: _withSymbolsFirst(theme.bodyLarge),
+  bodyMedium: _withSymbolsFirst(theme.bodyMedium),
+  bodySmall: _withSymbolsFirst(theme.bodySmall),
+  labelLarge: _withSymbolsFirst(theme.labelLarge),
+  labelMedium: _withSymbolsFirst(theme.labelMedium),
+  labelSmall: _withSymbolsFirst(theme.labelSmall),
+);
+
+TextStyle? _withSymbolsFirst(TextStyle? style) => style?.copyWith(
+  fontFamily: symbolsFontFamily,
+  fontFamilyFallback: [?style.fontFamily, ...?style.fontFamilyFallback],
 );
