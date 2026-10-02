@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 
 import 'piano_geometry.dart';
@@ -343,9 +345,10 @@ abstract final class PianoScrollPolicy {
   }
 
   /// Resting target for material known ahead of time: [frame] centered, then
-  /// moved as little as keeps every [anchors] key inside the edge margin. Falls
-  /// back to centering [anchors] when they alone are wider than the viewport,
-  /// and to [centerTarget] when [frame] is empty.
+  /// moved as little as keeps every [anchors] key inside the edge margin. When
+  /// the anchors alone are wider than the viewport, only the highest is kept,
+  /// which is where a right hand starts. Falls back to [centerTarget] when
+  /// [frame] is empty.
   static double frameTarget(
     KeyboardViewport viewport, {
     required Set<int> frame,
@@ -354,17 +357,18 @@ abstract final class PianoScrollPolicy {
     if (frame.isEmpty) return centerTarget(viewport, frame);
 
     final framed = rangeBounds(viewport, frame);
-    var target = (framed.minX + framed.maxX) / 2.0 - viewport.width / 2.0;
+    final centered = (framed.minX + framed.maxX) / 2.0 - viewport.width / 2.0;
+    if (anchors.isEmpty) return viewport.clampOffset(centered);
 
-    if (anchors.isNotEmpty) {
-      final anchored = rangeBounds(viewport, anchors);
-      final lowest = anchored.maxX - viewport.width + autoCenterEdgeMargin;
-      final highest = anchored.minX - autoCenterEdgeMargin;
-      target = lowest <= highest
-          ? target.clamp(lowest, highest)
-          : (anchored.minX + anchored.maxX) / 2.0 - viewport.width / 2.0;
+    var kept = rangeBounds(viewport, anchors);
+    if (kept.maxX - kept.minX > viewport.width - 2 * autoCenterEdgeMargin) {
+      kept = rangeBounds(viewport, {anchors.reduce(math.max)});
     }
-
-    return viewport.clampOffset(target);
+    return viewport.clampOffset(
+      centered.clamp(
+        kept.maxX - viewport.width + autoCenterEdgeMargin,
+        kept.minX - autoCenterEdgeMargin,
+      ),
+    );
   }
 }

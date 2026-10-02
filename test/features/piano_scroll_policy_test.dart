@@ -275,14 +275,28 @@ void main() {
         );
       });
 
-      test('centers anchors too far apart to keep both in view', () {
+      test('keeps the highest anchor when both cannot be in view', () {
+        final target = PianoScrollPolicy.frameTarget(
+          viewportAt(0),
+          frame: const {36, 84},
+          anchors: const {36, 60},
+        );
+
+        expect(target, centerOn(viewportAt(0), (leftOf(36) + rightOf(84)) / 2));
+        expect(leftOf(60), greaterThan(target));
+        expect(rightOf(60), lessThan(target + viewportWidth));
+      });
+
+      test('moves only as far as the highest anchor needs', () {
         expect(
           PianoScrollPolicy.frameTarget(
             viewportAt(0),
-            frame: const {36, 84},
-            anchors: const {36, 60},
+            frame: const {36, 96},
+            anchors: const {36, 84},
           ),
-          centerOn(viewportAt(0), (leftOf(36) + rightOf(60)) / 2),
+          viewportAt(0).rectFor(84).right -
+              viewportWidth +
+              PianoScrollPolicy.autoCenterEdgeMargin,
         );
       });
 
