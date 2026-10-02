@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,19 +167,31 @@ class FittedGrandStaff extends StatelessWidget {
           width: constraints.maxWidth,
           bounds: bounds,
         );
-        return _Highlighted(
-          highlightedIds,
-          (ids) => crisp.InteractiveGrandStaffView(
-            grandStaff: grandStaff,
-            theme: theme,
-            staffSpace: fit?.staffSpace ?? _fallbackStaffSpace,
-            spacingStretch: fit?.spacingStretch ?? 1,
-            drawTimeSignature: false,
-            staffGap: staffGap,
-            systemDistance: _systemDistance,
-            systemGap: _systemClearance,
-            elementColors: elementColors,
-            highlightedIds: ids,
+        final space = fit?.staffSpace ?? _fallbackStaffSpace;
+        // The brace hangs into the margin, so the systems start where a
+        // single staff does.
+        final width =
+            constraints.maxWidth +
+            crisp.RenderGrandStaffView.braceInset * space;
+        return OverflowBox(
+          alignment: Alignment.topRight,
+          fit: OverflowBoxFit.deferToChild,
+          minWidth: width,
+          maxWidth: width,
+          child: _Highlighted(
+            highlightedIds,
+            (ids) => crisp.InteractiveGrandStaffView(
+              grandStaff: grandStaff,
+              theme: theme,
+              staffSpace: space,
+              spacingStretch: fit?.spacingStretch ?? 1,
+              drawTimeSignature: false,
+              staffGap: staffGap,
+              systemDistance: _systemDistance,
+              systemGap: _systemClearance,
+              elementColors: elementColors,
+              highlightedIds: ids,
+            ),
           ),
         );
       },

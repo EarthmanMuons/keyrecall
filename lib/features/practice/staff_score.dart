@@ -214,6 +214,9 @@ StaffFit? fitStaff(
 }
 
 /// How the braced [grandStaff] fills [width] within [bounds].
+///
+/// [width] runs from the systems' start line. The brace hangs in the margin
+/// to its left, as engraved music sets it.
 StaffFit? fitGrandStaff(
   crisp.GrandStaff grandStaff, {
   required double width,
@@ -229,16 +232,14 @@ StaffFit? fitGrandStaff(
       final rows = rowsOfGrandStaff(grandStaff, measuresPerRow: bars);
       return (stretch) => _widest(
         rows.map(
-          (row) =>
-              crisp
-                  .layoutGrandStaff(
-                    row,
-                    settings,
-                    spacingStretch: stretch,
-                    drawTimeSignature: false,
-                  )
-                  .width +
-              crisp.RenderGrandStaffView.braceInset,
+          (row) => crisp
+              .layoutGrandStaff(
+                row,
+                settings,
+                spacingStretch: stretch,
+                drawTimeSignature: false,
+              )
+              .width,
         ),
       );
     },
