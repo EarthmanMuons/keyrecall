@@ -109,3 +109,6 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
 - Let the wrapped single-staff and grand staff layouts and their views leave the
   first system's time signature undrawn, as later systems already do, while it
   still governs beaming.
+- Let the wrapped single-staff and grand staff layouts and their views set
+  systems a fixed distance apart, staff line to staff line, opened up where ink
+  would come closer than the existing bounding-box gap, which stays the default.

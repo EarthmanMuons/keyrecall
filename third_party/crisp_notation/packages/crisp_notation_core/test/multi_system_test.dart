@@ -253,6 +253,25 @@ void main() {
     });
   });
 
+  group('systemDistance', () {
+    test('sets systems apart staff line to staff line', () {
+      final multi = layoutSystems(eightMeasures(), settings, maxWidth: 40);
+      final above = multi.systems[0].layout;
+      final below = multi.systems[1].layout;
+      final gap = multi.gapAfter(0, 1, systemDistance: 12);
+
+      expect(
+          (above.top + above.height - 4) + gap - below.top, closeTo(12, 1e-9));
+    });
+
+    test('never brings ink closer than systemGap', () {
+      final multi = layoutSystems(eightMeasures(), settings, maxWidth: 40);
+
+      expect(multi.gapAfter(0, 1.5, systemDistance: 0), 1.5);
+      expect(multi.gapAfter(0, 1.5), 1.5);
+    });
+  });
+
   group('state restatement across breaks', () {
     test('every system restates clef and key signature', () {
       final score = Score.simple(
