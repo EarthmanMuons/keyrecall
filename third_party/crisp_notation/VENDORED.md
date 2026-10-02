@@ -112,3 +112,8 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
 - Let the wrapped single-staff and grand staff layouts and their views set
   systems a fixed distance apart, staff line to staff line, opened up where ink
   would come closer than the existing bounding-box gap, which stays the default.
+- Set the grand staff brace by its right edge, 0.35 spaces clear of the start
+  line as MuseScore does, rather than from the left inset, so a brace scaled for
+  wider staff gaps no longer touches the line. The inset grows from 1.4 to 1.7
+  spaces to fit it, and the affected screenshot baselines were regenerated and
+  reviewed.

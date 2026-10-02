@@ -11,6 +11,7 @@ import '../interaction/editor_caret.dart';
 import '../interaction/editor_mark.dart';
 import '../interaction/element_region_controller.dart';
 import '../interaction/staff_target.dart';
+import 'grand_staff_view.dart';
 import 'layout_painter.dart';
 import 'music_font.dart';
 import 'theme.dart';
@@ -288,7 +289,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
   }
 
   /// Left inset (staff spaces) reserved for the brace.
-  static const double braceInset = 1.4;
+  static const double braceInset = RenderGrandStaffView.braceInset;
 
   late final TapGestureRecognizer _tap;
   late final PanGestureRecognizer _pan;
@@ -1025,6 +1026,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
       }
 
       final lines = layout.upper.primitives.whereType<LinePrimitive>();
+      final startLineThickness = lines.isEmpty ? 0.0 : lines.first.thickness;
       if (lines.isNotEmpty) {
         canvas.drawLine(
           upper,
@@ -1048,7 +1050,11 @@ class RenderInteractiveGrandStaffView extends RenderBox
           canvas,
           lower,
           'brace',
-          math.Point(-braceInset + 0.15, 4.0),
+          math.Point(
+            -(RenderGrandStaffView.braceGap + startLineThickness / 2) -
+                braceBox.neX * spanSpaces / braceBox.height,
+            4.0,
+          ),
           _theme.staffColor,
           glyphScale: spanSpaces / braceBox.height,
         );

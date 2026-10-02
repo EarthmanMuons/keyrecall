@@ -91,8 +91,13 @@ class RenderGrandStaffView extends RenderBox {
 
   static const double _fallbackStaffSpace = 12;
 
-  /// Space reserved left of the system for the brace, in staff spaces.
-  static const double braceInset = 1.4;
+  /// Space reserved left of the system for the brace, in staff spaces: room
+  /// for the brace of staves up to about 7.5 spaces apart.
+  static const double braceInset = 1.7;
+
+  /// Clear space between the brace and the system's start line, in staff
+  /// spaces.
+  static const double braceGap = 0.35;
 
   late final TapGestureRecognizer _tap;
 
@@ -329,14 +334,14 @@ class RenderGrandStaffView extends RenderBox {
       );
     }
 
+    final startLineThickness =
+        layout.upper.primitives.whereType<LinePrimitive>().first.thickness;
     canvas.drawLine(
       upper,
       lower + Offset(0, 4 * _scale),
       Paint()
         ..color = _theme.staffColor
-        ..strokeWidth =
-            layout.upper.primitives.whereType<LinePrimitive>().first.thickness *
-                _scale,
+        ..strokeWidth = startLineThickness * _scale,
     );
     for (final line in layout.upper.primitives.whereType<LinePrimitive>()) {
       final vertical = line.from.x == line.to.x;
@@ -356,7 +361,10 @@ class RenderGrandStaffView extends RenderBox {
         canvas,
         lower,
         'brace',
-        math.Point(-braceInset + 0.15, 4.0),
+        math.Point(
+          -(braceGap + startLineThickness / 2) - braceBox.neX * glyphScale,
+          4.0,
+        ),
         _theme.staffColor,
         glyphScale: glyphScale,
       );
