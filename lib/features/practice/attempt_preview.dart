@@ -43,23 +43,30 @@ class AttemptPreviewScreen extends StatelessWidget {
   );
 }
 
-/// The cases worth looking at: a plain one, the densest one, and a left-hand
-/// one in a flat key.
+/// The cases worth looking at: a staff that wraps, a short one spread to the
+/// width, a left-hand one in a flat key, and the densest grand staff.
 final List<Exercise> _samples = [
   Exercise.linear(
     material: TechnicalMaterial('C', ScaleForm.major),
     hands: HandConfiguration.right,
+    octaves: 2,
   ),
   Exercise.linear(
-    material: TechnicalMaterial('F#', ScaleForm.harmonicMinor),
-    hands: HandConfiguration.together,
+    material: ArpeggioMaterial('E', ArpeggioQuality.minor),
+    hands: HandConfiguration.right,
+    direction: ExerciseDirection.up,
     tempoBpm: 60,
   ),
   Exercise.linear(
     material: TechnicalMaterial('Eb', ScaleForm.melodicMinor),
     hands: HandConfiguration.left,
-    octaves: 1,
     tempoBpm: 100,
+  ),
+  Exercise.linear(
+    material: TechnicalMaterial('F#', ScaleForm.harmonicMinor),
+    hands: HandConfiguration.together,
+    octaves: 2,
+    tempoBpm: 60,
   ),
 ];
 
@@ -73,10 +80,10 @@ class _Preview extends StatefulWidget {
 }
 
 class _PreviewState extends State<_Preview> {
-  /// Which modality this case is being looked at in. Practice policy picks
-  /// one; here both are reachable, so the same exercise can be compared as
-  /// marked keys and as notation.
-  CueModality _modality = CueModality.keyboard;
+  /// Which modality this case is being looked at in, when not the one
+  /// practice policy picks, so the same exercise can be compared as marked
+  /// keys and as notation.
+  CueModality? _modality;
 
   /// Which tempo support this case is being heard under.
   ///
@@ -90,16 +97,18 @@ class _PreviewState extends State<_Preview> {
   Widget build(BuildContext context) {
     final exercise = widget.exercise;
     final policy = presentationFor(exercise.guidance);
+    final modality = policy.pitchCue.suppliesMaterial
+        ? _modality ?? policy.cueModality
+        : null;
     final presentation = PresentationConditions(
       pitchCue: policy.pitchCue,
-      cueModality: policy.pitchCue.suppliesMaterial ? _modality : null,
+      cueModality: modality,
       motorCue: policy.motorCue,
       performanceFeedback: policy.performanceFeedback,
       tempoSupport: _tempoSupport,
       // The locator travels over a cue staff, so looking at the same case as
       // marked keys has nothing for it to travel over.
-      locatorFeedback:
-          cueOnStaff(policy.pitchCue.suppliesMaterial ? _modality : null)
+      locatorFeedback: cueOnStaff(modality)
           ? policy.locatorFeedback
           : LocatorFeedback.none,
     );
@@ -123,19 +132,27 @@ class _PreviewState extends State<_Preview> {
                   : Icons.timer_off,
             ),
           ),
-          if (policy.pitchCue.suppliesMaterial)
-            IconButton(
-              tooltip: 'Show the cue the other way',
-              onPressed: () => setState(() {
-                _modality = _modality == CueModality.keyboard
-                    ? CueModality.staff
-                    : CueModality.keyboard;
+          if (modality != null)
+            PopupMenuButton<CueModality>(
+              tooltip: 'Where the cue is shown',
+              initialValue: modality,
+              onSelected: (choice) => setState(() => _modality = choice),
+              icon: Icon(switch (modality) {
+                CueModality.keyboard => Icons.piano,
+                CueModality.staff => Icons.music_note,
+                CueModality.keyboardAndStaff => Icons.queue_music,
               }),
-              icon: Icon(
-                _modality == CueModality.keyboard
-                    ? Icons.music_note
-                    : Icons.piano,
-              ),
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: CueModality.keyboardAndStaff,
+                  child: Text('Keyboard and staff'),
+                ),
+                PopupMenuItem(
+                  value: CueModality.keyboard,
+                  child: Text('Keyboard'),
+                ),
+                PopupMenuItem(value: CueModality.staff, child: Text('Staff')),
+              ],
             ),
         ],
       ),
