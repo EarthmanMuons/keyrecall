@@ -15,14 +15,12 @@ import 'package:material_ui/material_ui.dart';
 /// uninterpreted string. Nothing below this reads it, so the palette can change
 /// without touching a record.
 enum ProfileColor {
-  green(light: 0xFF4A884D, dark: 0xFF6FB572),
+  green(light: 0xFF5A8640, dark: 0xFF80B264),
   teal(light: 0xFF0D8B74, dark: 0xFF35BA9D),
-  cyan(light: 0xFF0D8792, dark: 0xFF0BB6C5),
-  azure(light: 0xFF2181AF, dark: 0xFF48ADE1),
+  azure(light: 0xFF0F84A6, dark: 0xFF35B1DA),
   indigo(light: 0xFF5775B8, dark: 0xFF7D9FED),
-  violet(light: 0xFF7C69B1, dark: 0xFFA792E4),
-  orchid(light: 0xFF985F9B, dark: 0xFFC787CB),
-  rose(light: 0xFFA95A7B, dark: 0xFFDC81A5);
+  violet(light: 0xFF8765AB, dark: 0xFFB38EDE),
+  rose(light: 0xFFA45B86, dark: 0xFFD682B3);
 
   const ProfileColor({required this._light, required this._dark});
 

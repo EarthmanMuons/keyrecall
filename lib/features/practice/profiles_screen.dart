@@ -415,26 +415,31 @@ class _ProfileDialogState extends State<_ProfileDialog> {
           Text('Color', style: theme.textTheme.labelLarge),
           const SizedBox(height: 12),
           // The palette is the whole choice. A color is what a profile is
-          // picked out by at a glance, so the eight that stay apart are the
-          // eight on offer.
-          Wrap(
+          // picked out by at a glance, so the six that stay apart are the six
+          // on offer, in two even rows.
+          Column(
             spacing: 16,
-            runSpacing: 16,
             children: [
-              for (final color in ProfileColor.values)
-                InkResponse(
-                  onTap: () => setState(() => _color = color),
-                  radius: 28,
-                  child: CircleAvatar(
-                    radius: 22,
-                    backgroundColor: color.color(theme.brightness),
-                    child: color == _color
-                        ? Icon(
-                            Icons.check,
-                            color: color.onColor(theme.brightness),
-                          )
-                        : null,
-                  ),
+              for (var row = 0; row < ProfileColor.values.length; row += 3)
+                Row(
+                  spacing: 16,
+                  children: [
+                    for (final color in ProfileColor.values.skip(row).take(3))
+                      InkResponse(
+                        onTap: () => setState(() => _color = color),
+                        radius: 28,
+                        child: CircleAvatar(
+                          radius: 22,
+                          backgroundColor: color.color(theme.brightness),
+                          child: color == _color
+                              ? Icon(
+                                  Icons.check,
+                                  color: color.onColor(theme.brightness),
+                                )
+                              : null,
+                        ),
+                      ),
+                  ],
                 ),
             ],
           ),
