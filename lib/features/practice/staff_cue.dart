@@ -32,8 +32,14 @@ const double _staffHeightMillimeters = 7;
 const double _readableStaffHeightMillimeters = 6.5;
 const double _minimumStaffHeightMillimeters = 5;
 
-/// Staff spaces between the staves of a grand staff.
-const double _standardStaffGap = 4;
+/// Staff spaces between the staves of a grand staff, staff line to staff line.
+const double _standardStaffGap = 6;
+
+/// Staff spaces from one system's bottom staff line to the next one's top
+/// line, half again the gap within a grand staff so a braced pair reads as one
+/// system, and the least clear space kept between their ink.
+const double _systemDistance = 9;
+const double _systemClearance = 1;
 
 /// One staff, wrapped into systems that fill the width at an engraved size.
 ///
@@ -100,6 +106,8 @@ class FittedStaff extends StatelessWidget {
             staffSpace: fit?.staffSpace ?? _fallbackStaffSpace,
             spacingStretch: fit?.spacingStretch ?? 1,
             drawTimeSignature: false,
+            systemDistance: _systemDistance,
+            systemGap: _systemClearance,
             elementColors: elementColors,
             highlightedIds: ids,
             showNoteNames: showsNoteNames,
@@ -167,6 +175,8 @@ class FittedGrandStaff extends StatelessWidget {
             spacingStretch: fit?.spacingStretch ?? 1,
             drawTimeSignature: false,
             staffGap: staffGap,
+            systemDistance: _systemDistance,
+            systemGap: _systemClearance,
             elementColors: elementColors,
             highlightedIds: ids,
           ),
