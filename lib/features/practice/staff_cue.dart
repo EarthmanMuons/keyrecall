@@ -21,23 +21,16 @@ import 'traversal_locator.dart';
 Future<void> warmStaffRendering() =>
     crisp.MusicFonts.load(crisp.MusicFont.bravura);
 
-/// Pixels per staff space when nothing can be measured yet, and the floor a
-/// measured one is held to so a wide exercise stays legible rather than
-/// shrinking to fit.
+/// Pixels per staff space when nothing can be measured yet.
 const double _fallbackStaffSpace = 7;
-const double _minimumStaffSpace = 5;
 
-/// The staff height engraving practice sets for keyboard music, which a
-/// short exercise is drawn at with its notes spread to the width.
+/// The staff heights a staff is drawn between: the 7 mm engraving practice
+/// sets for keyboard music, down to the 6.5 mm a crowded one is still
+/// comfortably read at, and a floor that keeps the rare bar too wide even for
+/// that legible rather than shrinking to fit.
 const double _staffHeightMillimeters = 7;
-
-/// The smallest staff that is still comfortably read, which is what decides
-/// how many bars a system is given.
-///
-/// Above [_minimumStaffSpace], which is where a staff stops being drawn any
-/// smaller whatever it costs. This one is where it stops being worth reading,
-/// so a system that would fall below it gives up a bar instead.
 const double _readableStaffHeightMillimeters = 6.5;
+const double _minimumStaffHeightMillimeters = 5;
 
 /// Staff spaces between the staves of a grand staff.
 const double _standardStaffGap = 4;
@@ -87,35 +80,26 @@ class FittedStaff extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bounds = _StaffSpaceBounds.of(context);
+    final bounds = _staffSpaceBounds(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         // Measured against everything the staff will hold, so the system it
         // settles on is the one the whole exercise reads at rather than the
         // one whatever is on screen so far happens to allow. The spacing is
         // too, so nothing already drawn moves when the next bar appears.
-        final whole = sizing ?? score;
-        final width = constraints.maxWidth;
-        final rows = rowsOf(
-          whole,
-          measuresPerRow: barsPerSystem(
-            whole,
-            width: width,
-            minimumStaffSpace: bounds.readable,
-          ),
+        final fit = fitStaff(
+          sizing ?? score,
+          width: constraints.maxWidth,
+          bounds: bounds,
         );
-        final fitted = fittedStaffSpace(rows, width: width);
-        final space = bounds.clamp(fitted);
-        final stretch = fitted != null && fitted > space
-            ? fittedSpacingStretch(rows, width: width, staffSpace: space)
-            : 1.0;
         return _Highlighted(
           highlightedIds,
           (ids) => crisp.MultiSystemView(
             score: score,
             theme: theme,
-            staffSpace: space,
-            spacingStretch: stretch,
+            staffSpace: fit?.staffSpace ?? _fallbackStaffSpace,
+            spacingStretch: fit?.spacingStretch ?? 1,
+            drawTimeSignature: false,
             elementColors: elementColors,
             highlightedIds: ids,
             showNoteNames: showsNoteNames,
@@ -131,8 +115,8 @@ class FittedStaff extends StatelessWidget {
 ///
 /// [FittedStaff] for two staves, and for the same reason: the size is chosen
 /// here and the line breaking is left to the engraver, which is what restates
-/// the clefs on a new system, writes the time signature once, and keeps the
-/// barlines of the two staves together.
+/// the clefs on a new system and keeps the barlines of the two staves
+/// together.
 ///
 /// Drawn by the interactive view, which is the braced one that takes element
 /// colors and packs systems to a width. Nothing is wired to it, so it stays a
@@ -166,35 +150,22 @@ class FittedGrandStaff extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bounds = _StaffSpaceBounds.of(context);
+    final bounds = _staffSpaceBounds(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final whole = sizing ?? grandStaff;
-        final width = constraints.maxWidth;
-        final rows = rowsOfGrandStaff(
-          whole,
-          measuresPerRow: barsPerBracedSystem(
-            whole,
-            width: width,
-            minimumStaffSpace: bounds.readable,
-          ),
+        final fit = fitGrandStaff(
+          sizing ?? grandStaff,
+          width: constraints.maxWidth,
+          bounds: bounds,
         );
-        final fitted = fittedGrandStaffSpace(rows, width: width);
-        final space = bounds.clamp(fitted);
-        final stretch = fitted != null && fitted > space
-            ? fittedGrandStaffSpacingStretch(
-                rows,
-                width: width,
-                staffSpace: space,
-              )
-            : 1.0;
         return _Highlighted(
           highlightedIds,
           (ids) => crisp.InteractiveGrandStaffView(
             grandStaff: grandStaff,
             theme: theme,
-            staffSpace: space,
-            spacingStretch: stretch,
+            staffSpace: fit?.staffSpace ?? _fallbackStaffSpace,
+            spacingStretch: fit?.spacingStretch ?? 1,
+            drawTimeSignature: false,
             staffGap: staffGap,
             elementColors: elementColors,
             highlightedIds: ids,
@@ -222,30 +193,18 @@ class _Highlighted extends StatelessWidget {
 }
 
 /// The staff spaces a staff is drawn between on this screen.
-class _StaffSpaceBounds {
-  _StaffSpaceBounds.of(BuildContext context)
-    : this._(
-        logicalPixelsPerMillimeter(
-          defaultTargetPlatform,
-          MediaQuery.sizeOf(context),
-        ),
-      );
-
-  _StaffSpaceBounds._(double pixelsPerMillimeter)
-    : readable = staffSpaceOf(
-        _readableStaffHeightMillimeters,
-        pixelsPerMillimeter: pixelsPerMillimeter,
-      ),
-      largest = staffSpaceOf(
-        _staffHeightMillimeters,
-        pixelsPerMillimeter: pixelsPerMillimeter,
-      );
-
-  final double readable;
-  final double largest;
-
-  double clamp(double? fitted) =>
-      (fitted ?? _fallbackStaffSpace).clamp(_minimumStaffSpace, largest);
+StaffSpaceBounds _staffSpaceBounds(BuildContext context) {
+  final pixelsPerMillimeter = logicalPixelsPerMillimeter(
+    defaultTargetPlatform,
+    MediaQuery.sizeOf(context),
+  );
+  double spaceOf(double millimeters) =>
+      staffSpaceOf(millimeters, pixelsPerMillimeter: pixelsPerMillimeter);
+  return StaffSpaceBounds(
+    minimum: spaceOf(_minimumStaffHeightMillimeters),
+    readable: spaceOf(_readableStaffHeightMillimeters),
+    largest: spaceOf(_staffHeightMillimeters),
+  );
 }
 
 /// The theme a staff is drawn in, taken from the app's colors.

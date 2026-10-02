@@ -451,6 +451,18 @@ void main() {
   group('how many bars a system takes', () {
     setUpAll(() => crisp.MusicFonts.load(crisp.MusicFont.bravura));
 
+    crisp.Score crowdedScale() => staffScoreFor(
+      realize(
+        exerciseOf(
+          tonic: 'C#',
+          form: ScaleForm.harmonicMinor,
+          octaves: 2,
+          direction: ExerciseDirection.upDown,
+        ),
+      ),
+      Hand.right,
+    );
+
     crisp.Score scaleOf({int octaves = 1}) => staffScoreFor(
       realize(
         exerciseOf(octaves: octaves, direction: ExerciseDirection.upDown),
@@ -458,59 +470,74 @@ void main() {
       Hand.right,
     );
 
-    test('a phone held upright gets one bar of eighths', () {
-      // An iPhone's width less the gutters the practice screen keeps.
-      const width = 345.0;
-      final score = scaleOf();
+    // An iPhone's staff spaces for 5, 6.5 and 7 mm staves.
+    const bounds = StaffSpaceBounds(minimum: 7.5, readable: 9.8, largest: 10.5);
 
-      expect(barsPerSystem(score, width: width, minimumStaffSpace: 9), 1);
+    // An iPhone's width less the gutters the practice screen keeps.
+    const phone = 345.0;
+
+    test('a phone held upright gets one bar of eighths', () {
       expect(
-        fittedStaffSpace(rowsOf(score, measuresPerRow: 1), width: width),
-        greaterThan(
-          fittedStaffSpace(rowsOf(score, measuresPerRow: 2), width: width)!,
-        ),
-        reason: 'the bar it gives up is the size the notes gain',
+        fitStaff(scaleOf(), width: phone, bounds: bounds)!.barsPerSystem,
+        1,
       );
     });
 
     test('a wider pane keeps two', () {
       expect(
-        barsPerSystem(scaleOf(), width: 520, minimumStaffSpace: 9),
+        fitStaff(scaleOf(), width: 520, bounds: bounds)!.barsPerSystem,
         greaterThan(1),
       );
     });
 
     test('a system never falls below one bar', () {
-      expect(barsPerSystem(scaleOf(), width: 40, minimumStaffSpace: 9), 1);
+      expect(fitStaff(scaleOf(), width: 40, bounds: bounds)!.barsPerSystem, 1);
     });
 
-    test('a staff held below its fitted size spreads its notes', () {
-      const width = 345.0;
-      final rows = rowsOf(scaleOf(), measuresPerRow: 1);
-      final fitted = fittedStaffSpace(rows, width: width)!;
-      double stretchAt(double space) =>
-          fittedSpacingStretch(rows, width: width, staffSpace: space);
-
-      expect(stretchAt(fitted), closeTo(1, 0.01));
-      expect(stretchAt(fitted * 0.8), greaterThan(1.1));
-      expect(stretchAt(fitted * 0.7), greaterThan(stretchAt(fitted * 0.8)));
-    });
-
-    test('a braced staff held below its fitted size spreads its notes', () {
-      const width = 345.0;
-      final rows = rowsOfGrandStaff(
-        grandStaffFor(realize(exerciseOf(hands: HandConfiguration.together))),
-        measuresPerRow: 1,
+    test('a staff with room to spare is held to size and spread', () {
+      final arpeggio = staffScoreFor(
+        realize(
+          Exercise.linear(
+            material: ArpeggioMaterial('E', ArpeggioQuality.minor),
+            hands: HandConfiguration.right,
+            direction: ExerciseDirection.up,
+          ),
+        ),
+        Hand.right,
       );
-      final fitted = fittedGrandStaffSpace(rows, width: width)!;
+      final fit = fitStaff(arpeggio, width: phone, bounds: bounds)!;
+
+      expect(fit.staffSpace, bounds.largest);
+      expect(fit.spacingStretch, greaterThan(1));
+    });
+
+    test('a crowded bar tightens its spacing before it shrinks', () {
+      final fit = fitStaff(crowdedScale(), width: 300, bounds: bounds)!;
+
+      expect(fit.barsPerSystem, 1);
+      expect(fit.staffSpace, bounds.readable);
+      expect(fit.spacingStretch, lessThan(1));
+    });
+
+    test('a bar too crowded even tightened is drawn smaller', () {
+      final fit = fitStaff(crowdedScale(), width: 200, bounds: bounds)!;
+
+      expect(fit.staffSpace, lessThan(bounds.readable));
+      expect(fit.staffSpace, greaterThanOrEqualTo(bounds.minimum));
+    });
+
+    test('a braced staff is fitted the same way', () {
+      final grandStaff = grandStaffFor(
+        realize(exerciseOf(hands: HandConfiguration.together, octaves: 2)),
+      );
 
       expect(
-        fittedGrandStaffSpacingStretch(
-          rows,
-          width: width,
-          staffSpace: fitted * 0.8,
-        ),
-        greaterThan(1.1),
+        fitGrandStaff(grandStaff, width: phone, bounds: bounds)!.barsPerSystem,
+        1,
+      );
+      expect(
+        fitGrandStaff(grandStaff, width: 2000, bounds: bounds)!.staffSpace,
+        bounds.largest,
       );
     });
   });

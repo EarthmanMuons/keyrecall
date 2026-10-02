@@ -141,122 +141,180 @@ List<crisp.Score> rowsOf(crisp.Score score, {int measuresPerRow = 2}) => [
     ),
 ];
 
-/// The most bars one system can hold before the notes stop being legible.
+/// The staff spaces, in logical pixels, a staff may be drawn at.
+class StaffSpaceBounds {
+  const StaffSpaceBounds({
+    required this.minimum,
+    required this.readable,
+    required this.largest,
+  });
+
+  /// Where a staff stops being drawn any smaller whatever it costs.
+  final double minimum;
+
+  /// The smallest a staff is comfortably read at. A system that would fall
+  /// below it gives up a bar, and then tightens its note spacing, first.
+  final double readable;
+
+  /// The largest a staff is drawn. One with room to spare spreads its notes
+  /// to the width instead.
+  final double largest;
+}
+
+/// How a staff fills a width: the bars to a system it was measured at, its
+/// pixels per staff space, and the stretch on its note spacing.
+typedef StaffFit = ({
+  int barsPerSystem,
+  double staffSpace,
+  double spacingStretch,
+});
+
+/// How [score] fills [width] within [bounds].
 ///
 /// Measured rather than looked up. What decides it is the width a bar of this
 /// score actually lays out at, which already accounts for how many notes are
 /// in it, how wide their accidentals are and what is written over them, so a
 /// scale in eighths takes fewer bars to the line than one in quarters without
-/// anything here being told about note values.
+/// anything here being told about note values. Every row is measured and the
+/// widest decides, so a trailing half-row is drawn at the size of the rest.
 ///
-/// [minimumStaffSpace] is the floor a note is still worth reading at, and
-/// [cap] is as many bars as a system is ever given however wide the window is.
-int barsPerSystem(
-  crisp.Score score, {
-  required double width,
-  required double minimumStaffSpace,
-  int cap = 4,
-}) {
-  for (var bars = cap; bars > 1; bars--) {
-    final space = fittedStaffSpace(
-      rowsOf(score, measuresPerRow: bars),
-      width: width,
-    );
-    if (space != null && space >= minimumStaffSpace) return bars;
-  }
-  return 1;
-}
-
-/// The pixels per staff space at which [rows] fill [width].
-///
-/// Read off the widest row so every row fits, and shared by all of them so a
-/// trailing half-row is drawn at the size of the rest rather than blown up to
-/// the width it happens to have to itself.
+/// The time signature is left off: every exercise is in 4/4, as a scale book
+/// leaves unsaid.
 ///
 /// Null before the engraving font's metrics are loaded, since nothing can be
 /// measured until they are.
-double? fittedStaffSpace(List<crisp.Score> rows, {required double width}) {
-  final settings = _layoutSettings();
-  if (settings == null || rows.isEmpty) return null;
-
-  const engine = crisp.LayoutEngine();
-  final widest = rows
-      .map((row) => engine.layout(row, settings).width)
-      .reduce((a, b) => a > b ? a : b);
-  return widest <= 0 ? null : width / widest;
-}
-
-/// The pixels per staff space at which the braced [rows] fill [width].
-double? fittedGrandStaffSpace(
-  List<crisp.GrandStaff> rows, {
+StaffFit? fitStaff(
+  crisp.Score score, {
   required double width,
+  required StaffSpaceBounds bounds,
 }) {
   final settings = _layoutSettings();
-  if (settings == null || rows.isEmpty) return null;
-
-  final widest = rows
-      .map(
-        (row) =>
-            crisp.layoutGrandStaff(row, settings).width +
-            crisp.RenderGrandStaffView.braceInset,
-      )
-      .reduce((a, b) => a > b ? a : b);
-  return widest <= 0 ? null : width / widest;
-}
-
-/// The note spacing stretch at which [rows] drawn at [staffSpace] fill
-/// [width], for a staff held smaller than its width would allow.
-double fittedSpacingStretch(
-  List<crisp.Score> rows, {
-  required double width,
-  required double staffSpace,
-}) {
-  final settings = _layoutSettings();
-  if (settings == null || rows.isEmpty) return 1;
+  if (settings == null || score.measures.isEmpty) return null;
 
   const engine = crisp.LayoutEngine();
-  return _stretchFilling(
-    width / staffSpace,
-    (stretch) => rows
-        .map(
-          (row) => engine.layout(row, settings, spacingStretch: stretch).width,
-        )
-        .reduce((a, b) => a > b ? a : b),
+  return _fit(
+    width: width,
+    bounds: bounds,
+    widestAt: (bars) {
+      final rows = rowsOf(score, measuresPerRow: bars);
+      return (stretch) => _widest(
+        rows.map(
+          (row) => engine
+              .layout(
+                row,
+                settings,
+                spacingStretch: stretch,
+                drawTimeSignature: false,
+              )
+              .width,
+        ),
+      );
+    },
   );
 }
 
-/// The note spacing stretch at which the braced [rows] drawn at [staffSpace]
-/// fill [width].
-double fittedGrandStaffSpacingStretch(
-  List<crisp.GrandStaff> rows, {
+/// How the braced [grandStaff] fills [width] within [bounds].
+StaffFit? fitGrandStaff(
+  crisp.GrandStaff grandStaff, {
   required double width,
-  required double staffSpace,
+  required StaffSpaceBounds bounds,
 }) {
   final settings = _layoutSettings();
-  if (settings == null || rows.isEmpty) return 1;
+  if (settings == null || grandStaff.upper.measures.isEmpty) return null;
 
-  return _stretchFilling(
-    width / staffSpace,
-    (stretch) => rows
-        .map(
+  return _fit(
+    width: width,
+    bounds: bounds,
+    widestAt: (bars) {
+      final rows = rowsOfGrandStaff(grandStaff, measuresPerRow: bars);
+      return (stretch) => _widest(
+        rows.map(
           (row) =>
               crisp
-                  .layoutGrandStaff(row, settings, spacingStretch: stretch)
+                  .layoutGrandStaff(
+                    row,
+                    settings,
+                    spacingStretch: stretch,
+                    drawTimeSignature: false,
+                  )
                   .width +
               crisp.RenderGrandStaffView.braceInset,
-        )
-        .reduce((a, b) => a > b ? a : b),
+        ),
+      );
+    },
   );
 }
 
-/// The widest note spacing stretch an engraver justifies a system to.
-const double _maximumSpacingStretch = 4;
+/// As many bars as a system is ever given however wide the window is.
+const int _barsPerSystemCap = 4;
 
-/// The largest stretch whose [widthAt] stays within [target].
-double _stretchFilling(double target, double Function(double) widthAt) {
-  if (widthAt(_maximumSpacingStretch) <= target) return _maximumSpacingStretch;
-  var fits = 1.0;
-  var overflows = _maximumSpacingStretch;
+/// The tightest note spacing a crowded bar is drawn at before its staff is
+/// drawn smaller. The engraver still keeps a gap after every note's ink.
+const double _tightestSpacingStretch = 0.75;
+
+/// The widest note spacing a short exercise is spread to.
+const double _widestSpacingStretch = 4;
+
+/// The fit for the most bars to a system that stays readable, given the width
+/// in staff spaces of the widest row of `bars` bars at a spacing stretch.
+StaffFit _fit({
+  required double width,
+  required StaffSpaceBounds bounds,
+  required double Function(double stretch) Function(int bars) widestAt,
+}) {
+  for (var bars = _barsPerSystemCap; bars >= 1; bars--) {
+    final widthAt = widestAt(bars);
+    final natural = width / widthAt(1);
+    if (natural >= bounds.largest) {
+      return (
+        barsPerSystem: bars,
+        staffSpace: bounds.largest,
+        spacingStretch: _largestStretchWithin(
+          width / bounds.largest,
+          widthAt,
+          from: 1,
+          to: _widestSpacingStretch,
+        ),
+      );
+    }
+    if (natural >= bounds.readable) {
+      return (barsPerSystem: bars, staffSpace: natural, spacingStretch: 1);
+    }
+    if (bars > 1) continue;
+
+    final tightest = width / widthAt(_tightestSpacingStretch);
+    if (tightest < bounds.readable) {
+      return (
+        barsPerSystem: 1,
+        staffSpace: tightest < bounds.minimum ? bounds.minimum : tightest,
+        spacingStretch: _tightestSpacingStretch,
+      );
+    }
+    return (
+      barsPerSystem: 1,
+      staffSpace: bounds.readable,
+      spacingStretch: _largestStretchWithin(
+        width / bounds.readable,
+        widthAt,
+        from: _tightestSpacingStretch,
+        to: 1,
+      ),
+    );
+  }
+  throw StateError('a system always holds at least one bar');
+}
+
+/// The largest stretch between [from] and [to] whose [widthAt] stays within
+/// [target].
+double _largestStretchWithin(
+  double target,
+  double Function(double stretch) widthAt, {
+  required double from,
+  required double to,
+}) {
+  if (widthAt(to) <= target) return to;
+  var fits = from;
+  var overflows = to;
   for (var step = 0; step < 12; step++) {
     final middle = (fits + overflows) / 2;
     if (widthAt(middle) <= target) {
@@ -267,6 +325,9 @@ double _stretchFilling(double target, double Function(double) widthAt) {
   }
   return fits;
 }
+
+double _widest(Iterable<double> widths) =>
+    widths.reduce((a, b) => a > b ? a : b);
 
 crisp.LayoutSettings? _layoutSettings() {
   final metadata = crisp.MusicFonts.metadataOrNull(crisp.MusicFont.bravura);
@@ -325,25 +386,6 @@ List<crisp.GrandStaff> rowsOfGrandStaff(
     );
   }
   return rows;
-}
-
-/// The most bars a braced system can hold and stay legible.
-///
-/// [barsPerSystem], for two staves under a brace.
-int barsPerBracedSystem(
-  crisp.GrandStaff whole, {
-  required double width,
-  required double minimumStaffSpace,
-  int cap = 4,
-}) {
-  for (var bars = cap; bars > 1; bars--) {
-    final space = fittedGrandStaffSpace(
-      rowsOfGrandStaff(whole, measuresPerRow: bars),
-      width: width,
-    );
-    if (space != null && space >= minimumStaffSpace) return bars;
-  }
-  return 1;
 }
 
 /// The first [count] bars of [score], for a staff that is not drawing all of
