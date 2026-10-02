@@ -213,7 +213,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         presentation: presentationForTask(value.acquisition!.task),
         acquisition: value.acquisition!.task,
         metBefore: value.hasMet(value.acquisition!.task.parent.material),
-        actions: const [_PracticeActions()],
+        menu: const _PracticeActions(folded: true),
         onFinish: (completion) =>
             notifier.finishAcquisition(completion, attempt: attempt!),
         onUnderWay: () => setState(() => _playing = attemptId),
@@ -231,7 +231,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         ),
         metBefore: value.hasMet(value.exercise!.material),
         admittedBy: value.presented?.decision.decision.challengeBypass,
-        actions: const [_PracticeActions()],
+        menu: const _PracticeActions(folded: true),
         onFinish: (completion) =>
             notifier.finish(completion, attempt: attempt!),
         onDecline: (completion) =>
@@ -395,14 +395,21 @@ class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// The controls the practice bar holds, wherever there is room for them.
+/// The controls the practice bar holds.
+///
+/// Folded, they are one menu, for a window with no bar to hold them.
 class _PracticeActions extends ConsumerWidget {
-  const _PracticeActions();
+  const _PracticeActions({this.folded = false});
+
+  final bool folded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roster = ref.watch(profileRosterProvider).value ?? const [];
     final active = roster.where((summary) => summary.isActive).toList();
+    final profile = active.isEmpty ? null : active.single.profile;
+
+    if (folded) return _MenuButton(profile: profile, folded: true);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -416,7 +423,7 @@ class _PracticeActions extends ConsumerWidget {
         if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
           const _InstrumentButton(),
         _MenuButton(
-          profile: active.isEmpty ? null : active.single.profile,
+          profile: profile,
           // Who is practicing is worth saying on the bar only where it is in
           // question. On an install with one profile it is nobody's doubt,
           // and a colored disc where the menu goes would be decoration.
@@ -505,15 +512,23 @@ class _RunningTask extends StatelessWidget {
 ///
 /// Wears the active profile's color where more than one person practices
 /// here, so a glance at the bar says whose history the next attempt lands in.
+///
+/// Folded, it holds the bar's other controls too, ahead of its own.
 class _MenuButton extends ConsumerWidget {
-  const _MenuButton({required this.profile, required this.showsProfile});
+  const _MenuButton({
+    required this.profile,
+    this.showsProfile = false,
+    this.folded = false,
+  });
 
   final Profile? profile;
   final bool showsProfile;
+  final bool folded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final theme = Theme.of(context);
 
     return PopupMenuButton<VoidCallback>(
       onSelected: (open) => open(),
@@ -521,6 +536,7 @@ class _MenuButton extends ConsumerWidget {
           ? ProfileAvatar(profile: profile!, radius: 15)
           : null,
       itemBuilder: (context) => [
+        if (folded) ..._barItems(context, ref, theme),
         PopupMenuItem(
           value: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -571,8 +587,8 @@ class _MenuButton extends ConsumerWidget {
             title: const Text('Theme'),
             trailing: Text(
               themeModeName(themeMode),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -609,6 +625,70 @@ class _MenuButton extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  /// The controls the bar holds beside this menu, as items of it.
+  List<PopupMenuEntry<VoidCallback>> _barItems(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+  ) {
+    final progress = ref.watch(goalProgressProvider);
+    final plan = ref.watch(practicePlanProvider).value ?? PracticePlan.normal;
+    final midi = ref.watch(inputSourceProvider) == InputSourceKind.midi;
+    final connection = midi ? ref.watch(midiConnectionStateProvider) : null;
+    final quiet = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    return [
+      if (progress != null)
+        PopupMenuItem(
+          value: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const GoalProgressScreen(),
+            ),
+          ),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.flag_outlined),
+            title: const Text('Progress'),
+            trailing: Text(
+              '${progress.covered}/${progress.total}',
+              style: quiet,
+            ),
+          ),
+        ),
+      PopupMenuItem(
+        value: () => showFocusSheet(context),
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(
+            Icons.filter_alt,
+            color: plan.isFocused ? theme.colorScheme.primary : null,
+          ),
+          title: const Text('Focus'),
+          trailing: Text(plan.focus?.label ?? 'None', style: quiet),
+        ),
+      ),
+      if (connection != null)
+        PopupMenuItem(
+          value: () => MidiDeviceSheet.show(context),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              connection.isConnected ? Icons.piano : Icons.piano_off,
+              color: connection.isConnected ? null : theme.colorScheme.error,
+            ),
+            title: Text(
+              connection.isConnected
+                  ? connection.deviceDisplayName ?? 'Instrument'
+                  : 'No instrument',
+            ),
+          ),
+        ),
+      const PopupMenuDivider(),
+    ];
   }
 }
 
@@ -733,7 +813,7 @@ class AttemptView extends ConsumerStatefulWidget {
     this.acquisition,
     this.admittedBy,
     this.metBefore = true,
-    this.actions = const [],
+    this.menu,
     super.key,
   });
 
@@ -796,8 +876,9 @@ class AttemptView extends ConsumerStatefulWidget {
   /// has seen them do.
   final bool metBefore;
 
-  /// What the screen's app bar would hold, for a window too short to have one.
-  final List<Widget> actions;
+  /// The screen's app bar controls folded into one menu, for a window too
+  /// short to have a bar.
+  final Widget? menu;
 
   @override
   ConsumerState<AttemptView> createState() => _AttemptViewState();
@@ -1317,7 +1398,9 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       firstChild: Padding(
         padding: EdgeInsets.fromLTRB(
           layout.gutter,
-          layout.isShort ? 0 : 16,
+          layout.isShort
+              ? (_backCrowdsTask ? kMinInteractiveDimension : 8)
+              : 16,
           layout.gutter,
           0,
         ),
@@ -1440,18 +1523,6 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
     );
 
-    // Gone with the rest of the bar's controls for the length of the attempt,
-    // and still holding their room so nothing under them moves.
-    final edge = IgnorePointer(
-      ignoring: _phase != _Phase.ready,
-      child: AnimatedOpacity(
-        duration: attemptTransition,
-        curve: attemptCurve,
-        opacity: _phase == _Phase.ready ? 1 : 0,
-        child: _EdgeControls(widget.actions),
-      ),
-    );
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _phase == _Phase.countIn ? _pause : null,
@@ -1464,41 +1535,47 @@ class _AttemptViewState extends ConsumerState<AttemptView>
             // each other, and one wide enough to would be leaving the width
             // empty.
             Expanded(
-              child: SafeArea(
-                top: layout.isShort,
-                bottom: staffCarriesTranscript,
-                child: layout.hasRoomBeside
-                    ? Row(
-                        // Stretched, so each pane is handed the full height to
-                        // lay itself out in.
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (layout.isShort) edge,
-                                // The task takes what the control leaves and
-                                // scrolls inside it: a window on its side can be
-                                // shorter than the two of them together.
-                                Expanded(
-                                  child: SingleChildScrollView(child: task),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  SafeArea(
+                    top: layout.isShort,
+                    bottom: staffCarriesTranscript,
+                    child: layout.hasRoomBeside
+                        ? Row(
+                            // Stretched, so each pane is handed the full
+                            // height to lay itself out in.
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // The task takes what the control leaves
+                                    // and scrolls inside it: a window on its
+                                    // side can be shorter than the two of
+                                    // them together.
+                                    Expanded(
+                                      child: SingleChildScrollView(child: task),
+                                    ),
+                                    controls,
+                                  ],
                                 ),
-                                controls,
-                              ],
-                            ),
+                              ),
+                              Expanded(flex: 2, child: notation),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              task,
+                              Expanded(child: notation),
+                              controls,
+                            ],
                           ),
-                          Expanded(flex: 2, child: notation),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          if (layout.isShort) edge,
-                          task,
-                          Expanded(child: notation),
-                          controls,
-                        ],
-                      ),
+                  ),
+                  if (layout.isShort) ..._corners(),
+                ],
               ),
             ),
             // The instrument sits at the bottom edge, full width, the way a
@@ -1557,6 +1634,49 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       "Timing stopped when your piano's clock lost its place. Reconnect to "
           'measure timing again.',
   };
+
+  /// Whether a way back is offered, for a screen with no bar to offer it.
+  bool get _leaves => ModalRoute.of(context)?.impliesAppBarDismissal ?? false;
+
+  /// Whether the left inset is too narrow to hold the way back, which then
+  /// floats over the task and pushes it down.
+  bool get _backCrowdsTask =>
+      _leaves && MediaQuery.paddingOf(context).left < kMinInteractiveDimension;
+
+  /// The way back and the menu, floating in the top corners of a short window.
+  ///
+  /// Held in the side insets where those have room, so they take nothing from
+  /// the content, and over its corners where they do not. Gone with the rest
+  /// of the controls for the length of the attempt.
+  List<Widget> _corners() {
+    final padding = MediaQuery.paddingOf(context);
+    double inside(double inset) => inset >= kMinInteractiveDimension
+        ? (inset - kMinInteractiveDimension) / 2
+        : inset;
+    Widget corner(Widget control) => IgnorePointer(
+      ignoring: _phase != _Phase.ready,
+      child: AnimatedOpacity(
+        duration: attemptTransition,
+        curve: attemptCurve,
+        opacity: _phase == _Phase.ready ? 1 : 0,
+        child: control,
+      ),
+    );
+    return [
+      if (_leaves)
+        Positioned(
+          top: padding.top,
+          left: inside(padding.left),
+          child: corner(const BackButton()),
+        ),
+      if (widget.menu case final menu?)
+        Positioned(
+          top: padding.top,
+          right: inside(padding.right),
+          child: corner(menu),
+        ),
+    ];
+  }
 
   /// How tall the control is in every phase, so one replaces another without
   /// moving what is around it.
@@ -1652,17 +1772,22 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       height: _controlHeight,
       child: Row(
         children: [
+          // Short of height the pane is narrow too, and the longer label
+          // breaks across lines in half of it.
           Expanded(
             child: OutlinedButton(
               onPressed: _backToReady,
-              child: const Text('Back to Ready'),
+              child: Text(
+                Layout.of(context).isShort ? 'Cancel' : 'Back to Ready',
+                maxLines: 1,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
               onPressed: _beginCountIn,
-              child: const Text('Resume'),
+              child: const Text('Resume', maxLines: 1),
             ),
           ),
         ],
@@ -1885,29 +2010,6 @@ class _FadingEdgesState extends State<_FadingEdges> {
           ),
         ),
       );
-}
-
-/// An app bar's way back and its actions, without the bar.
-///
-/// For a window short of height, where a bar's band costs the music more than
-/// the controls are worth. Nothing behind them, so they sit at the top of the
-/// pane they belong to and take no room from the one beside it.
-class _EdgeControls extends StatelessWidget {
-  const _EdgeControls(this.actions);
-
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    final leaves = ModalRoute.of(context)?.impliesAppBarDismissal ?? false;
-    if (!leaves && actions.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [if (leaves) const BackButton(), const Spacer(), ...actions],
-      ),
-    );
-  }
 }
 
 /// The offer a passed window makes: is this over?

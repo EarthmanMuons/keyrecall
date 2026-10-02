@@ -94,6 +94,18 @@ class _PreviewState extends State<_Preview> {
   /// recorded of. These cases record nothing, so hearing one costs nothing.
   TempoSupport _tempoSupport = TempoSupport.countInOnly;
 
+  static const _modalities = [
+    (CueModality.keyboardAndStaff, 'Keyboard and staff'),
+    (CueModality.keyboard, 'Keyboard'),
+    (CueModality.staff, 'Staff'),
+  ];
+
+  void _toggleClick() => setState(() {
+    _tempoSupport = _tempoSupport == TempoSupport.metronomeThroughout
+        ? TempoSupport.countInOnly
+        : TempoSupport.metronomeThroughout;
+  });
+
   @override
   Widget build(BuildContext context) {
     final exercise = widget.exercise;
@@ -114,16 +126,12 @@ class _PreviewState extends State<_Preview> {
           : LocatorFeedback.none,
     );
 
-    final actions = [
+    final actions = <Widget>[
       IconButton(
         tooltip: _tempoSupport == TempoSupport.metronomeThroughout
             ? 'Count in and stop'
             : 'Keep the click going',
-        onPressed: () => setState(() {
-          _tempoSupport = _tempoSupport == TempoSupport.metronomeThroughout
-              ? TempoSupport.countInOnly
-              : TempoSupport.metronomeThroughout;
-        }),
+        onPressed: _toggleClick,
         icon: Icon(
           _tempoSupport == TempoSupport.metronomeThroughout
               ? Icons.timer
@@ -140,13 +148,9 @@ class _PreviewState extends State<_Preview> {
             CueModality.staff => Icons.music_note,
             CueModality.keyboardAndStaff => Icons.queue_music,
           }),
-          itemBuilder: (context) => const [
-            PopupMenuItem(
-              value: CueModality.keyboardAndStaff,
-              child: Text('Keyboard and staff'),
-            ),
-            PopupMenuItem(value: CueModality.keyboard, child: Text('Keyboard')),
-            PopupMenuItem(value: CueModality.staff, child: Text('Staff')),
+          itemBuilder: (context) => [
+            for (final (choice, name) in _modalities)
+              PopupMenuItem(value: choice, child: Text(name)),
           ],
         ),
     ];
@@ -161,7 +165,25 @@ class _PreviewState extends State<_Preview> {
       body: AttemptView(
         exercise: exercise,
         presentation: presentation,
-        actions: actions,
+        menu: PopupMenuButton<VoidCallback>(
+          onSelected: (choose) => choose(),
+          itemBuilder: (context) => [
+            CheckedPopupMenuItem(
+              value: _toggleClick,
+              checked: _tempoSupport == TempoSupport.metronomeThroughout,
+              child: const Text('Keep the click going'),
+            ),
+            if (modality != null) ...[
+              const PopupMenuDivider(),
+              for (final (choice, name) in _modalities)
+                CheckedPopupMenuItem(
+                  value: () => setState(() => _modality = choice),
+                  checked: choice == modality,
+                  child: Text(name),
+                ),
+            ],
+          ],
+        ),
         // Fabricated cases record nothing, so finishing one just leaves.
         onFinish: (_) async {
           if (!context.mounted) return;
