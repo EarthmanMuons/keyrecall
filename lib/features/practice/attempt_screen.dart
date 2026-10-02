@@ -1374,6 +1374,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         // reaching for the screen, not a request to change it.
         adjustable: _phase == _Phase.ready,
         baseHeight: layout.instrumentHeight,
+        keyAspect: layout.instrumentKeyAspect,
         maxHeight: maxHeight,
       ),
     );
@@ -1981,6 +1982,7 @@ class _Instrument extends ConsumerWidget {
     required this.showsFingering,
     required this.adjustable,
     required this.baseHeight,
+    required this.keyAspect,
     required this.maxHeight,
   });
 
@@ -2000,6 +2002,9 @@ class _Instrument extends ConsumerWidget {
 
   /// How tall the keyboard is drawn by default, and at its smallest.
   final double baseHeight;
+
+  /// How many times taller than wide a white key is drawn by default.
+  final double keyAspect;
 
   /// The most room the band and keyboard together may take.
   final double maxHeight;
@@ -2042,6 +2047,7 @@ class _Instrument extends ConsumerWidget {
           width: constraints.maxWidth,
           baseHeight: baseHeight,
           maxHeight: ceiling,
+          keyAspect: keyAspect,
           settings: settings,
         );
         final keyboard = ScrollablePianoKeyboard(

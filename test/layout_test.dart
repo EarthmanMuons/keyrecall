@@ -84,6 +84,13 @@ void main() {
       );
     });
 
+    test('a narrow window draws narrower keys to show more of them', () {
+      expect(
+        at(390, 844).instrumentKeyAspect,
+        greaterThan(at(844, 390).instrumentKeyAspect),
+      );
+    });
+
     test('gutters widen with the window', () {
       expect(at(390, 844).gutter, lessThan(at(1194, 834).gutter));
     });

@@ -144,6 +144,13 @@ class Layout {
     WindowHeightClass.expanded => 200,
   };
 
+  /// How many times taller than wide the keyboard's white keys are drawn.
+  ///
+  /// Narrower on a narrow window, where width is what is scarce: enough keys
+  /// on either side of the exercise to see the black-key groups that locate
+  /// its first note.
+  double get instrumentKeyAspect => width == WindowWidthClass.compact ? 5 : 4;
+
   /// The tallest the on-screen keyboard may be resized to, out of [available].
   ///
   /// Leaves the practice screen what it cannot work without: the task, the

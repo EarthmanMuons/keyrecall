@@ -157,6 +157,17 @@ void main() {
       expect(scale.whiteKeyWidth, lessThanOrEqualTo(50));
     });
 
+    test('draws more, narrower keys when asked for a denser keyboard', () {
+      final scale = KeyboardScale.forSize(
+        width: 462,
+        baseHeight: 200,
+        keyAspect: 5,
+      );
+
+      expect(scale.visibleWhiteKeyCount, 12);
+      expect(scale.holdsFingering, isTrue);
+    });
+
     test('names fingers only on keys wide enough to hold them', () {
       expect(
         KeyboardScale.forSize(width: 400, baseHeight: 160).holdsFingering,
