@@ -94,5 +94,16 @@ void main() {
     test('gutters widen with the window', () {
       expect(at(390, 844).gutter, lessThan(at(1194, 834).gutter));
     });
+
+    test('a phone on its side keeps a phone gutter', () {
+      expect(at(874, 402).gutter, at(390, 844).gutter);
+    });
+
+    test('a phone on its side is short and a tablet on its side is not', () {
+      expect(at(844, 390).isShort, isTrue);
+      expect(at(956, 440).isShort, isTrue);
+      expect(at(1133, 744).isShort, isFalse);
+      expect(at(390, 844).isShort, isFalse);
+    });
   });
 }

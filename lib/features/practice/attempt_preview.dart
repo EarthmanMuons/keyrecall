@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../layout.dart';
 import 'attempt_screen.dart';
 import 'exercise_presentation.dart';
 import 'presentation_policy.dart';
@@ -113,52 +114,54 @@ class _PreviewState extends State<_Preview> {
           : LocatorFeedback.none,
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(guidanceName(exercise.guidance)),
-        actions: [
-          IconButton(
-            tooltip: _tempoSupport == TempoSupport.metronomeThroughout
-                ? 'Count in and stop'
-                : 'Keep the click going',
-            onPressed: () => setState(() {
-              _tempoSupport = _tempoSupport == TempoSupport.metronomeThroughout
-                  ? TempoSupport.countInOnly
-                  : TempoSupport.metronomeThroughout;
-            }),
-            icon: Icon(
-              _tempoSupport == TempoSupport.metronomeThroughout
-                  ? Icons.timer
-                  : Icons.timer_off,
-            ),
-          ),
-          if (modality != null)
-            PopupMenuButton<CueModality>(
-              tooltip: 'Where the cue is shown',
-              initialValue: modality,
-              onSelected: (choice) => setState(() => _modality = choice),
-              icon: Icon(switch (modality) {
-                CueModality.keyboard => Icons.piano,
-                CueModality.staff => Icons.music_note,
-                CueModality.keyboardAndStaff => Icons.queue_music,
-              }),
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: CueModality.keyboardAndStaff,
-                  child: Text('Keyboard and staff'),
-                ),
-                PopupMenuItem(
-                  value: CueModality.keyboard,
-                  child: Text('Keyboard'),
-                ),
-                PopupMenuItem(value: CueModality.staff, child: Text('Staff')),
-              ],
-            ),
-        ],
+    final actions = [
+      IconButton(
+        tooltip: _tempoSupport == TempoSupport.metronomeThroughout
+            ? 'Count in and stop'
+            : 'Keep the click going',
+        onPressed: () => setState(() {
+          _tempoSupport = _tempoSupport == TempoSupport.metronomeThroughout
+              ? TempoSupport.countInOnly
+              : TempoSupport.metronomeThroughout;
+        }),
+        icon: Icon(
+          _tempoSupport == TempoSupport.metronomeThroughout
+              ? Icons.timer
+              : Icons.timer_off,
+        ),
       ),
+      if (modality != null)
+        PopupMenuButton<CueModality>(
+          tooltip: 'Where the cue is shown',
+          initialValue: modality,
+          onSelected: (choice) => setState(() => _modality = choice),
+          icon: Icon(switch (modality) {
+            CueModality.keyboard => Icons.piano,
+            CueModality.staff => Icons.music_note,
+            CueModality.keyboardAndStaff => Icons.queue_music,
+          }),
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: CueModality.keyboardAndStaff,
+              child: Text('Keyboard and staff'),
+            ),
+            PopupMenuItem(value: CueModality.keyboard, child: Text('Keyboard')),
+            PopupMenuItem(value: CueModality.staff, child: Text('Staff')),
+          ],
+        ),
+    ];
+
+    return Scaffold(
+      appBar: Layout.of(context).isShort
+          ? null
+          : AppBar(
+              title: Text(guidanceName(exercise.guidance)),
+              actions: actions,
+            ),
       body: AttemptView(
         exercise: exercise,
         presentation: presentation,
+        actions: actions,
         // Fabricated cases record nothing, so finishing one just leaves.
         onFinish: (_) async {
           if (!context.mounted) return;

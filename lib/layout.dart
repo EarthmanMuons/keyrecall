@@ -112,12 +112,23 @@ class Layout {
       context.dependOnInheritedWidgetOfExactType<_InheritedLayout>()?.layout ??
       Layout.forWindow(MediaQuery.sizeOf(context));
 
+  /// Whether height is what the window is short of: a phone on its side.
+  ///
+  /// A short window gives up the app bar. What the bar carried goes into the
+  /// content beside what it describes, and the height goes to the music.
+  bool get isShort => height == WindowHeightClass.compact;
+
   /// The space between a screen's content and its edges.
-  double get gutter => switch (width) {
-    WindowWidthClass.compact => 24,
-    WindowWidthClass.medium => 32,
-    _ => 40,
-  };
+  ///
+  /// A phone on its side is as wide as a small tablet and is still a phone in
+  /// the hand, so it keeps a phone's gutter.
+  double get gutter => isShort
+      ? 24
+      : switch (width) {
+          WindowWidthClass.compact => 24,
+          WindowWidthClass.medium => 32,
+          _ => 40,
+        };
 
   /// How wide content that is read rather than looked at may get.
   ///

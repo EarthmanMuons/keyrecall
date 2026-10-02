@@ -213,6 +213,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         presentation: presentationForTask(value.acquisition!.task),
         acquisition: value.acquisition!.task,
         metBefore: value.hasMet(value.acquisition!.task.parent.material),
+        actions: const [_PracticeActions()],
         onFinish: (completion) =>
             notifier.finishAcquisition(completion, attempt: attempt!),
         onUnderWay: () => setState(() => _playing = attemptId),
@@ -230,6 +231,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         ),
         metBefore: value.hasMet(value.exercise!.material),
         admittedBy: value.presented?.decision.decision.challengeBypass,
+        actions: const [_PracticeActions()],
         onFinish: (completion) =>
             notifier.finish(completion, attempt: attempt!),
         onDecline: (completion) =>
@@ -246,14 +248,19 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     };
 
     return Scaffold(
-      appBar: _PracticeAppBar(
-        running: _playing == null
-            ? null
-            : loop.value?.exercise ?? loop.value?.acquisition?.task.parent,
-        // A stated tempo reads as a target, and this task removed the
-        // obligation rather than lowering it.
-        showsTempo: loop.value?.acquisition == null,
-      ),
+      // A short window gives an exercise the bar's height, and the view
+      // carries the bar's controls itself.
+      appBar: Layout.of(context).isShort && presenting is AttemptView
+          ? null
+          : _PracticeAppBar(
+              running: _playing == null
+                  ? null
+                  : loop.value?.exercise ??
+                        loop.value?.acquisition?.task.parent,
+              // A stated tempo reads as a target, and this task removed the
+              // obligation rather than lowering it.
+              showsTempo: loop.value?.acquisition == null,
+            ),
       // Deciding is not presenting, and building is not presenting either.
       // What discharges a probe earned by supported work is the exercise
       // reaching a learner: drawn, on the route in front, with the app on
@@ -313,7 +320,7 @@ class _Described extends StatelessWidget {
 /// one is the only setup this app has and it is what somebody reaches for when
 /// notes are not arriving. Everything that is a setting goes behind the menu,
 /// which is where the settings this app has yet to grow will go too.
-class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
+class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
   const _PracticeAppBar({this.running, this.showsTempo = true});
 
   /// The attempt under way, whose task the bar carries instead of the app's
@@ -327,9 +334,7 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final roster = ref.watch(profileRosterProvider).value ?? const [];
-    final active = roster.where((summary) => summary.isActive).toList();
+  Widget build(BuildContext context) {
     final task = running;
 
     return AppBar(
@@ -383,29 +388,40 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
             curve: const Interval(0.35, 1),
             builder: (context, arrival, child) =>
                 Opacity(opacity: arrival, child: child),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const _GoalProgressButton(),
-                // First of the controls, because it is the only one of them
-                // about what is practiced rather than about the app around it.
-                const _FocusButton(),
-                // Only when MIDI is the source: reading the connection
-                // state starts the Bluetooth stack, which the synthetic
-                // instrument has no use for.
-                if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
-                  const _InstrumentButton(),
-                _MenuButton(
-                  profile: active.isEmpty ? null : active.single.profile,
-                  // Who is practicing is worth saying on the bar only where it
-                  // is in question. On an install with one profile it is
-                  // nobody's doubt, and a colored disc where the menu goes
-                  // would be decoration.
-                  showsProfile: roster.length > 1,
-                ),
-              ],
-            ),
+            child: const _PracticeActions(),
           ),
+      ],
+    );
+  }
+}
+
+/// The controls the practice bar holds, wherever there is room for them.
+class _PracticeActions extends ConsumerWidget {
+  const _PracticeActions();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roster = ref.watch(profileRosterProvider).value ?? const [];
+    final active = roster.where((summary) => summary.isActive).toList();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _GoalProgressButton(),
+        // First of the controls, because it is the only one of them about
+        // what is practiced rather than about the app around it.
+        const _FocusButton(),
+        // Only when MIDI is the source: reading the connection state starts
+        // the Bluetooth stack, which the synthetic instrument has no use for.
+        if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
+          const _InstrumentButton(),
+        _MenuButton(
+          profile: active.isEmpty ? null : active.single.profile,
+          // Who is practicing is worth saying on the bar only where it is in
+          // question. On an install with one profile it is nobody's doubt,
+          // and a colored disc where the menu goes would be decoration.
+          showsProfile: roster.length > 1,
+        ),
       ],
     );
   }
@@ -717,6 +733,7 @@ class AttemptView extends ConsumerStatefulWidget {
     this.acquisition,
     this.admittedBy,
     this.metBefore = true,
+    this.actions = const [],
     super.key,
   });
 
@@ -778,6 +795,9 @@ class AttemptView extends ConsumerStatefulWidget {
   /// not theirs, at the moment KeyRecall is deliberately probing past what it
   /// has seen them do.
   final bool metBefore;
+
+  /// What the screen's app bar would hold, for a window too short to have one.
+  final List<Widget> actions;
 
   @override
   ConsumerState<AttemptView> createState() => _AttemptViewState();
@@ -1286,17 +1306,24 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     final layout = Layout.of(context);
     // The statement is on screen only until the attempt starts, and the bar
     // takes it from there. Collapsed rather than hidden, so the music grows
-    // into the room it leaves as it leaves it.
+    // into the room it leaves as it leaves it. A short window has no bar to
+    // hand it to, so there it stays.
     final task = AnimatedCrossFade(
       duration: attemptTransition,
       sizeCurve: attemptCurve,
-      crossFadeState: _phase == _Phase.ready
+      crossFadeState: _phase == _Phase.ready || layout.isShort
           ? CrossFadeState.showFirst
           : CrossFadeState.showSecond,
       firstChild: Padding(
-        padding: EdgeInsets.fromLTRB(layout.gutter, 16, layout.gutter, 0),
+        padding: EdgeInsets.fromLTRB(
+          layout.gutter,
+          layout.isShort ? 0 : 16,
+          layout.gutter,
+          0,
+        ),
         child: _TaskStatement(
           exercise,
+          compact: layout.isShort,
           showsTempo: !_isSelfPaced,
           note: widget.admittedBy == ChallengeBypass.acquisitionProbe
               ? restoredTempoLine(exercise)
@@ -1413,6 +1440,18 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
     );
 
+    // Gone with the rest of the bar's controls for the length of the attempt,
+    // and still holding their room so nothing under them moves.
+    final edge = IgnorePointer(
+      ignoring: _phase != _Phase.ready,
+      child: AnimatedOpacity(
+        duration: attemptTransition,
+        curve: attemptCurve,
+        opacity: _phase == _Phase.ready ? 1 : 0,
+        child: _EdgeControls(widget.actions),
+      ),
+    );
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _phase == _Phase.countIn ? _pause : null,
@@ -1426,7 +1465,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
             // empty.
             Expanded(
               child: SafeArea(
-                top: false,
+                top: layout.isShort,
                 bottom: staffCarriesTranscript,
                 child: layout.hasRoomBeside
                     ? Row(
@@ -1438,6 +1477,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                if (layout.isShort) edge,
                                 // The task takes what the control leaves and
                                 // scrolls inside it: a window on its side can be
                                 // shorter than the two of them together.
@@ -1453,6 +1493,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
                       )
                     : Column(
                         children: [
+                          if (layout.isShort) edge,
                           task,
                           Expanded(child: notation),
                           controls,
@@ -1517,6 +1558,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           'measure timing again.',
   };
 
+  /// How tall the control is in every phase, so one replaces another without
+  /// moving what is around it.
+  ///
+  /// Short of height, it is as tall as the beat over a Done button needs and
+  /// no taller.
+  double get _controlHeight => Layout.of(context).isShort ? 72 : 88;
+
   Widget _control() => switch (_phase) {
     _Phase.ready => Column(
       children: [
@@ -1524,7 +1572,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         // keys, and should not have to aim.
         SizedBox(
           width: double.infinity,
-          height: 88,
+          height: _controlHeight,
           child: FilledButton(
             onPressed: _canRecord ? _start : null,
             style: FilledButton.styleFrom(
@@ -1586,7 +1634,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // The same height the Ready button had, so the count replaces it rather
     // than moving everything around it.
     _Phase.countIn => SizedBox(
-      height: 88,
+      height: _controlHeight,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1601,7 +1649,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
     ),
     _Phase.paused => SizedBox(
-      height: 88,
+      height: _controlHeight,
       child: Row(
         children: [
           Expanded(
@@ -1630,7 +1678,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
               onKeepPlaying: _keepPlaying,
             )
           : SizedBox(
-              height: 88,
+              height: _controlHeight,
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1651,9 +1699,9 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // Still Done, just no longer pressable. Swapping in a spinner for an
     // append and a scheduler decision makes a wait out of something that is
     // not one, and moves the screen while the learner is still looking at it.
-    _Phase.finishing => const SizedBox(
-      height: 88,
-      child: Center(
+    _Phase.finishing => SizedBox(
+      height: _controlHeight,
+      child: const Center(
         child: FilledButton.tonal(onPressed: null, child: Text('Done')),
       ),
     ),
@@ -1839,6 +1887,29 @@ class _FadingEdgesState extends State<_FadingEdges> {
       );
 }
 
+/// An app bar's way back and its actions, without the bar.
+///
+/// For a window short of height, where a bar's band costs the music more than
+/// the controls are worth. Nothing behind them, so they sit at the top of the
+/// pane they belong to and take no room from the one beside it.
+class _EdgeControls extends StatelessWidget {
+  const _EdgeControls(this.actions);
+
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final leaves = ModalRoute.of(context)?.impliesAppBarDismissal ?? false;
+    if (!leaves && actions.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [if (leaves) const BackButton(), const Spacer(), ...actions],
+      ),
+    );
+  }
+}
+
 /// The offer a passed window makes: is this over?
 ///
 /// A question rather than an ending. The instrument is still live behind it
@@ -1893,9 +1964,18 @@ class _Question extends StatelessWidget {
 /// Tapping it explains it. The terms are the app's whole vocabulary, and the
 /// place somebody wonders what one means is the line it is written on.
 class _TaskStatement extends StatelessWidget {
-  const _TaskStatement(this.exercise, {this.showsTempo = true, this.note});
+  const _TaskStatement(
+    this.exercise, {
+    this.compact = false,
+    this.showsTempo = true,
+    this.note,
+  });
 
   final Exercise exercise;
+
+  /// Whether it shares a short window with the music, and is sized to leave
+  /// the music the height.
+  final bool compact;
 
   /// Whether a tempo was asked for at all.
   ///
@@ -1910,6 +1990,9 @@ class _TaskStatement extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final conditions = exercise.conditions;
+    final body = compact
+        ? theme.textTheme.bodyMedium
+        : theme.textTheme.bodyLarge;
 
     return InkWell(
       onTap: () => showTaskHelp(context, exercise),
@@ -1918,21 +2001,27 @@ class _TaskStatement extends StatelessWidget {
         children: [
           Text(
             materialName(exercise.material),
-            style: theme.textTheme.displaySmall,
+            style: compact
+                ? theme.textTheme.headlineSmall
+                : theme.textTheme.displaySmall,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 4 : 8),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              HandsIcon(conditions.hands, size: 18),
+              HandsIcon(conditions.hands, size: compact ? 16 : 18),
               const SizedBox(width: 8),
               Text(
                 handsName(conditions.hands).toUpperCase(),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w600,
-                ),
+                style:
+                    (compact
+                            ? theme.textTheme.titleSmall
+                            : theme.textTheme.titleMedium)
+                        ?.copyWith(
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
               ),
             ],
           ),
@@ -1946,18 +2035,12 @@ class _TaskStatement extends StatelessWidget {
               octavesName(conditions.octaves),
               if (showsTempo) '${conditions.tempoBpm.round()} bpm',
             ].join(' · '),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: body?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
           if (note case final note?) ...[
-            const SizedBox(height: 12),
-            Text(
-              note,
-              style: theme.textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
+            SizedBox(height: compact ? 8 : 12),
+            Text(note, style: body, textAlign: TextAlign.center),
           ],
         ],
       ),
