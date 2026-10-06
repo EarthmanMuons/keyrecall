@@ -26,16 +26,17 @@ void main() {
               : FingeringPlacement.aboveStaff,
         );
         final layout = const LayoutEngine().layout(
-          Score.simple(notes: 'c3:e=3 g4:e=3 c6:e=3 g5:e=3'),
+          Score.simple(
+              notes: 'c4:e=1 e4:e=2 g4:e=3 c5:e=1 e5:e=2 g5:e=3 c6:e=5'),
           settings,
           staffLineCount: lineCount,
         );
         final marks = fingers(layout);
-        expect(marks, hasLength(4));
+        expect(marks, hasLength(7));
         expect(marks.map((mark) => mark.position.y).toSet().length,
             greaterThan(1));
-        final box = metadata.bBoxOf('fingering3');
         for (final mark in marks) {
+          final box = metadata.bBoxOf(mark.smuflName);
           if (below) {
             expect(mark.position.y - box.neY, greaterThan(lineCount - 1 + 0.5));
             expect(layout.top + layout.height,
@@ -66,7 +67,7 @@ void main() {
   test('fingerings over a sloped beam follow its slope', () {
     for (final below in [false, true]) {
       final layout = const LayoutEngine().layout(
-        Score.simple(notes: below ? 'c5:e=2 a4:e=1' : 'e4:e=1 b4:e=3'),
+        Score.simple(notes: below ? 'c5:e=3 a4:e=1' : 'e4:e=1 b4:e=5'),
         LayoutSettings(
           metadata: metadata,
           fingeringPlacement: below
@@ -94,7 +95,9 @@ void main() {
   test('outsideStaff selects the side by clef and stacks outward', () {
     for (final clef in [Clef.treble, Clef.bass]) {
       final layout = const LayoutEngine().layout(
-        Score.simple(clef: clef, notes: 'c4+e4+g4:h=1,3,5'),
+        Score.simple(
+            clef: clef,
+            notes: clef == Clef.bass ? 'c4+e4+g4:h=5,3,1' : 'c4+e4+g4:h=1,3,5'),
         LayoutSettings(
             metadata: metadata,
             fingeringPlacement: FingeringPlacement.outsideStaff),
