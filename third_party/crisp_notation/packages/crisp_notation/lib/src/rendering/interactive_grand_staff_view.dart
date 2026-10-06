@@ -1033,7 +1033,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
           lower + Offset(0, 4 * _staffSpace),
           Paint()
             ..color = _theme.staffColor
-            ..strokeWidth = lines.first.thickness * _staffSpace,
+            ..strokeWidth = startLineThickness * _staffSpace,
         );
       }
       for (final line in lines) {
