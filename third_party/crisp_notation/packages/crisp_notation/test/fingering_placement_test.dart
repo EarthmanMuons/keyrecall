@@ -47,7 +47,7 @@ void main() {
           grandStaff: GrandStaff(
             upper: Score.simple(
                 notes:
-                    'c4:e=1 d4:e=2 e4:e=3 f4:e=4 g4:e=5 a4:e=3 b4:e=4 c5:e=5'),
+                    'c4:e=1 d4:e=2 e4:e=3 f4:e=1 g4:e=2 a4:e=3 b4:e=4 c5:e=5'),
             lower: Score.simple(
                 clef: Clef.bass,
                 notes:
