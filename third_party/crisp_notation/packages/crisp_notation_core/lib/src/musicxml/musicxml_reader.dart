@@ -29,18 +29,110 @@ import 'xml_reader.dart';
 /// Parses a `score-partwise` MusicXML document into a single-staff
 /// [Score], reading part [partIndex] (default: the first part).
 ///
+/// With [inheritGlobalDirections] (the default), a part other than the first
+/// also takes the score-wide tempo from the TOP part: its opening tempo, its
+/// tempo changes and the tempo words that go with them ("Allegro molto").
+/// Exporters write those once, in the top part, though every part plays at
+/// that tempo (#13). Marks the part already has are kept.
+///
 /// Throws [FormatException] on documents this subset cannot represent.
-Score scoreFromMusicXml(String xml, {int partIndex = 0}) {
+Score scoreFromMusicXml(String xml,
+    {int partIndex = 0, bool inheritGlobalDirections = true}) {
   final root = parseXml(xml);
   final parts = _partsOf(root);
   if (partIndex < 0 || partIndex >= parts.length) {
     throw FormatException('Part $partIndex not found (${parts.length} parts)');
   }
-  return _PartReader(
+  final score = _PartReader(
     parts[partIndex],
     staff: 1,
     metadata: _metadataOf(root, parts[partIndex]),
+    collapseMultiRests: true,
   ).read();
+  if (!inheritGlobalDirections || partIndex == 0) return score;
+  final top = _PartReader(parts.first, staff: 1);
+  return _withGlobalDirections(score, top.read(), top.tempoWords);
+}
+
+/// [part] with the score-wide tempo of [top] (the first part, read with
+/// every bar kept): the opening tempo, each tempo change, and each tempo
+/// word in [topWords], wherever [part] has none of its own. Bars are matched
+/// by bar number, so a multi-measure rest in [part] still lines up.
+Score _withGlobalDirections(
+    Score part, Score top, List<(int, Fraction, String)> topWords) {
+  // The first bar number of each of the part's measures.
+  final barOf = <int>[];
+  var bar = 0;
+  for (final m in part.measures) {
+    barOf.add(bar);
+    bar += m.multiRest ?? 1;
+  }
+  int? measureAtBar(int b) {
+    for (var i = barOf.length - 1; i >= 0; i--) {
+      if (barOf[i] <= b) {
+        final span = part.measures[i].multiRest ?? 1;
+        return b < barOf[i] + span ? i : null;
+      }
+    }
+    return null;
+  }
+
+  final measures = [...part.measures];
+  for (var b = 1; b < top.measures.length; b++) {
+    final change = top.measures[b].tempoChange;
+    final i = measureAtBar(b);
+    if (change == null || i == null || barOf[i] != b) continue;
+    if (measures[i].tempoChange == null) {
+      measures[i] = measures[i].copyWith(tempoChange: change);
+    }
+  }
+
+  final annotations = [...part.annotations];
+  var anchorId = 0;
+  for (final (b, onset, text) in topWords) {
+    final i = measureAtBar(b);
+    if (i == null) continue;
+    final m = measures[i];
+    final ids = {for (final e in m.elements) e.id};
+    if (annotations.any(
+        (a) => ids.contains(a.elementId) && a.text.trim() == text.trim())) {
+      continue; // the part has it already
+    }
+    // The element sounding at the word's onset (the last one starting at or
+    // before it); a multi-rest bar that kept no rest gets one as the anchor.
+    String? id;
+    var t = Fraction.zero;
+    for (var k = 0; k < m.elements.length; k++) {
+      if (t > onset) break;
+      id = m.elements[k].id;
+      t = t + m.effectiveDurationAt(k);
+    }
+    if (id == null) {
+      id = 'tw${anchorId++}';
+      measures[i] = Measure(
+        [RestElement(NoteDuration.whole, id: id)],
+        clefChange: m.clefChange,
+        inlineClefs: m.inlineClefs,
+        keyChange: m.keyChange,
+        timeChange: m.timeChange,
+        tempoChange: m.tempoChange,
+        startRepeat: m.startRepeat,
+        endRepeat: m.endRepeat,
+        volta: m.volta,
+        multiRest: m.multiRest,
+        navigation: m.navigation,
+        barline: m.barline,
+        pickup: m.pickup,
+        actualDuration: m.actualDuration,
+      );
+    }
+    annotations.add(Annotation(id, text));
+  }
+  return part.copyWith(
+    tempo: part.tempo ?? top.tempo,
+    measures: measures,
+    annotations: annotations,
+  );
 }
 
 /// The default part-name the writer emits when no instrument is set; the reader
@@ -214,9 +306,19 @@ StaffSystem staffSystemFromMusicXml(String xml) {
   final partSpan = <int>[];
   var idBase = 0;
   final systemBreaks = <int>{};
+  final partial = <int>{};
   for (final part in parts) {
     final n =
         int.tryParse(_firstAttributes(part)?.childText('staves') ?? '1') ?? 1;
+    // `<staff-type>ossia</staff-type>`: a staff drawn only where it has
+    // music (see [StaffSystem.partialStaves]).
+    if (n == 1 &&
+        _firstAttributes(part)
+                ?.child('staff-details')
+                ?.childText('staff-type') ==
+            'ossia') {
+      partial.add(staves.length);
+    }
     partStart.add(staves.length);
     partSpan.add(n);
     final first = staves.length;
@@ -248,6 +350,7 @@ StaffSystem staffSystemFromMusicXml(String xml) {
     brackets: brackets,
     barlineGroups: _partGroupBarlines(root, partStart, partSpan),
     systemBreaks: systemBreaks,
+    partialStaves: partial,
   );
 }
 
@@ -448,6 +551,7 @@ class _PartReader {
     required this.staff,
     this.idOffset = 0,
     this.metadata = const ScoreMetadata(),
+    this.collapseMultiRests = false,
     Clef? defaultClef,
   }) : defaultClef = defaultClef ?? (staff == 2 ? Clef.bass : Clef.treble) {
     _clef = this.defaultClef;
@@ -456,6 +560,11 @@ class _PartReader {
 
   /// Conventional clef when the source omits an initial clef for this staff.
   final Clef defaultClef;
+
+  /// Whether a `<multiple-rest>` becomes ONE [Measure.multiRest] bar standing
+  /// for the bars it covers (a single part), or stays as individual rest bars
+  /// (a system, whose staves must keep the same bar count).
+  final bool collapseMultiRests;
 
   /// Document-level metadata (title/composer/…) to attach to the built score.
   final ScoreMetadata metadata;
@@ -531,7 +640,18 @@ class _PartReader {
   final _laissezVibrer = <LaissezVibrer>[];
 
   // Open spans keyed by MusicXML "number" attribute.
-  final _openSlurs = <String, String>{};
+  /// Open slurs by `number`. A null value is a slur opened by a note this
+  /// reader does not import (another staff, `print-object="no"`): its number
+  /// is taken, so a later stop must not pair with an older start.
+  final _openSlurs = <String, String?>{};
+
+  /// Slur numbers started on grace notes: they start at the next principal
+  /// note (a grace's slur to its own principal then collapses and is dropped).
+  final _graceSlurStarts = <String>[];
+
+  /// A dynamic read in a bar that ended before any note took it: the next
+  /// bar's first note gets it (see `_readMeasure`).
+  String? _carriedDynamic;
   final _openGliss = <String, String>{};
   final _openPortamento = <String, String>{};
   final _cueNoteIds = <String>[];
@@ -568,10 +688,213 @@ class _PartReader {
   final _openOttavas = <String, (String, int, bool)>{};
   final _ottavas = <Ottava>[];
 
+  /// MusicXML keeps every bar a `<multiple-rest>N` covers: the style sits on
+  /// the first and the N-1 bars after it are still there. The model's
+  /// [Measure.multiRest] bar STANDS FOR all N, so keeping both counted the
+  /// silence twice (playback ran N-1 bars long, bar numbers drifted). A
+  /// single part folds the covered bars into the first; marks on their rests
+  /// move to its anchor rest. A staff of a system keeps them as plain bars.
+  void _settleMultiRests() {
+    if (!_measures.any((m) => m.multiRest != null)) return;
+    if (!collapseMultiRests) {
+      for (var i = 0; i < _measures.length; i++) {
+        if (_measures[i].multiRest != null) {
+          _measures[i] = _withMultiRest(_measures[i], null);
+        }
+      }
+      return;
+    }
+    bool silent(Measure m) => [m.elements, m.voice2, m.voice3, m.voice4]
+        .every((v) => v.every((e) => e is RestElement));
+    // A bar that can be folded into the run before it: silent and carrying
+    // nothing a reader would miss. Its own end repeat or barline may close
+    // the run (it moves onto the folded bar), but nothing may open there.
+    bool foldable(Measure m) =>
+        silent(m) &&
+        m.multiRest == null &&
+        m.measureRepeat == null &&
+        m.timeChange == null &&
+        m.keyChange == null &&
+        m.clefChange == null &&
+        m.tempoChange == null &&
+        !m.startRepeat &&
+        m.volta == null &&
+        m.navigation == null &&
+        m.inlineClefs.isEmpty;
+    final remap = <String, String>{};
+    final out = <Measure>[];
+    for (var i = 0; i < _measures.length; i++) {
+      final m = _measures[i];
+      final want = m.multiRest;
+      if (want == null) {
+        out.add(m);
+        continue;
+      }
+      final absorbed = <Measure>[];
+      var j = i + 1;
+      while (absorbed.length < want - 1 &&
+          j < _measures.length &&
+          foldable(_measures[j])) {
+        final next = _measures[j];
+        absorbed.add(next);
+        j++;
+        if (next.endRepeat || next.barline != BarlineStyle.normal) break;
+      }
+      // No covered bars at all: an encoding that writes the multi-rest as ONE
+      // bar (older crisp_notation did), so the declared count stands.
+      final covered = absorbed.isEmpty ? want : 1 + absorbed.length;
+      var elements = m.elements;
+      final anchor = elements.whereType<RestElement>().firstOrNull?.id ??
+          absorbed
+              .expand((a) => a.elements)
+              .whereType<RestElement>()
+              .firstOrNull
+              ?.id;
+      if (elements.isEmpty && anchor != null) {
+        elements = [
+          absorbed.expand((a) => a.elements).firstWhere((e) => e.id == anchor),
+        ];
+      }
+      for (final a in absorbed) {
+        for (final e
+            in [a.elements, a.voice2, a.voice3, a.voice4].expand((v) => v)) {
+          final id = e.id;
+          if (id != null && anchor != null && id != anchor) remap[id] = anchor;
+        }
+      }
+      final last = absorbed.isEmpty ? m : absorbed.last;
+      out.add(Measure(
+        elements,
+        tuplets: m.tuplets,
+        clefChange: m.clefChange,
+        inlineClefs: m.inlineClefs,
+        keyChange: m.keyChange,
+        timeChange: m.timeChange,
+        tempoChange: m.tempoChange,
+        startRepeat: m.startRepeat,
+        endRepeat: last.endRepeat,
+        volta: m.volta,
+        multiRest: covered >= 2 ? covered : null,
+        navigation: m.navigation,
+        barline: last.barline,
+        pickup: m.pickup,
+        actualDuration: m.actualDuration,
+      ));
+      i = j - 1;
+    }
+    _measures
+      ..clear()
+      ..addAll(out);
+    String to(String id) => remap[id] ?? id;
+    for (var k = 0; k < _annotations.length; k++) {
+      final a = _annotations[k];
+      _annotations[k] =
+          Annotation(to(a.elementId), a.text, placement: a.placement);
+    }
+    for (var k = 0; k < _dynamics.length; k++) {
+      final d = _dynamics[k];
+      _dynamics[k] = DynamicMarking(to(d.elementId), d.level);
+    }
+    for (var k = 0; k < _hairpins.length; k++) {
+      final h = _hairpins[k];
+      _hairpins[k] = Hairpin(to(h.startId), to(h.endId), h.type);
+    }
+    // A multi-rest keeps its rest only as an anchor: when no mark uses it,
+    // it goes, so a plain multi-rest round-trips as the empty bar it was.
+    final used = <String>{
+      for (final a in _annotations) a.elementId,
+      for (final d in _dynamics) d.elementId,
+      for (final h in _hairpins) ...[h.startId, h.endId],
+      for (final c in _chordSymbols) c.elementId,
+    };
+    for (var k = 0; k < _measures.length; k++) {
+      final m = _measures[k];
+      if (m.multiRest == null) continue;
+      final kept = [
+        for (final e in m.elements)
+          if (e.id != null && used.contains(e.id)) e
+      ];
+      if (kept.length != m.elements.length) {
+        _measures[k] = _withElements(m, kept);
+      }
+    }
+  }
+
+  static Measure _withElements(Measure m, List<MusicElement> elements) =>
+      Measure(
+        elements,
+        tuplets: const [],
+        clefChange: m.clefChange,
+        inlineClefs: m.inlineClefs,
+        keyChange: m.keyChange,
+        timeChange: m.timeChange,
+        tempoChange: m.tempoChange,
+        startRepeat: m.startRepeat,
+        endRepeat: m.endRepeat,
+        volta: m.volta,
+        multiRest: m.multiRest,
+        navigation: m.navigation,
+        barline: m.barline,
+        pickup: m.pickup,
+        actualDuration: m.actualDuration,
+      );
+
+  static Measure _withMultiRest(Measure m, int? multiRest) => Measure(
+        m.elements,
+        voice2: m.voice2,
+        voice3: m.voice3,
+        voice4: m.voice4,
+        tuplets: m.tuplets,
+        clefChange: m.clefChange,
+        inlineClefs: m.inlineClefs,
+        keyChange: m.keyChange,
+        timeChange: m.timeChange,
+        tempoChange: m.tempoChange,
+        startRepeat: m.startRepeat,
+        endRepeat: m.endRepeat,
+        volta: m.volta,
+        multiRest: multiRest,
+        measureRepeat: m.measureRepeat,
+        navigation: m.navigation,
+        barline: m.barline,
+        pickup: m.pickup,
+        actualDuration: m.actualDuration,
+      );
+
+  void _openSlur(String number, String? id, [XmlNode? slur]) {
+    _openSlurs[number] = id;
+    _openSlurPlacement[number] =
+        slur == null ? SlurPlacement.auto : _slurPlacementOf(slur);
+  }
+
+  final _openSlurPlacement = <String, SlurPlacement>{};
+
+  /// A slur's side: `placement` above/below, else `orientation` over/under,
+  /// else the sign of the start's `bezier-y` (MusicXML's y grows UP, so a
+  /// positive control point bends the slur over the notes). MuseScore writes
+  /// only the bezier hints (#8).
+  static SlurPlacement _slurPlacementOf(XmlNode slur) {
+    switch (slur.attributes['placement'] ?? slur.attributes['orientation']) {
+      case 'above' || 'over':
+        return SlurPlacement.above;
+      case 'below' || 'under':
+        return SlurPlacement.below;
+    }
+    final y = double.tryParse(slur.attributes['bezier-y'] ?? '');
+    if (y == null || y == 0) return SlurPlacement.auto;
+    return y > 0 ? SlurPlacement.above : SlurPlacement.below;
+  }
+
+  SlurPlacement _placementOf(String number) =>
+      _openSlurPlacement[number] ?? SlurPlacement.auto;
+
+  String? _closeSlur(String number) => _openSlurs.remove(number);
+
   Score read() {
     for (final measureNode in part.childrenNamed('measure')) {
       _readMeasure(measureNode);
     }
+    _settleMultiRests();
     // Tolerate a slur left open at the end (real files carry imbalances — a
     // number reused across a `type="continue"`, or a `stop` lost across a part
     // boundary): an unclosed slur simply never became a `Slur`, so drop it and
@@ -713,6 +1036,21 @@ class _PartReader {
 
   String _newId() => 'e${idOffset + _nextId++}';
 
+  /// Tempo words read from this part — `<words>` in a direction that also
+  /// sets a tempo (a metronome or `<sound tempo>`) — as (bar index, onset in
+  /// the bar, text), so another part can inherit them.
+  final tempoWords = <(int, Fraction, String)>[];
+
+  /// Bars still covered by the current `<multiple-rest>` (this one included).
+  int _multiRestLeft = 0;
+  int _multiRestRestId = 0;
+
+  /// The rests a `<multiple-rest>` covers are folded away (or kept only as an
+  /// anchor), so they take ids from their own namespace: the notes after a
+  /// multi-rest keep the ids they would have had without it, and a written
+  /// multi-rest reads back as the same score.
+  String _restIdInMultiRest() => 'mr${idOffset + _multiRestRestId++}';
+
   void _readMeasure(XmlNode measureNode) {
     // An implicit measure (or the conventional number="0") is a pickup.
     final pickup = measureNode.attributes['implicit'] == 'yes' ||
@@ -740,10 +1078,15 @@ class _PartReader {
 
     var pendingGraces = <Pitch>[];
     var pendingGraceStyle = GraceStyle.acciaccatura;
-    String? pendingDynamic;
+    // A dynamic waits for the next NOTE (layout draws dynamics on notes); one
+    // written before a rest at a bar's end carries into the next bar instead
+    // of being dropped.
+    String? pendingDynamic = _carriedDynamic;
+    _carriedDynamic = null;
     ({Pitch root, ChordSymbolKind quality, Pitch? bass})? pendingChord;
-    String? pendingAnnotation;
-    var pendingAnnotationPlacement = AnnotationPlacement.above;
+    // Every text direction before the next note, each with its own
+    // placement ("dolce" below and "Allegro" above can share a note).
+    final pendingAnnotations = <(String, AnnotationPlacement)>[];
     List<String>? pendingFigures;
     final openTupletStart = List<int?>.filled(4, null);
     final openTupletRatio = List<(int, int)?>.filled(4, null);
@@ -809,6 +1152,9 @@ class _PartReader {
               node.child('measure-style')?.childText('multiple-rest');
           if (multipleRest != null) {
             multiRest = int.tryParse(multipleRest);
+            if (collapseMultiRests && (multiRest ?? 0) >= 2) {
+              _multiRestLeft = multiRest!;
+            }
           }
           final repeatNode =
               node.child('measure-style')?.child('measure-repeat');
@@ -877,17 +1223,17 @@ class _PartReader {
           }
         case 'direction':
           if (!_isForStaff(node)) break;
-          final dynamicsNode = node.child('direction-type')?.child('dynamics');
+          final dynamicsNode = _directionChild(node, 'dynamics');
           if (dynamicsNode != null && dynamicsNode.children.isNotEmpty) {
             pendingDynamic = dynamicsNode.children.first.name;
           }
-          final wedge = node.child('direction-type')?.child('wedge');
+          final wedge = _directionChild(node, 'wedge');
           if (wedge != null) _handleWedge(wedge, elements, voice2);
-          final shift = node.child('direction-type')?.child('octave-shift');
+          final shift = _directionChild(node, 'octave-shift');
           if (shift != null) _handleOctaveShift(shift);
-          final pedal = node.child('direction-type')?.child('pedal');
+          final pedal = _directionChild(node, 'pedal');
           if (pedal != null) _handlePedal(pedal);
-          final metronome = node.child('direction-type')?.child('metronome');
+          final metronome = _directionChild(node, 'metronome');
           // A printed <metronome> wins; <sound tempo="..."> is the fallback.
           // That order matters: when a file carries both they can disagree (a
           // "swing" mark printed as quarter=120 while playback says 96), and the
@@ -910,16 +1256,27 @@ class _PartReader {
             }
           }
           navigation ??= _navigationOf(node);
-          // A plain <words> that is not a navigation label is a text annotation.
-          final words = node.child('direction-type')?.childText('words');
-          if (words != null &&
-              words.isNotEmpty &&
+          // Plain <words> that are not a navigation label are a text
+          // annotation — ALL of the direction's runs, not just the first.
+          final words =
+              _directionWords(node, aroundMetronome: metronome != null);
+          if (words.isNotEmpty && t != null && dynamicsNode == null) {
+            tempoWords.add((
+              _measures.length,
+              voiceOnsets.fold<Fraction>(
+                  Fraction.zero, (best, v) => v > best ? v : best),
+              words,
+            ));
+          }
+          if (words.isNotEmpty &&
               _navigationOf(node) == null &&
               dynamicsNode == null) {
-            pendingAnnotation ??= words;
-            pendingAnnotationPlacement = node.attributes['placement'] == 'below'
-                ? AnnotationPlacement.below
-                : AnnotationPlacement.above;
+            pendingAnnotations.add((
+              words,
+              node.attributes['placement'] == 'below'
+                  ? AnnotationPlacement.below
+                  : AnnotationPlacement.above,
+            ));
           }
         case 'harmony':
           pendingChord = _chordSymbolOf(node);
@@ -928,10 +1285,29 @@ class _PartReader {
             for (final fig in node.childrenNamed('figure')) _figureText(fig),
           ];
         case 'note':
-          if (!_isForStaff(node)) break;
-          if (node.attributes['print-object'] == 'no') break;
+          // Every note's slur marks count, imported or not: a stop that was
+          // skipped left its start open, and the next stop with that number
+          // paired with it, a slur many bars long. ~30% of the quartet
+          // corpus's slurs stacked up past the staff (y -65) this way.
+          if (!_isForStaff(node) || node.attributes['print-object'] == 'no') {
+            _skipSlurMarks(node);
+            break;
+          }
           final grace = node.child('grace');
           if (grace != null) {
+            for (final (type, number) in _slurMarks(node)) {
+              if (type == 'start') {
+                _graceSlurStarts.add(number);
+              } else {
+                // A slur INTO a grace note ends at the note before it.
+                final start = _closeSlur(number);
+                final end = _lastNoteOfVoice[
+                    _voiceIndexOf(node.childText('voice') ?? '1', voiceOrder)];
+                if (start != null && end != null && start != end) {
+                  _slurs.add(Slur(start, end));
+                }
+              }
+            }
             final pitch = _pitchOf(node.child('pitch'));
             if (pitch != null) pendingGraces.add(pitch);
             if (grace.attributes['slash'] == 'no') {
@@ -962,12 +1338,17 @@ class _PartReader {
                   notehead: last.notehead,
                   id: last.id,
                 );
+                // A chord tone's marks belong to the chord: a slur stop on
+                // the second note of a double stop was dropped.
+                _readSpans(node, last.id!);
               }
               break;
             }
           }
 
-          final id = _newId();
+          final id = _multiRestLeft > 0 && node.child('rest') != null
+              ? _restIdInMultiRest()
+              : _newId();
           final duration = _durationOf(node);
           // Percussion notes carry <unpitched> (display-step/octave for the
           // staff line) instead of <pitch>. A note that is neither pitched,
@@ -977,6 +1358,21 @@ class _PartReader {
               _unpitchedOf(node.child('unpitched'));
           if (node.child('rest') != null || pitch == null) {
             target.add(RestElement(duration, id: id));
+            // Text before a rest belongs to the rest ("Fine", tempo words
+            // over a rest); it lays out there. Carried on to the next note,
+            // it moved, or was lost when the bar ended first.
+            for (final (text, placement) in pendingAnnotations) {
+              _annotations.add(Annotation(id, text, placement: placement));
+            }
+            pendingAnnotations.clear();
+            // So does a dynamic: it lays out under the rest, and consecutive
+            // dynamics over rests (a LilyPond Dynamics line) no longer
+            // collapse onto the next note.
+            final level = pendingDynamic == null
+                ? null
+                : DynamicLevel.values.asNameMap()[pendingDynamic];
+            if (level != null) _dynamics.add(DynamicMarking(id, level));
+            pendingDynamic = null;
           } else {
             target.add(
               NoteElement(
@@ -1016,17 +1412,10 @@ class _PartReader {
               );
               pendingChord = null;
             }
-            if (pendingAnnotation != null) {
-              _annotations.add(
-                Annotation(
-                  id,
-                  pendingAnnotation,
-                  placement: pendingAnnotationPlacement,
-                ),
-              );
-              pendingAnnotation = null;
-              pendingAnnotationPlacement = AnnotationPlacement.above;
+            for (final (text, placement) in pendingAnnotations) {
+              _annotations.add(Annotation(id, text, placement: placement));
             }
+            pendingAnnotations.clear();
             if (pendingFigures != null) {
               if (pendingFigures.isNotEmpty) {
                 _figuredBass.add(FiguredBass(id, pendingFigures));
@@ -1102,6 +1491,7 @@ class _PartReader {
     }
 
     _leadingSet = true;
+    if (_multiRestLeft > 0) _multiRestLeft--;
     // `<measure-style><multiple-rest>` is a DISPLAY instruction, and a file can
     // contradict itself: this corpus has a MuseScore export whose measure 52
     // declares a 2-bar multi-rest and then carries two half notes. A bar with
@@ -1113,10 +1503,11 @@ class _PartReader {
         .any((v) => v.any((e) => e is NoteElement));
     if (multiRest != null && hasNotes) {
       multiRest = null;
-    } else if (multiRest != null && multiRest >= 2) {
-      // Whole-measure rest markup inside a multiple-rest is redundant.
-      elements.removeWhere((element) => element is RestElement);
     }
+    // The bar's whole-measure rest stays: it anchors any text, tempo or
+    // dynamic set on the silent stretch (#11 — "Adagio" over bar 1 of a part
+    // that opens with eight bars' rest). Dropping it crashed layout.
+    _carriedDynamic = pendingDynamic;
     _measures.add(
       Measure(
         elements,
@@ -1144,15 +1535,63 @@ class _PartReader {
     );
   }
 
+  /// The first [childName] element under ANY of a `<direction>`'s
+  /// `<direction-type>` children, or null.
+  ///
+  /// One direction routinely splits its content across sibling
+  /// `<direction-type>` blocks — tempo text in one, its `<metronome>` in the
+  /// next — in whatever order the exporting tool chose. Looking only inside
+  /// the first block silently dropped whichever half came second.
+  static XmlNode? _directionChild(XmlNode direction, String childName) {
+    for (final type in direction.childrenNamed('direction-type')) {
+      final match = type.child(childName);
+      if (match != null) return match;
+    }
+    return null;
+  }
+
+  /// The text of every `<words>` run in a `<direction>`, in document order,
+  /// joined. Exporters split one marking into runs — Finale writes each style
+  /// change as its own `<words>` ("Allegro" + italic " con brio"), sometimes
+  /// across `<direction-type>` blocks — and reading only the first run kept
+  /// half the marking.
+  ///
+  /// Around a printed metronome ([aroundMetronome]) the runs often only
+  /// bracket it — "Andante (" ♩=63 ")" — and the metronome is read as the
+  /// tempo, so a dangling bracket and punctuation-only runs are dropped.
+  static String _directionWords(XmlNode direction,
+      {required bool aroundMetronome}) {
+    final runs = <String>[];
+    for (final type in direction.childrenNamed('direction-type')) {
+      for (final words in type.childrenNamed('words')) {
+        var text = words.text.trim();
+        if (aroundMetronome) {
+          text = text
+              .replaceFirst(RegExp(r'\s*[(\[]\s*$'), '')
+              .replaceFirst(RegExp(r'^\s*[)\]]\s*'), '');
+          if (RegExp(r'^[\s\p{P}]*$', unicode: true).hasMatch(text)) continue;
+        }
+        if (text.isNotEmpty) runs.add(text);
+      }
+    }
+    final out = StringBuffer();
+    for (final run in runs) {
+      // No space before a run that starts with closing punctuation.
+      if (out.isNotEmpty && !RegExp(r'^[.,;:!?)\]]').hasMatch(run)) {
+        out.write(' ');
+      }
+      out.write(run);
+    }
+    return out.toString();
+  }
+
   /// A navigation mark from a `<direction>`: a `<segno>`/`<coda>` target, or
   /// an instruction whose `<words>` match a [SmuflGlyph.navigationLabel]
   /// (`D.C.`, `D.S. al Coda`, `Fine`, …). Returns null for other directions.
   static NavigationMark? _navigationOf(XmlNode node) {
-    final type = node.child('direction-type');
-    if (type == null) return null;
-    if (type.child('segno') != null) return NavigationMark.segno;
-    if (type.child('coda') != null) return NavigationMark.coda;
-    final words = type.childText('words')?.trim();
+    if (_directionChild(node, 'segno') != null) return NavigationMark.segno;
+    if (_directionChild(node, 'coda') != null) return NavigationMark.coda;
+    final words = _directionChild(node, 'words')?.text.trim();
     if (words == null) return null;
     for (final mark in NavigationMark.values) {
       if (SmuflGlyph.navigationLabel(mark) == words) return mark;
@@ -1552,16 +1991,49 @@ class _PartReader {
     return null;
   }
 
+  /// The note's `<slur>` marks as `(type, number)`, in document order.
+  List<(String, String)> _slurMarks(XmlNode note) => [
+        for (final notations in _notations(note))
+          for (final slur in notations.childrenNamed('slur'))
+            if (slur.attributes['type'] case final type?)
+              (type, slur.attributes['number'] ?? '1'),
+      ];
+
+  /// Slur bookkeeping for a note that is not imported: its starts take their
+  /// numbers, its stops release them.
+  void _skipSlurMarks(XmlNode note) {
+    for (final (type, number) in _slurMarks(note)) {
+      if (type == 'start') {
+        _openSlur(number, null);
+      } else if (type == 'stop') {
+        _closeSlur(number);
+      }
+    }
+  }
+
   void _readSpans(XmlNode note, String id) {
+    for (final number in _graceSlurStarts) {
+      _openSlur(number, id);
+    }
+    _graceSlurStarts.clear();
     for (final notations in _notations(note)) {
       for (final slur in notations.childrenNamed('slur')) {
         final number = slur.attributes['number'] ?? '1';
         switch (slur.attributes['type']) {
           case 'start':
-            _openSlurs[number] = id;
+            _openSlur(number, id, slur);
           case 'stop':
-            final start = _openSlurs.remove(number);
-            if (start != null) _slurs.add(Slur(start, id));
+            final placement = _placementOf(number);
+            final start = _closeSlur(number);
+            // A slur that starts and ends on one note (a grace's slur to its
+            // own principal) draws nothing.
+            // The same slur written more than once over the same notes (an
+            // export stacks copies under new numbers: #14 had four) is one
+            // slur. Kept, each copy drew as another arc around the first.
+            final slur = Slur(start ?? '', id, placement: placement);
+            if (start != null && start != id && !_slurs.contains(slur)) {
+              _slurs.add(slur);
+            }
         }
       }
       // ⚠️ `<glissando>` and `<slide>` are DIFFERENT elements — a glissando

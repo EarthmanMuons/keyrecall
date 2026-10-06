@@ -6,16 +6,23 @@ part of 'layout_engine.dart';
 // builder's private state. Behaviour unchanged.
 
 extension _Beaming on _LayoutBuilder {
+  /// Adds a beam between two stem centres, each end extended by half a stem
+  /// thickness along the slope so the beam covers the outer stem edges. A
+  /// beamlet's free end has no stem to cover: pass false for that side.
   void _addBeam(
     Point<double> start,
     Point<double> end,
-    double thickness,
-  ) {
+    double thickness, {
+    bool extendStart = true,
+    bool extendEnd = true,
+  }) {
     final halfStem = s.stemThickness / 2;
     final slope =
         end.x == start.x ? 0.0 : (end.y - start.y) / (end.x - start.x);
-    start = Point(start.x - halfStem, start.y - slope * halfStem);
-    end = Point(end.x + halfStem, end.y + slope * halfStem);
+    if (extendStart) {
+      start = Point(start.x - halfStem, start.y - slope * halfStem);
+    }
+    if (extendEnd) end = Point(end.x + halfStem, end.y + slope * halfStem);
     _primitives.add(BeamPrimitive(start, end, thickness: thickness));
     // Narrow slices let skyline queries follow the slope.
     const sliceWidth = 0.25;
@@ -388,6 +395,11 @@ extension _Beaming on _LayoutBuilder {
       final offset = (s.beamThickness + s.beamSpacing) *
           (level - 1) *
           (stemsDown ? -1 : 1);
+      // Opt-in per-level subdivision: each level past the 16th halves the
+      // pulse it breaks at (32nds at the eighth, 64ths at the sixteenth).
+      final pulse = subdivision != null && s.subdivideBeamsPerLevel && level > 2
+          ? subdivision * Fraction(1, 1 << (level - 2))
+          : subdivision;
       var i = 0;
       while (i < notes.length) {
         if (notes[i].beamCount < level) {
@@ -397,8 +409,7 @@ extension _Beaming on _LayoutBuilder {
         var j = i;
         while (j + 1 < notes.length &&
             notes[j + 1].beamCount >= level &&
-            !_LayoutBuilder._crossesSubdivision(
-                onsets, subdivision, j, j + 1)) {
+            !_LayoutBuilder._crossesSubdivision(onsets, pulse, j, j + 1)) {
           j++;
         }
         if (j > i) {
@@ -416,6 +427,9 @@ extension _Beaming on _LayoutBuilder {
             Point(min(x, stubX), beamY(min(x, stubX)) + offset),
             Point(max(x, stubX), beamY(max(x, stubX)) + offset),
             s.beamThickness,
+            // Only the stem end overhangs; the stub stays 1.0 long past it.
+            extendStart: stubX > x,
+            extendEnd: stubX < x,
           );
         }
         i = j + 1;

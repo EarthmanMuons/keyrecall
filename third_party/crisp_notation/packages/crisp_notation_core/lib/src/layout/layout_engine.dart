@@ -15,6 +15,7 @@ import '../theory/duration.dart';
 import '../theory/fraction.dart';
 import '../theory/key_signature.dart';
 import '../theory/pitch.dart';
+import '../theory/tempo.dart';
 import '../theory/time_signature.dart';
 import 'layout_settings.dart';
 import 'score_layout.dart';
@@ -82,6 +83,7 @@ class LayoutEngine {
     Map<String, List<int>> extraFingerings = const {},
     List<Map<Fraction, double>>? forcedColumns,
     int staffLineCount = 5,
+    bool? drawTempoMarks,
   }) =>
       _LayoutBuilder(
         score,
@@ -102,6 +104,7 @@ class LayoutEngine {
         extraFingerings: extraFingerings,
         forcedColumns: forcedColumns,
         staffLineCount: staffLineCount,
+        drawTempoMarks: drawTempoMarks ?? settings.drawTempoMarks,
       ).build();
 }
 
@@ -132,6 +135,10 @@ class _LayoutBuilder {
   /// Number of staff lines (5 for an ordinary notation staff; 1 for a neutral
   /// percussion line, etc.). Drives every vertical staff reference below.
   final int staffLineCount;
+
+  /// Whether to draw metronome marks (`Score.tempo`, `Measure.tempoChange`)
+  /// above the staff — off for the lower staves of a system.
+  final bool drawTempoMarks;
 
   SmuflMetadata get meta => s.metadata;
 
@@ -167,9 +174,46 @@ class _LayoutBuilder {
         _tieInfos[i].id!: i,
   };
 
+  /// Index into [_tieInfos] of EVERY element (notes and rests) by id. Marks
+  /// that may sit on a rest (dynamics, hairpins) look their anchor up here.
+  late final Map<String, int> _elementIndexById = {
+    for (var i = 0; i < _tieInfos.length; i++)
+      if (_tieInfos[i].id != null) _tieInfos[i].id!: i,
+  };
+
+  /// The [_tieInfos] index of the element (note or rest) with [id], or -1.
+  int _elementIndexOf(String? id) =>
+      id == null ? -1 : (_elementIndexById[id] ?? -1);
+
   /// The [_tieInfos] index of the note with [id], or -1 — the O(1) replacement
   /// for `_tieInfos.indexWhere((i) => i.note != null && i.id == id)`.
   int _tieIndexOf(String? id) => id == null ? -1 : (_tieIndexById[id] ?? -1);
+
+  /// Per voice, the [_tieInfos] left edges of its notes AND rests (a voice
+  /// resting under another is still a second voice on the staff) in
+  /// ascending order,
+  /// paired with the running maximum of their right edges. Built once, lazily
+  /// (like [_tieIndexById]), so the "does another voice sound here?" query
+  /// every tie and slur asks is a binary search, not a scan of the whole score.
+  late final Map<int, (List<double>, List<double>, List<_TieInfo>)>
+      _noteSpansByVoice = () {
+    final byVoice = <int, List<_TieInfo>>{};
+    for (final info in _tieInfos) {
+      if (info.id != null) (byVoice[info.voice] ??= []).add(info);
+    }
+    return {
+      for (final MapEntry(key: voice, value: infos) in byVoice.entries)
+        voice: () {
+          infos.sort((a, b) => a.left.compareTo(b.left));
+          var maxRight = double.negativeInfinity;
+          return (
+            [for (final info in infos) info.left],
+            [for (final info in infos) maxRight = max(maxRight, info.right)],
+            infos,
+          );
+        }(),
+    };
+  }();
 
   final _Bounds _ink = _Bounds();
 
@@ -197,6 +241,20 @@ class _LayoutBuilder {
   /// for per-column skyline queries (so above/below marks clear only the ink
   /// in their own horizontal span, not the whole system's extremes).
   final List<(double, double, double, double)> _inkRects = [];
+
+  /// Each slur's ink as `(left, right, bottom)`, so the dynamics line (laid
+  /// out after the slurs) can sit below a slur instead of through it.
+  final List<(double, double, double)> _slurInk = [];
+
+  /// [_inkRects] indices bucketed by x column ([_inkBucketWidth] staff spaces
+  /// wide), so a skyline query visits only the ink near its span. Scanning
+  /// every rect per query made each mark/slur pass O(n²) in a long score.
+  /// A rect too wide to bucket cheaply (a staff line, a long beam) goes in
+  /// [_wideInk] and is checked by every query — there are few of those.
+  final Map<int, List<int>> _inkBuckets = {};
+  final List<int> _wideInk = [];
+  static const double _inkBucketWidth = 4;
+  static const int _maxBucketsPerRect = 16;
 
   double _x = 0;
 
@@ -271,6 +329,7 @@ class _LayoutBuilder {
     this.extraFingerings = const {},
     this.forcedColumns,
     this.staffLineCount = 5,
+    this.drawTempoMarks = true,
   });
 
   // log2(dot factor) for 0..2 dots: 1, 3/2, 7/4.
@@ -315,8 +374,11 @@ class _LayoutBuilder {
     _layoutCrossMeasureBeams();
     _layoutTies();
     _layoutLaissezVibrer();
-    _layoutDynamics();
+    // Slurs BEFORE dynamics: a slur hugs its notes and dynamics/hairpins sit
+    // outside it. The other order made a slur treat a hairpin under its notes
+    // as an obstacle and dive beneath it (365 slurs in the real corpus).
     _layoutSlurs();
+    _layoutDynamics();
     _layoutGlissandos();
     _layoutPortamentos();
     _layoutOttavas();
@@ -327,6 +389,7 @@ class _LayoutBuilder {
     _layoutNoteNames();
     _layoutNavigation();
     _layoutAnnotations();
+    _layoutTempoMarks();
     _layoutJazzArticulations();
     _layoutPalmMuteLetRing();
     _layoutBarres();
@@ -430,17 +493,24 @@ class _LayoutBuilder {
     _primitives.add(
       CurvePrimitive(start, control1, control2, end, thickness: thickness),
     );
-    // The control polygon bounds the Bézier.
-    final xs = [start.x, control1.x, control2.x, end.x];
-    final ys = [start.y, control1.y, control2.y, end.y];
+    // Register the curve's real shape as a chain of small boxes, not its
+    // control polygon. The control points overshoot the curve, and marks laid
+    // out later cleared that phantom ink: a slur nested inside another was
+    // pushed outside the outer slur's control box.
+    const segments = 8;
     final h = thickness / 2;
-    _expand(
-      null,
-      xs.reduce(min) - h,
-      ys.reduce(min) - h,
-      xs.reduce(max) + h,
-      ys.reduce(max) + h,
-    );
+    var prev = start;
+    for (var i = 1; i <= segments; i++) {
+      final p = _cubicPoint(start, control1, control2, end, i / segments);
+      _expand(
+        null,
+        min(prev.x, p.x) - h,
+        min(prev.y, p.y) - h,
+        max(prev.x, p.x) + h,
+        max(prev.y, p.y) + h,
+      );
+      prev = p;
+    }
   }
 
   void _expand(
@@ -451,7 +521,17 @@ class _LayoutBuilder {
     double bottom,
   ) {
     _ink.expand(left, top, right, bottom);
+    final index = _inkRects.length;
     _inkRects.add((left, top, right, bottom));
+    final first = (left / _inkBucketWidth).floor();
+    final last = (right / _inkBucketWidth).floor();
+    if (last - first >= _maxBucketsPerRect) {
+      _wideInk.add(index);
+    } else {
+      for (var k = first; k <= last; k++) {
+        (_inkBuckets[k] ??= []).add(index);
+      }
+    }
     if (elementId != null) {
       _elementBounds
           .putIfAbsent(elementId, _Bounds.new)
@@ -462,23 +542,49 @@ class _LayoutBuilder {
   /// Highest ink (smallest y) whose x-range overlaps `[xL, xR)`, or null when
   /// that column is empty. Only ink placed so far is considered, so the pass
   /// order determines what a mark clears.
-  double? _skylineTop(double xL, double xR) {
+  ///
+  /// With [skipBarlines], thin ink spanning the whole staff height is ignored.
+  /// A slur crosses barlines freely, so it must not arch over one; counting
+  /// them sent a cross-bar slur on low notes over the top of the staff.
+  double? _skylineTop(double xL, double xR, {bool skipBarlines = false}) {
     double? best;
-    for (final (l, t, r, _) in _inkRects) {
+    for (final i in _inkNear(xL, xR)) {
+      final (l, t, r, b) = _inkRects[i];
       if (r <= xL || l >= xR) continue;
+      if (skipBarlines && _isBarlineInk(l, t, r, b)) continue;
       if (best == null || t < best) best = t;
     }
     return best;
   }
 
   /// Lowest ink (largest y) whose x-range overlaps `[xL, xR)`, or null.
-  double? _skylineBottom(double xL, double xR) {
+  double? _skylineBottom(double xL, double xR, {bool skipBarlines = false}) {
     double? best;
-    for (final (l, _, r, b) in _inkRects) {
+    for (final i in _inkNear(xL, xR)) {
+      final (l, t, r, b) = _inkRects[i];
       if (r <= xL || l >= xR) continue;
+      if (skipBarlines && _isBarlineInk(l, t, r, b)) continue;
       if (best == null || b > best) best = b;
     }
     return best;
+  }
+
+  /// Thin vertical ink from the top staff line to the bottom one: a barline.
+  bool _isBarlineInk(double l, double t, double r, double b) =>
+      r - l <= 0.6 && t <= 0.05 && b >= staffLineCount - 1.05;
+
+  /// Indices of every ink rect that MAY overlap `[xL, xR)` (a superset; the
+  /// callers apply the exact test). A rect may be yielded more than once —
+  /// harmless for the min/max the skyline takes.
+  Iterable<int> _inkNear(double xL, double xR) sync* {
+    yield* _wideInk;
+    if (xR < xL) return;
+    final first = (xL / _inkBucketWidth).floor();
+    final last = (xR / _inkBucketWidth).floor();
+    for (var k = first; k <= last; k++) {
+      final bucket = _inkBuckets[k];
+      if (bucket != null) yield* bucket;
+    }
   }
 
   double _glyphWidth(String name) => meta.bBoxOf(name).width;
@@ -553,7 +659,7 @@ class _LayoutBuilder {
   void _layoutMeasure(Measure measure, int measureIndex) {
     _validateTuplets(measure);
     if (measure.multiRest != null) {
-      _layoutMultiRest(measure.multiRest!);
+      _layoutMultiRest(measure);
       return;
     }
     if (measure.measureRepeat != null) {
@@ -918,12 +1024,27 @@ class _LayoutBuilder {
   /// v0.6.3: multi-measure rest — an H-bar on the middle line spanning a
   /// fixed-width measure, with the measure count in time-signature
   /// digits centered above the staff.
-  void _layoutMultiRest(int count) {
+  void _layoutMultiRest(Measure measure) {
+    final count = measure.multiRest!;
     const barWidth = 8.0;
     const capHalf = 1.0; // vertical end caps span the middle two spaces
     final left = _x + 1.0;
     final right = _x + 1.0 + barWidth;
-    _addLine(Point(left, 2), Point(right, 2), 0.5);
+    // The bar's own rest, if it kept one, is the anchor for marks set on the
+    // silent stretch (a tempo text, a dynamic): the H-bar stands for it, so
+    // it is tappable and text over it lands above the bar (#11).
+    final anchor = measure.elements.whereType<RestElement>().firstOrNull?.id;
+    _addLine(Point(left, 2), Point(right, 2), 0.5, elementId: anchor);
+    for (final rest in measure.elements.whereType<RestElement>()) {
+      _tieInfos.add(_TieInfo(
+        note: null,
+        id: rest.id,
+        stemsDown: false,
+        left: left,
+        right: right,
+        heads: const [],
+      ));
+    }
     _addLine(Point(left, 2 - capHalf), Point(left, 2 + capHalf), 0.16);
     _addLine(Point(right, 2 - capHalf), Point(right, 2 + capHalf), 0.16);
 
@@ -1287,7 +1408,12 @@ class _LayoutBuilder {
     if (tremolo != null && stemTipY != null) {
       final glyph = SmuflGlyph.tremoloStrokes(tremolo);
       final box = meta.bBoxOf(glyph);
-      final noteSideY = stemsDown ? _yOf(top) : _yOf(bottom);
+      // The stem's free length starts at the chord's OUTERMOST head on the
+      // stem side: the lowest note for a down-stem, the highest for an
+      // up-stem. Measuring from the other end put a chord's strokes over its
+      // own noteheads (#14). A single note has top == bottom, so it never
+      // showed there.
+      final noteSideY = stemsDown ? _yOf(bottom) : _yOf(top);
       final midY = noteSideY + (stemTipY - noteSideY) * 0.4;
       _addGlyph(
         glyph,
@@ -1541,11 +1667,12 @@ class _LayoutBuilder {
       final t = i / sampleCount;
       final p = _cubicPoint(start, control1, control2, end, t);
       if (above) {
-        final skyline = _skylineTop(p.x - 0.45, p.x + 0.45);
+        final skyline = _skylineTop(p.x - 0.45, p.x + 0.45, skipBarlines: true);
         if (skyline == null) continue;
         violation = max(violation, p.y - (skyline - clearance));
       } else {
-        final skyline = _skylineBottom(p.x - 0.45, p.x + 0.45);
+        final skyline =
+            _skylineBottom(p.x - 0.45, p.x + 0.45, skipBarlines: true);
         if (skyline == null) continue;
         violation = max(violation, (skyline + clearance) - p.y);
       }
@@ -1716,9 +1843,10 @@ class _LayoutBuilder {
       final oldSteps = _key.alteredSteps;
       final oldPositions = _key.custom != null
           ? [for (final step in oldSteps) _keyStepPosition(_clef, step)]
-          : (_key.fifths > 0
-              ? _sharpPositions[_clef]!
-              : _flatPositions[_clef]!);
+          // The same positions the signature was drawn at — derived for the
+          // clefs without a hand-tuned table, which indexing the tables with
+          // `!` crashed on (a soprano/baritone/French-violin key change).
+          : _keyAccidentalPositions(_clef, sharp: _key.fifths > 0);
       final naturalWidth = _glyphWidth(SmuflGlyph.accidentalNatural);
       for (var i = 0; i < oldSteps.length; i++) {
         if (keyChange.alterFor(oldSteps[i]) == _key.alterFor(oldSteps[i])) {

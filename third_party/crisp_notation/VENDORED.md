@@ -2,18 +2,19 @@
 
 Source: <https://github.com/CrispStrobe/crisp_notation>
 
-Revision: `85b82d3508b3d858328aadde489acc23345610d7` (upstream `main`, checked
-2026-09-17).
+Revision: `96c777d79eb712d2cc806af25718c147ce9fdf6c` (upstream `main`, the 0.7.0
+release commit, checked 2026-10-06).
 
 Both packages retain their upstream directory structure, source, tests, analyzer
-configuration, and licenses. The screenshot baselines under
+configuration, and licenses, including the portable SVG goldens under
+`packages/crisp_notation/test/goldens_svg/`. The screenshot baselines under
 `packages/crisp_notation/test/goldens/` are the exception; see below. The
 Flutter package also includes its font and metadata assets, including the
 Bravura OFL license. Examples, tools, generated documentation, and the CLI
 package are omitted.
 
-The snapshot includes core version 0.4.8 from source; this is not a claim that
-0.4.8 has been published on pub.dev. The Flutter package remains version 0.4.4.
+Both packages are version 0.7.0 from source; this is not a claim that 0.7.0 has
+been published on pub.dev.
 
 ## Integration
 
@@ -43,7 +44,9 @@ the images that matched were the piano keyboard and fretboard, which draw no
 music font glyphs, and the one baseline generated on this machine. A host whose
 engine differs from the one a baseline was generated on will see the same
 whole-corpus drift. Upstream's `CI=true` test mode skips pixel comparisons while
-still exercising rendering and widget behavior:
+still exercising rendering and widget behavior, and still checks the SVG
+goldens, which serialize engraving geometry as text that is identical on every
+host:
 
 ```sh
 cd third_party/crisp_notation/packages/crisp_notation
@@ -76,7 +79,8 @@ revision, and replace the retained files from that revision. Reapply any pending
 fixes, update this revision record, and run the required Dart checks. Include
 deletions when comparing snapshots. Avoid a floating branch dependency. Keep the
 baselines under `test/goldens/`: an update brings upstream's images back with
-the rest of the snapshot, and they are not the reference here.
+the rest of the snapshot, and they are not the reference here. Take the SVG
+goldens from upstream, since they are portable.
 
 Once upstream releases the needed fixes, restore the app's hosted dependency,
 remove both vendored workspace entries and this directory, and remove the
@@ -87,10 +91,7 @@ the required checks before committing.
 
 The packages' development dependencies on `lints` and `flutter_lints` use
 `^6.0.0` to match KeyRecall's workspace. Runtime patches are listed below.
-Flutter added a `build/**` analyzer exclusion to the Flutter package.
 
-- Extend beams to the outer stem edges, preserving the slope at the stem centers
-  and the middle-line clearance. Includes cross-staff beams and geometry tests.
 - Draw the grand staff's start line from the upper staff's top line to the lower
   staff's bottom line, including every wrapped interactive system. Ledger lines
   outside the five-line staves do not extend this conventional system boundary.

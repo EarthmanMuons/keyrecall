@@ -50,7 +50,19 @@ String multiPartToMusicXml(MultiPartScore score, {List<String>? partNames}) {
   final names = <(String, String)>[];
   for (var i = 0; i < parts.length; i++) {
     final id = 'P${i + 1}';
-    partXml.add(_part(id, parts[i]));
+    var xml = _part(id, parts[i]);
+    if (score.partialParts.contains(i)) {
+      // A partial staff (ossia, divisi) is MusicXML's ossia staff type. Per
+      // the schema `<staff-details>` follows the clef in `<attributes>`.
+      final at = xml.indexOf('</clef>');
+      if (at >= 0) {
+        final cut = at + '</clef>'.length;
+        xml = '${xml.substring(0, cut)}'
+            '<staff-details><staff-type>ossia</staff-type></staff-details>'
+            '${xml.substring(cut)}';
+      }
+    }
+    partXml.add(xml);
     final name = (partNames != null && i < partNames.length)
         ? partNames[i]
         : (parts[i].metadata.instrument ?? 'Part ${i + 1}');
@@ -189,31 +201,28 @@ String _document(
     buffer.writeln('  <work><work-title>${_escape(meta.title!)}'
         '</work-title></work>');
   }
-  if (meta.composer != null ||
-      meta.lyricist != null ||
-      meta.copyright != null) {
-    buffer.writeln('  <identification>');
-    if (meta.composer != null) {
-      buffer.writeln('    <creator type="composer">'
-          '${_escape(meta.composer!)}</creator>');
-    }
-    if (meta.lyricist != null) {
-      buffer.writeln('    <creator type="lyricist">'
-          '${_escape(meta.lyricist!)}</creator>');
-    }
-    if (meta.copyright != null) {
-      buffer.writeln('    <rights>${_escape(meta.copyright!)}</rights>');
-    }
-    if (meta.extras.isNotEmpty) _writeMiscellaneous(buffer, meta.extras);
-    buffer.writeln('  </identification>');
-  } else if (meta.extras.isNotEmpty) {
-    // Extras alone still need the block: `<miscellaneous>` only exists inside
-    // `<identification>`, and the writer used to emit that for a creator or a
-    // rights statement only.
-    buffer.writeln('  <identification>');
-    _writeMiscellaneous(buffer, meta.extras);
-    buffer.writeln('  </identification>');
+  // Always identified: a reader (or a corpus sweep) must be able to tell a
+  // file this writer produced from a third-party export. Without the tag,
+  // 121 stale single-part conversions in CometBeat's library passed for
+  // OpenScore's own MusicXML and were taken for a broken exporter.
+  buffer.writeln('  <identification>');
+  if (meta.composer != null) {
+    buffer.writeln('    <creator type="composer">'
+        '${_escape(meta.composer!)}</creator>');
   }
+  if (meta.lyricist != null) {
+    buffer.writeln('    <creator type="lyricist">'
+        '${_escape(meta.lyricist!)}</creator>');
+  }
+  if (meta.copyright != null) {
+    buffer.writeln('    <rights>${_escape(meta.copyright!)}</rights>');
+  }
+  buffer
+    ..writeln('    <encoding>')
+    ..writeln('      <software>crisp_notation</software>')
+    ..writeln('    </encoding>');
+  if (meta.extras.isNotEmpty) _writeMiscellaneous(buffer, meta.extras);
+  buffer.writeln('  </identification>');
   buffer.writeln('  <part-list>');
   for (var i = 0; i < names.length; i++) {
     // Open groups starting here, widest first, so they nest correctly.
@@ -304,7 +313,13 @@ int _divisionsFor(Score score) {
     lcm = lcm ~/ a * quarters.denominator;
   }
 
+  var meter = score.timeSignature;
   for (final measure in score.measures) {
+    meter = measure.timeChange ?? meter;
+    if (measure.multiRest != null && meter != null) {
+      // The covered bars are written as whole-bar rests of the meter's length.
+      include(_quarters(Fraction(meter.beats, meter.beatUnit)));
+    }
     for (var i = 0; i < measure.elements.length; i++) {
       include(_quarters(measure.effectiveDurationAt(i)));
     }
@@ -373,10 +388,16 @@ class _PartWriter {
     }
     return map;
   }();
-  late final Map<String, Annotation> _annotationsById = {
-    for (final annotation in score.annotations)
-      annotation.elementId: annotation,
-  };
+
+  /// Every annotation per note, in model order — a note may carry several
+  /// ("Allegro" above and "dolce" below); a one-per-id map kept only the last.
+  late final Map<String, List<Annotation>> _annotationsById = () {
+    final byId = <String, List<Annotation>>{};
+    for (final annotation in score.annotations) {
+      (byId[annotation.elementId] ??= []).add(annotation);
+    }
+    return byId;
+  }();
   late final Map<String, ChordSymbol> _chordSymbolsById = {
     for (final chord in score.chordSymbols) chord.elementId: chord,
   };
@@ -395,14 +416,74 @@ class _PartWriter {
   late final Map<String, LaissezVibrer> _laissezVibrerById = {
     for (final lv in score.laissezVibrer) lv.noteId: lv,
   };
-  late final Map<String, String> _slurStartsById = {
-    for (var i = 0; i < score.slurs.length; i++)
-      score.slurs[i].startId: '${i % 6 + 1}',
-  };
-  late final Map<String, String> _slurStopsById = {
-    for (var i = 0; i < score.slurs.length; i++)
-      score.slurs[i].endId: '${i % 6 + 1}',
-  };
+
+  /// The `<slur>` marks each note carries, as `(type, number)` in the order
+  /// to write them.
+  ///
+  /// A reader pairs a stop with the open start of the same `number`, in
+  /// document order. So numbers are allocated by sweeping the slurs in the
+  /// order this writer emits notes (measure by measure, voice 1 then 2, 3, 4):
+  /// each start takes the lowest number not held by an open slur (MusicXML
+  /// allows 1–16), and a note that ends one slur and starts the next writes
+  /// the stop first, so the number can be reused. The old per-id maps kept
+  /// one start and one stop per note, losing a slur whenever two shared an
+  /// endpoint, and numbered by list position (`i % 6 + 1`), so overlapping
+  /// slurs could collide: ~300 corpus files lost slurs on a MusicXML round
+  /// trip.
+  late final Map<String, List<(String, int, String)>> _slurMarksById = () {
+    final order = <String, int>{};
+    var position = 0;
+    for (final m in score.measures) {
+      for (final voice in [m.elements, m.voice2, m.voice3, m.voice4]) {
+        for (final e in voice) {
+          if (e.id != null) order[e.id!] = position++;
+        }
+      }
+    }
+    // (position, phase, slur): at one note, phase 0 stops slurs opened
+    // earlier, phase 1 starts slurs, phase 2 stops a slur opened right here.
+    final events = <(int, int, int)>[];
+    for (var i = 0; i < score.slurs.length; i++) {
+      final a = order[score.slurs[i].startId];
+      final b = order[score.slurs[i].endId];
+      if (a == null || b == null) continue;
+      events
+        ..add((a, 1, i))
+        ..add((b, b == a ? 2 : 0, i));
+    }
+    events.sort((x, y) => x.$1 != y.$1
+        ? x.$1.compareTo(y.$1)
+        : x.$2 != y.$2
+            ? x.$2.compareTo(y.$2)
+            : x.$3.compareTo(y.$3));
+    final numberOf = <int, int>{};
+    final open = <int>{};
+    final marks = <String, List<(String, int, String)>>{};
+    for (final (_, phase, i) in events) {
+      final slur = score.slurs[i];
+      if (phase == 1) {
+        var n = 1;
+        while (n <= 16 && open.contains(n)) {
+          n++;
+        }
+        if (n > 16) n = i % 16 + 1; // more than 16 at once: best effort
+        numberOf[i] = n;
+        open.add(n);
+        final side = switch (slur.placement) {
+          SlurPlacement.above => ' placement="above"',
+          SlurPlacement.below => ' placement="below"',
+          SlurPlacement.auto => '',
+        };
+        (marks[slur.startId] ??= []).add(('start', n, side));
+      } else {
+        final n = numberOf[i];
+        if (n == null) continue; // its start was never emitted
+        open.remove(n);
+        (marks[slur.endId] ??= []).add(('stop', n, ''));
+      }
+    }
+    return marks;
+  }();
   late final Map<String, String> _glissStartsById = {
     for (var i = 0; i < score.glissandos.length; i++)
       score.glissandos[i].startId: '${i % 6 + 1}',
@@ -443,8 +524,11 @@ class _PartWriter {
     final measure = score.measures[index];
     // Pickups are number="0" implicit="yes" and are not counted; other
     // measures number sequentially from 1.
-    final priorNonPickup =
-        score.measures.take(index).where((m) => !m.pickup).length;
+    // A multi-measure rest counts every bar it stands for.
+    final priorNonPickup = score.measures
+        .take(index)
+        .where((m) => !m.pickup)
+        .fold<int>(0, (n, m) => n + (m.multiRest ?? 1));
     final number = measure.pickup ? 0 : priorNonPickup + 1;
     final implicit = measure.pickup ? ' implicit="yes"' : '';
     out.writeln('    <measure number="$number"$implicit>');
@@ -523,7 +607,10 @@ class _PartWriter {
 
     // A metronome mark: the initial tempo opens the first measure; a
     // `Measure.tempoChange` opens the measure it takes effect on.
-    final tempo = index == 0 ? score.tempo : measure.tempoChange;
+    // Bar 1's own tempo change stands in when the score states no opening
+    // tempo (the MEI reader puts it there); it was silently dropped.
+    final tempo =
+        index == 0 ? score.tempo ?? measure.tempoChange : measure.tempoChange;
     if (tempo != null) {
       final unit = _typeName(tempo.beatUnit);
       final dotTags = '<beat-unit-dot/>' * tempo.dots;
@@ -556,6 +643,10 @@ class _PartWriter {
     // voice 1's notes at the same indices (whose <duration> is unscaled) while
     // the real voice-2 notes got none — corrupting BOTH voices' rhythm on
     // reopen. `tupletsForVoice` exists for exactly this.
+    final barRest = _barRestXml(index);
+    if (measure.multiRest != null && measure.elements.isEmpty) {
+      out.writeln(barRest);
+    }
     _writeVoice(measure, measure.elements, '1', measure.tupletsForVoice(0),
         inlineClefs: measure.inlineClefs);
     // Each further voice: rewind (backup) by the just-written voice's total
@@ -606,6 +697,15 @@ class _PartWriter {
           '</words></direction-type>$sound</direction>');
     }
 
+    // MusicXML keeps every bar a `<multiple-rest>` covers: the style sits on
+    // the first, and the rest follow as whole-bar rests. Writing only the
+    // first made every other reader lose N-1 bars of silence.
+    final covered = measure.multiRest ?? 1;
+    for (var k = 1; k < covered; k++) {
+      out.writeln('    </measure>');
+      out.writeln('    <measure number="${number + k}">');
+      out.writeln(barRest);
+    }
     if (measure.endRepeat) {
       out.writeln('      <barline location="right">'
           '<repeat direction="backward"/></barline>');
@@ -628,6 +728,21 @@ class _PartWriter {
       }
     }
     out.writeln('    </measure>');
+  }
+
+  /// A whole-bar rest (`<rest measure="yes"/>`) for bar [index]'s meter.
+  String _barRestXml(int index) {
+    var meter = score.timeSignature;
+    for (var i = 0; i <= index; i++) {
+      meter = score.measures[i].timeChange ?? meter;
+    }
+    final quarters = meter == null
+        ? Fraction(4, 1)
+        : _quarters(Fraction(meter.beats, meter.beatUnit));
+    final d = quarters * Fraction(divisions, 1);
+    return '      <note><rest measure="yes"/>'
+        '<duration>${d.numerator ~/ d.denominator}</duration>'
+        '<voice>1</voice></note>';
   }
 
   void _writeVoice(
@@ -730,8 +845,7 @@ class _PartWriter {
           }
           out.writeln('</harmony>');
         }
-        final annotation = _annotationsById[id];
-        if (annotation != null) {
+        for (final annotation in _annotationsById[id] ?? const <Annotation>[]) {
           final placement = annotation.placement == AnnotationPlacement.below
               ? 'below'
               : 'above';
@@ -845,10 +959,9 @@ class _PartWriter {
     final parts = <String>[];
     final id = element.id;
     if (id != null) {
-      final start = _slurStartsById[id];
-      if (start != null) parts.add('<slur type="start" number="$start"/>');
-      final stop = _slurStopsById[id];
-      if (stop != null) parts.add('<slur type="stop" number="$stop"/>');
+      for (final (type, number, side) in _slurMarksById[id] ?? const []) {
+        parts.add('<slur type="$type" number="$number"$side/>');
+      }
       final gStart = _glissStartsById[id];
       if (gStart != null) {
         parts.add('<glissando type="start" line-type="wavy" '

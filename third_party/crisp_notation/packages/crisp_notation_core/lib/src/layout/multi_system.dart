@@ -491,12 +491,21 @@ class StaffSystemSystem {
   /// Index of the last original measure on this system (inclusive).
   final int lastMeasure;
 
+  /// The document part each of [layout]'s staves shows, top to bottom, when
+  /// some parts are hidden on this system (hide-empty, or a partial staff with
+  /// nothing here); null when every part is shown.
+  final List<int>? partIndices;
+
   /// Creates a multi-part system.
   const StaffSystemSystem({
     required this.layout,
     required this.firstMeasure,
     required this.lastMeasure,
+    this.partIndices,
   });
+
+  /// The document part shown by staff [staff] of this system's [layout].
+  int partIndexOf(int staff) => partIndices?[staff] ?? staff;
 }
 
 /// An N-part [StaffSystem] document (Workshop contract C6) broken into systems.
@@ -582,13 +591,21 @@ StaffSystemSystems layoutStaffSystemSystems(
   // parts silent throughout the range are dropped — except on the first system
   // and unless every part is silent (a blank system keeps them all).
   List<int> visibleFor(int start, int end) {
-    final all = [for (var i = 0; i < parts.length; i++) i];
+    // A partial staff (ossia, divisi) appears only where it has notes, on
+    // every system including the first.
+    final all = [
+      for (var i = 0; i < parts.length; i++)
+        if (!document.partialStaves.contains(i) ||
+            !_isSilentRange(parts[i], start, end))
+          i,
+    ];
+    if (all.isEmpty) all.add(0);
     if (!hideEmptyStaves || start == 0) return all;
     final shown = [
       for (var i = 0; i < parts.length; i++)
         if (!_isSilentRange(parts[i], start, end)) i,
     ];
-    if (shown.isEmpty || shown.length == parts.length) return all;
+    if (shown.isEmpty || shown.length == all.length) return all;
     return shown;
   }
 
@@ -621,6 +638,10 @@ StaffSystemSystems layoutStaffSystemSystems(
       brackets: brackets,
       connectBarlines: document.connectBarlines,
       barlineGroups: groups,
+      partialStaves: {
+        for (var p = 0; p < visible.length; p++)
+          if (document.partialStaves.contains(visible[p])) p,
+      },
     );
   }
 
@@ -637,6 +658,7 @@ StaffSystemSystems layoutStaffSystemSystems(
       used += combined[end];
     }
     late StaffSystemLayout layout;
+    var visible = const <int>[];
     while (true) {
       // Polymeter: restate the time signature at a system start if *any*
       // staff's own meter changes there (not just part 0), so a per-staff
@@ -648,7 +670,8 @@ StaffSystemSystems layoutStaffSystemSystems(
       // Visibility is decided per system here (with the first-system /
       // all-silent rules); the reduced [sysDoc] then lays out with hide-empty
       // off.
-      final sysDoc = buildSysDoc(start, end, visibleFor(start, end));
+      visible = visibleFor(start, end);
+      final sysDoc = buildSysDoc(start, end, visible);
       StaffSystemLayout render(double stretch) => layoutStaffSystem(
             sysDoc,
             settings,
@@ -675,7 +698,11 @@ StaffSystemSystems layoutStaffSystemSystems(
       end--;
     }
     systems.add(StaffSystemSystem(
-        layout: layout, firstMeasure: start, lastMeasure: end));
+      layout: layout,
+      firstMeasure: start,
+      lastMeasure: end,
+      partIndices: visible.length == parts.length ? null : visible,
+    ));
     start = end + 1;
   }
   return StaffSystemSystems(systems: systems, maxWidth: maxWidth);
@@ -887,7 +914,9 @@ Score _slice(
     ],
     transposition: score.transposition,
     metadata: score.metadata,
-    tempo: score.tempo,
+    // The opening tempo belongs to the first system only; a later system
+    // would otherwise restate it at its start.
+    tempo: first == 0 ? score.tempo : null,
   );
 }
 
@@ -930,7 +959,7 @@ List<Slur> _slurSegmentsForSlice(
             orElse: () => '',
           );
     if (startId.isEmpty || endId.isEmpty || startId == endId) continue;
-    out.add(Slur(startId, endId));
+    out.add(Slur(startId, endId, placement: slur.placement));
   }
   return out;
 }
