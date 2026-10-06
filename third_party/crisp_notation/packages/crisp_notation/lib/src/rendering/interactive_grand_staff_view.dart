@@ -1028,9 +1028,11 @@ class RenderInteractiveGrandStaffView extends RenderBox
       final lines = layout.upper.primitives.whereType<LinePrimitive>();
       final startLineThickness = lines.isEmpty ? 0.0 : lines.first.thickness;
       if (lines.isNotEmpty) {
+        // Reach the outer staff lines' outer edges, so the corners are square.
+        final overhang = Offset(0, startLineThickness / 2 * _staffSpace);
         canvas.drawLine(
-          upper,
-          lower + Offset(0, 4 * _staffSpace),
+          upper - overhang,
+          lower + Offset(0, 4 * _staffSpace) + overhang,
           Paint()
             ..color = _theme.staffColor
             ..strokeWidth = startLineThickness * _staffSpace,
