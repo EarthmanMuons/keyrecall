@@ -112,6 +112,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 
   /// The goal count before the attempt just reviewed covered something, which
   /// the bar counts up from when it comes back.
+  ///
+  /// An event rather than a state: handed to the bar for the one frame that
+  /// builds it, so a bar rebuilt later for any other reason shows the count as
+  /// it is.
   int? _countFrom;
 
   /// What the loop has decided next, as a transition can describe it.
@@ -199,10 +203,15 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
             postAttemptFeedback: exposure.feedback,
             progress: exposure.progress,
           ),
-          onNext: () => setState(() {
-            _reviewed = committed.identity.attemptId;
-            _countFrom = coverage?.coveredBefore;
-          }),
+          onNext: () {
+            setState(() {
+              _reviewed = committed.identity.attemptId;
+              _countFrom = coverage?.coveredBefore;
+            });
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _countFrom = null,
+            );
+          },
         ),
       );
     }
@@ -245,10 +254,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         menu: const _PracticeActions(folded: true),
         onFinish: (completion) =>
             notifier.finishAcquisition(completion, attempt: attempt!),
-        onUnderWay: () => setState(() {
-          _playing = attemptId;
-          _countFrom = null;
-        }),
+        onUnderWay: () => setState(() => _playing = attemptId),
         onBackToReady: () => setState(() => _playing = null),
       ),
       AsyncData(:final value) when value.exercise != null => AttemptView(
@@ -268,10 +274,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
             notifier.finish(completion, attempt: attempt!),
         onDecline: (completion) =>
             notifier.decline(completion, attempt: attempt!),
-        onUnderWay: () => setState(() {
-          _playing = attemptId;
-          _countFrom = null;
-        }),
+        onUnderWay: () => setState(() => _playing = attemptId),
         onBackToReady: () => setState(() => _playing = null),
       ),
       AsyncData(:final value) => _NothingToPlay(state: value),
