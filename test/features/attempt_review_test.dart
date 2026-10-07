@@ -226,15 +226,17 @@ void main() {
   group('how a review arrives', () {
     test('an ordinary review keeps what comes next close behind', () {
       expect(
-        reviewArrivalDelay(ReviewPart.continuation, hasMeaning: false),
-        lessThan(reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true)),
+        reviewArrivalDelay(ReviewPart.continuation, hasProgress: false),
+        lessThan(reviewArrivalDelay(ReviewPart.progress, hasProgress: true)),
       );
     });
 
     test('progress arrives before what comes next', () {
       expect(
-        reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true),
-        lessThan(reviewArrivalDelay(ReviewPart.continuation, hasMeaning: true)),
+        reviewArrivalDelay(ReviewPart.progress, hasProgress: true),
+        lessThan(
+          reviewArrivalDelay(ReviewPart.continuation, hasProgress: true),
+        ),
       );
     });
   });
@@ -248,7 +250,8 @@ void main() {
         builder: (context) => MediaQuery(
           data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
           child: ReviewArrival(
-            delay: Duration.zero,
+            part: ReviewPart.progress,
+            hasProgress: true,
             child: ExposureGate(
               presentation: 'progress',
               onExposed: () async {

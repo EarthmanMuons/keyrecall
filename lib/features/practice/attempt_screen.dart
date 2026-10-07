@@ -47,6 +47,7 @@ import 'profiles_screen.dart';
 import 'screen_wake_lock.dart';
 import 'staff_cue.dart';
 import 'task_help.dart';
+import 'goal_progress_providers.dart';
 
 /// The pause between pressing Ready and the first counted beat.
 ///

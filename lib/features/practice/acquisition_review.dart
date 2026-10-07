@@ -66,10 +66,8 @@ class AcquisitionReview extends StatelessWidget {
               const Spacer(),
               if (upcoming != null) ...[
                 ReviewArrival(
-                  delay: reviewArrivalDelay(
-                    ReviewPart.continuation,
-                    hasMeaning: false,
-                  ),
+                  part: ReviewPart.continuation,
+                  hasProgress: false,
                   child: NextExercise(upcoming),
                 ),
                 const SizedBox(height: 32),

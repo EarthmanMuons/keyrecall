@@ -7,6 +7,7 @@ import '../../layout.dart';
 import 'goal_progress_screen.dart';
 import 'practice_focus.dart';
 import 'practice_providers.dart';
+import 'goal_progress_providers.dart';
 
 /// What this learner is working toward, and how much of it they have covered.
 ///

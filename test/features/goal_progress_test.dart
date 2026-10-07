@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/goal_progress.dart';
 import 'package:keyrecall/features/practice/goal_progress_screen.dart';
+import 'package:keyrecall/features/practice/goal_feedback.dart';
 
 void main() {
   final catalog = <TechnicalMaterial>[

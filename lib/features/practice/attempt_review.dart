@@ -15,9 +15,9 @@ import 'attempt_feedback.dart';
 import 'attempt_summary_help.dart';
 import 'exercise_presentation.dart';
 import 'goal_progress.dart';
-import 'goal_progress_screen.dart';
 import 'presentation_exposure.dart';
 import 'timing_shortfall.dart';
+import 'goal_feedback.dart';
 
 /// Why the scheduler chose what it chose, when it can be said honestly.
 ///
@@ -250,30 +250,43 @@ ChallengeDirection challengeDirectionOf(ChallengeBypass? bypass) =>
     };
 
 /// The parts of a review that arrive after the screen itself does.
-enum ReviewPart { meaning, continuation }
+enum ReviewPart { progress, continuation }
 
 /// How long after the screen [part] starts to arrive.
 ///
-/// Compact when there is nothing to mean, so an ordinary review is barely
+/// Compact when there is no progress card, so an ordinary review is barely
 /// slower than one with no entrance at all.
-Duration reviewArrivalDelay(ReviewPart part, {required bool hasMeaning}) =>
+Duration reviewArrivalDelay(ReviewPart part, {required bool hasProgress}) =>
     switch (part) {
-      ReviewPart.meaning => const Duration(milliseconds: 160),
+      ReviewPart.progress => const Duration(milliseconds: 160),
       ReviewPart.continuation =>
-        hasMeaning
+        hasProgress
             ? const Duration(milliseconds: 320)
             : const Duration(milliseconds: 100),
     };
 
-/// A part of a review rising into place after [delay], or simply there under
-/// reduced motion.
+/// How long after the screen [part] has finished arriving.
+Duration reviewArrivalEnd(ReviewPart part, {required bool hasProgress}) =>
+    reviewArrivalDelay(part, hasProgress: hasProgress) + attemptTransition;
+
+/// A part of a review rising into place on its [reviewArrivalDelay], or simply
+/// there under reduced motion.
 ///
 /// The same widgets either way, so a change of preference never remounts what
 /// is inside, and an exposure it already reported stays reported.
 class ReviewArrival extends StatefulWidget {
-  const ReviewArrival({required this.delay, required this.child, super.key});
+  const ReviewArrival({
+    required this.part,
+    required this.hasProgress,
+    required this.child,
+    super.key,
+  });
 
-  final Duration delay;
+  final ReviewPart part;
+
+  /// Whether the review has a progress card, which spaces the parts out.
+  final bool hasProgress;
+
   final Widget child;
 
   @override
@@ -285,17 +298,26 @@ class _ReviewArrivalState extends State<ReviewArrival>
   static const double _rise = 12;
 
   late final AnimationController _controller;
-  late final Animation<double> _arrival;
+
+  /// How far in the part has come, from nothing to in place.
+  late final Animation<double> _entrance;
 
   @override
   void initState() {
     super.initState();
-    final total = widget.delay + attemptTransition;
+    final delay = reviewArrivalDelay(
+      widget.part,
+      hasProgress: widget.hasProgress,
+    );
+    final total = reviewArrivalEnd(
+      widget.part,
+      hasProgress: widget.hasProgress,
+    );
     _controller = AnimationController(vsync: this, duration: total)..forward();
-    _arrival = CurvedAnimation(
+    _entrance = CurvedAnimation(
       parent: _controller,
       curve: Interval(
-        widget.delay.inMicroseconds / total.inMicroseconds,
+        delay.inMicroseconds / total.inMicroseconds,
         1,
         curve: attemptCurve,
       ),
@@ -310,15 +332,15 @@ class _ReviewArrivalState extends State<ReviewArrival>
 
   @override
   Widget build(BuildContext context) {
-    final arrival = Motion.of(context).reduced
+    final entrance = Motion.of(context).reduced
         ? kAlwaysCompleteAnimation
-        : _arrival;
+        : _entrance;
     return FadeTransition(
-      opacity: arrival,
+      opacity: entrance,
       child: AnimatedBuilder(
-        animation: arrival,
+        animation: entrance,
         builder: (context, child) => Transform.translate(
-          offset: Offset(0, _rise * (1 - arrival.value)),
+          offset: Offset(0, _rise * (1 - entrance.value)),
           child: child,
         ),
         child: widget.child,
@@ -589,10 +611,8 @@ class AttemptReview extends StatelessWidget {
                       if (progress != null) ...[
                         const SizedBox(height: 24),
                         ReviewArrival(
-                          delay: reviewArrivalDelay(
-                            ReviewPart.meaning,
-                            hasMeaning: true,
-                          ),
+                          part: ReviewPart.progress,
+                          hasProgress: true,
                           child: _Exposed(
                             report: ReviewExposure(
                               PostAttemptFeedback.none,
@@ -613,10 +633,8 @@ class AttemptReview extends StatelessWidget {
                       const Spacer(),
                       if (upcoming != null) ...[
                         ReviewArrival(
-                          delay: reviewArrivalDelay(
-                            ReviewPart.continuation,
-                            hasMeaning: progress != null,
-                          ),
+                          part: ReviewPart.continuation,
+                          hasProgress: progress != null,
                           child: NextExercise(upcoming),
                         ),
                         const SizedBox(height: 32),
@@ -818,20 +836,20 @@ class _Sparkle extends StatefulWidget {
 
 class _SparkleState extends State<_Sparkle>
     with SingleTickerProviderStateMixin {
-  static const Duration _turn = Duration(milliseconds: 720);
+  static const Duration _turnLength = Duration(milliseconds: 720);
 
   late final AnimationController _controller;
-  late final Animation<double> _arrival;
+
+  /// How far round the mark has turned, starting once its card is in place.
+  late final Animation<double> _turn;
 
   @override
   void initState() {
     super.initState();
-    final delay =
-        reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true) +
-        attemptTransition;
-    final total = delay + _turn;
+    final delay = reviewArrivalEnd(ReviewPart.progress, hasProgress: true);
+    final total = delay + _turnLength;
     _controller = AnimationController(vsync: this, duration: total)..forward();
-    _arrival = CurvedAnimation(
+    _turn = CurvedAnimation(
       parent: _controller,
       curve: Interval(
         delay.inMicroseconds / total.inMicroseconds,
@@ -849,13 +867,11 @@ class _SparkleState extends State<_Sparkle>
 
   @override
   Widget build(BuildContext context) {
-    final arrival = Motion.of(context).reduced
-        ? kAlwaysCompleteAnimation
-        : _arrival;
+    final turn = Motion.of(context).reduced ? kAlwaysCompleteAnimation : _turn;
     return RotationTransition(
-      turns: Tween(begin: -0.5, end: 0.0).animate(arrival),
+      turns: Tween(begin: -0.5, end: 0.0).animate(turn),
       child: ScaleTransition(
-        scale: Tween(begin: 0.4, end: 1.0).animate(arrival),
+        scale: Tween(begin: 0.4, end: 1.0).animate(turn),
         child: Icon(Icons.auto_awesome, size: 16, color: widget.color),
       ),
     );

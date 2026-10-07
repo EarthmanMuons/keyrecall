@@ -5,7 +5,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/practice/goal_progress.dart';
-import 'package:keyrecall/features/practice/goal_progress_screen.dart';
+import 'package:keyrecall/features/practice/goal_feedback.dart';
 
 void main() {
   final cMajor = ScaleMaterial('C', ScaleForm.major);

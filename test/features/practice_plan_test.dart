@@ -12,7 +12,6 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/focus_sheet.dart';
-import 'package:keyrecall/features/practice/goal_progress_screen.dart';
 import 'package:keyrecall/features/practice/loop_failure.dart';
 import 'package:keyrecall/features/practice/practice_failure.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,6 +22,8 @@ import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/profile_color.dart';
 
 import '../support/scheduler_override.dart';
+
+import 'package:keyrecall/features/practice/goal_progress_providers.dart';
 
 final _catalog = <TechnicalMaterial>[
   ScaleMaterial('C', ScaleForm.major),
