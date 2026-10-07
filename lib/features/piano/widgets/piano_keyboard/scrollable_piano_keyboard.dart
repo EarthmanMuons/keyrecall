@@ -287,7 +287,7 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
       return;
     }
 
-    _centerNow();
+    _frameNow();
   }
 
   void _retry(int retries) {
@@ -299,7 +299,13 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
 
   Set<int> get _focusNotes => widget.highlightedNoteNumbers;
 
-  void _centerNow() {
+  void _centerNow() => _scrollToTarget(_centerTarget);
+
+  /// Frames new material even while notes from the previous material are
+  /// still sounding, which would otherwise hold the view on them.
+  void _frameNow() => _scrollToTarget(_frameTarget);
+
+  void _scrollToTarget(double Function(KeyboardViewport) targetFor) {
     if (!mounted) return;
     _lastUserScroll = DateTime.fromMillisecondsSinceEpoch(
       0,
@@ -308,18 +314,21 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
     final viewport = _viewport();
     if (viewport == null) return;
 
-    unawaited(_animateTo(_centerTarget(viewport)));
+    unawaited(_animateTo(targetFor(viewport)));
   }
 
   /// Where recentering scrolls to: the sounding notes, or the exercise while
   /// nothing is sounding.
   double _centerTarget(KeyboardViewport viewport) => _focusNotes.isEmpty
-      ? PianoScrollPolicy.frameTarget(
-          viewport,
-          frame: widget.frameNoteNumbers,
-          anchors: widget.anchorNoteNumbers,
-        )
+      ? _frameTarget(viewport)
       : PianoScrollPolicy.centerTarget(viewport, _focusNotes);
+
+  double _frameTarget(KeyboardViewport viewport) =>
+      PianoScrollPolicy.frameTarget(
+        viewport,
+        frame: widget.frameNoteNumbers,
+        anchors: widget.anchorNoteNumbers,
+      );
 
   /// Whether recentering from [viewport] would move less than [_animateTo]
   /// bothers to.
@@ -389,7 +398,7 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
     if (!setEquals(oldWidget.frameNoteNumbers, widget.frameNoteNumbers) ||
         !setEquals(oldWidget.anchorNoteNumbers, widget.anchorNoteNumbers)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _centerNow();
+        if (mounted) _frameNow();
       });
     }
 

@@ -39,11 +39,12 @@ in and takes changes back through callbacks (`onWidthScaleChanged`,
 `onResetSize`, `onHeightChanged`, `onReset`), since KeyRecall stores the size
 per profile. The scrollable keyboard also has no idle recentering, takes caller
 decorations in place of the middle-C marker, and rests on `frameNoteNumbers`,
-keeping `anchorNoteNumbers` in view, recentering whenever either changes or the
-visible key count does. Zoom is continuous rather than stepped by whole keys and
-holds the point under the pinch in place, and recenter is disabled where it
-would not move. The resize handle adds slider increase and decrease actions, so
-assistive technology can adjust it without dragging.
+keeping `anchorNoteNumbers` in view, reframing on mount and whenever either
+changes, even over notes still sounding, and recentering when the visible key
+count does. Zoom is continuous rather than stepped by whole keys and holds the
+point under the pinch in place, and recenter is disabled where it would not
+move. The resize handle adds slider increase and decrease actions, so assistive
+technology can adjust it without dragging.
 
 `piano.dart` is a KeyRecall barrel and is not vendored.
 
