@@ -26,6 +26,7 @@ import 'package:keyrecall/features/practice/screen_wake_lock.dart';
 import 'package:keyrecall/features/practice/staff_cue.dart';
 import 'package:keyrecall/features/practice/presentation_policy.dart';
 import 'package:keyrecall/features/practice/staff_score.dart';
+import 'package:keyrecall/motion.dart';
 
 import '../support/synthetic_instrument.dart';
 

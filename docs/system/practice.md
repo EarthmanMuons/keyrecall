@@ -336,6 +336,12 @@ names the target and the new count, or says the goal or focus is complete, and
 replaces the realization milestones for that review. After Continue, the bar's
 count rises from the old value to the new one.
 
+The review arrives in order: the outcome with the screen, then progress when
+there is any, then what comes next, while Continue works from the start. A next
+exercise the scheduler made harder on the strength of what was demonstrated is
+emphasized; support and ordinary admissions read the same, calmly. Under reduced
+motion everything arrives together and nothing moves.
+
 What the review actually showed is recorded in the feedback exposure stream; see
 [`history.md`](history.md).
 

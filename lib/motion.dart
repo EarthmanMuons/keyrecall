@@ -1,5 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 
+/// How long the practice screens take to hand over from one state to the
+/// next, and how they move while they do.
+///
+/// One duration and one curve for every part of it. The statement leaving the
+/// screen, the bar's controls giving up their width, and the task arriving in
+/// their place are one movement, and they only read as one if they are timed
+/// as one.
+const Duration attemptTransition = Duration(milliseconds: 280);
+const Curve attemptCurve = Curves.easeInOutCubic;
+
 /// Whether the platform has asked for reduced motion, and what that allows.
 ///
 /// Reduced motion keeps pacing and fades but drops movement: anything that

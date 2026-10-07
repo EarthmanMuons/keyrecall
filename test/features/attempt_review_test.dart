@@ -174,6 +174,63 @@ void main() {
     });
   });
 
+  group('which way the next exercise moves the challenge', () {
+    test('what was demonstrated earning a harder version advances', () {
+      for (final bypass in [
+        ChallengeBypass.consolidation,
+        ChallengeBypass.executionProgression,
+        ChallengeBypass.guidanceProbe,
+        ChallengeBypass.tempoProbe,
+        ChallengeBypass.pulseWithdrawal,
+        ChallengeBypass.acquisitionProbe,
+      ]) {
+        expect(
+          challengeDirectionOf(bypass),
+          ChallengeDirection.advance,
+          reason: '$bypass',
+        );
+      }
+    });
+
+    test('stepping back is support, not a demerit', () {
+      for (final bypass in [
+        ChallengeBypass.recovery,
+        ChallengeBypass.pulseSupport,
+        ChallengeBypass.acquisitionFloor,
+      ]) {
+        expect(
+          challengeDirectionOf(bypass),
+          ChallengeDirection.support,
+          reason: '$bypass',
+        );
+      }
+    });
+
+    test('new material and ordinary admissions are neutral', () {
+      expect(
+        challengeDirectionOf(ChallengeBypass.newMaterial),
+        ChallengeDirection.neutral,
+      );
+      expect(challengeDirectionOf(null), ChallengeDirection.neutral);
+    });
+  });
+
+  group('how a review arrives', () {
+    test('an ordinary review keeps what comes next close behind', () {
+      expect(
+        reviewArrivalDelay(ReviewPart.continuation, hasMeaning: false),
+        lessThan(reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true)),
+      );
+    });
+
+    test('progress arrives before what comes next', () {
+      expect(
+        reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true),
+        lessThan(reviewArrivalDelay(ReviewPart.continuation, hasMeaning: true)),
+      );
+    });
+  });
+
   group('an attempt nothing was played in', () {
     final silent = AttemptRecord(
       journalSequence: 0,

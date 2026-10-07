@@ -5,6 +5,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import '../../motion.dart';
 import '../input/input.dart';
 import 'attempt_detail_trace.dart';
 import 'attempt_details_sheet.dart';
@@ -210,7 +211,174 @@ class NextPracticePreview {
   /// Why it is different, where anything honest can be said.
   final String? explanation;
 
-  const NextPracticePreview({required this.material, this.explanation});
+  /// Which way the scheduler moved the challenge to get here.
+  final ChallengeDirection direction;
+
+  const NextPracticePreview({
+    required this.material,
+    this.explanation,
+    this.direction = ChallengeDirection.neutral,
+  });
+}
+
+/// Which way a scheduler decision moved the challenge.
+///
+/// Advance is the one a review emphasizes: something demonstrated earned a
+/// harder version. Support is calm rather than marked down, because stepping
+/// back is not a failure.
+enum ChallengeDirection { advance, support, neutral }
+
+ChallengeDirection challengeDirectionOf(ChallengeBypass? bypass) =>
+    switch (bypass) {
+      ChallengeBypass.consolidation ||
+      ChallengeBypass.executionProgression ||
+      ChallengeBypass.guidanceProbe ||
+      ChallengeBypass.bootstrapProbe ||
+      ChallengeBypass.observationProbe ||
+      ChallengeBypass.tempoProbe ||
+      ChallengeBypass.pulseWithdrawal ||
+      ChallengeBypass.acquisitionProbe => ChallengeDirection.advance,
+      ChallengeBypass.recovery ||
+      ChallengeBypass.pulseSupport ||
+      ChallengeBypass.acquisitionFloor => ChallengeDirection.support,
+      ChallengeBypass.newMaterial ||
+      ChallengeBypass.override ||
+      null => ChallengeDirection.neutral,
+    };
+
+/// The parts of a review that arrive after the screen itself does.
+enum ReviewPart { meaning, continuation }
+
+/// How long after the screen [part] starts to arrive.
+///
+/// Compact when there is nothing to mean, so an ordinary review is barely
+/// slower than one with no entrance at all.
+Duration reviewArrivalDelay(ReviewPart part, {required bool hasMeaning}) =>
+    switch (part) {
+      ReviewPart.meaning => const Duration(milliseconds: 160),
+      ReviewPart.continuation =>
+        hasMeaning
+            ? const Duration(milliseconds: 320)
+            : const Duration(milliseconds: 100),
+    };
+
+/// A part of a review rising into place after [delay], or simply there under
+/// reduced motion.
+class ReviewArrival extends StatefulWidget {
+  const ReviewArrival({required this.delay, required this.child, super.key});
+
+  final Duration delay;
+  final Widget child;
+
+  @override
+  State<ReviewArrival> createState() => _ReviewArrivalState();
+}
+
+class _ReviewArrivalState extends State<ReviewArrival>
+    with SingleTickerProviderStateMixin {
+  static const double _rise = 12;
+
+  late final AnimationController _controller;
+  late final Animation<double> _arrival;
+
+  @override
+  void initState() {
+    super.initState();
+    final total = widget.delay + attemptTransition;
+    _controller = AnimationController(vsync: this, duration: total)..forward();
+    _arrival = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(
+        widget.delay.inMicroseconds / total.inMicroseconds,
+        1,
+        curve: attemptCurve,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Motion.of(context).reduced) return widget.child;
+    return FadeTransition(
+      opacity: _arrival,
+      child: AnimatedBuilder(
+        animation: _arrival,
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, _rise * (1 - _arrival.value)),
+          child: child,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// What comes next, under the review's Continue button.
+class NextExercise extends StatelessWidget {
+  const NextExercise(this.upcoming, {super.key});
+
+  final NextPracticePreview upcoming;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final advances = upcoming.direction == ChallengeDirection.advance;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Next exercise',
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          materialName(upcoming.material),
+          style: theme.textTheme.titleLarge,
+          textAlign: TextAlign.center,
+        ),
+        if (upcoming.explanation case final explanation?) ...[
+          const SizedBox(height: 4),
+          Text.rich(
+            TextSpan(
+              children: [
+                if (advances)
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.trending_up,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                TextSpan(text: explanation),
+              ],
+            ),
+            style: advances
+                ? theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  )
+                : theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 /// One part of a review, and what the feedback log calls it.
@@ -233,8 +401,8 @@ class ReviewExposure {
 ///
 /// Shown between attempts, over a decision that has already been made: the
 /// scheduler runs while this is being read, so continuing is instant rather
-/// than being the moment the work starts. Nothing on this screen is waited on
-/// and nothing animates in.
+/// than being the moment the work starts. Nothing on this screen is waited on:
+/// what arrives after the outcome does so while Continue already works.
 class AttemptReview extends StatelessWidget {
   const AttemptReview({
     required this.record,
@@ -311,7 +479,6 @@ class AttemptReview extends StatelessWidget {
     final progress = covering == null
         ? progressStatementFor(record, progressEvents)
         : coverageStatement(covering);
-    final reason = upcoming?.explanation;
 
     final silence = nothingWasPlayed(record.closure)
         ? _Silence.of(instrument)
@@ -413,47 +580,37 @@ class AttemptReview extends StatelessWidget {
                       ],
                       if (progress != null) ...[
                         const SizedBox(height: 24),
-                        _Exposed(
-                          report: ReviewExposure(
-                            PostAttemptFeedback.none,
-                            progress: progressEvents,
+                        ReviewArrival(
+                          delay: reviewArrivalDelay(
+                            ReviewPart.meaning,
+                            hasMeaning: true,
                           ),
-                          onExposed: onExposed,
-                          attempt: record.identity.attemptId,
-                          child: _ProgressStatement(
-                            progress,
-                            heading: covering == null
-                                ? 'Progress'
-                                : coverageHeading(covering),
+                          child: _Exposed(
+                            report: ReviewExposure(
+                              PostAttemptFeedback.none,
+                              progress: progressEvents,
+                            ),
+                            onExposed: onExposed,
+                            attempt: record.identity.attemptId,
+                            child: _ProgressStatement(
+                              progress,
+                              heading: covering == null
+                                  ? 'Progress'
+                                  : coverageHeading(covering),
+                            ),
                           ),
                         ),
                       ],
                       const SizedBox(height: 40),
                       const Spacer(),
                       if (upcoming != null) ...[
-                        Text(
-                          'Next exercise',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        ReviewArrival(
+                          delay: reviewArrivalDelay(
+                            ReviewPart.continuation,
+                            hasMeaning: progress != null,
                           ),
-                          textAlign: TextAlign.center,
+                          child: NextExercise(upcoming),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          materialName(upcoming.material),
-                          style: theme.textTheme.titleLarge,
-                          textAlign: TextAlign.center,
-                        ),
-                        if (reason != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            reason,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
                         const SizedBox(height: 32),
                       ],
                       SizedBox(
@@ -614,11 +771,7 @@ class _ProgressStatement extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.auto_awesome,
-                    size: 16,
-                    color: colors.onPrimaryContainer,
-                  ),
+                  _Sparkle(color: colors.onPrimaryContainer),
                   const SizedBox(width: 6),
                   Text(
                     heading.toUpperCase(),
@@ -640,6 +793,61 @@ class _ProgressStatement extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The progress mark, turning once into place as its card arrives.
+class _Sparkle extends StatefulWidget {
+  const _Sparkle({required this.color});
+
+  final Color color;
+
+  @override
+  State<_Sparkle> createState() => _SparkleState();
+}
+
+class _SparkleState extends State<_Sparkle>
+    with SingleTickerProviderStateMixin {
+  static const Duration _turn = Duration(milliseconds: 480);
+
+  late final AnimationController _controller;
+  late final Animation<double> _arrival;
+
+  @override
+  void initState() {
+    super.initState();
+    final delay =
+        reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true) +
+        attemptTransition ~/ 2;
+    final total = delay + _turn;
+    _controller = AnimationController(vsync: this, duration: total)..forward();
+    _arrival = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(
+        delay.inMicroseconds / total.inMicroseconds,
+        1,
+        curve: Curves.easeOutBack,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(Icons.auto_awesome, size: 16, color: widget.color);
+    if (Motion.of(context).reduced) return icon;
+    return RotationTransition(
+      turns: Tween(begin: -0.25, end: 0.0).animate(_arrival),
+      child: ScaleTransition(
+        scale: Tween(begin: 0.4, end: 1.0).animate(_arrival),
+        child: icon,
       ),
     );
   }

@@ -47,16 +47,6 @@ import 'screen_wake_lock.dart';
 import 'staff_cue.dart';
 import 'task_help.dart';
 
-/// How long the screen takes to hand the task over to the bar, and how it
-/// moves while it does.
-///
-/// One duration and one curve for every part of it. The statement leaving the
-/// screen, the bar's controls giving up their width, and the task arriving in
-/// their place are one movement, and they only read as one if they are timed
-/// as one.
-const Duration attemptTransition = Duration(milliseconds: 280);
-const Curve attemptCurve = Curves.easeInOutCubic;
-
 /// The pause between pressing Ready and the first counted beat.
 ///
 /// The transition, and a moment on the other side of it. The count-in is the
@@ -132,6 +122,9 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     if (state.presented case final presented?) {
       return NextPracticePreview(
         material: presented.exercise.material,
+        direction: challengeDirectionOf(
+          presented.decision.decision.challengeBypass,
+        ),
         explanation: after == null
             ? (presented.decision.decision.challengeBypass ==
                       ChallengeBypass.acquisitionProbe

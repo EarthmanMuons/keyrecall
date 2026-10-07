@@ -65,29 +65,13 @@ class AcquisitionReview extends StatelessWidget {
               ),
               const Spacer(),
               if (upcoming != null) ...[
-                Text(
-                  'Next exercise',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                ReviewArrival(
+                  delay: reviewArrivalDelay(
+                    ReviewPart.continuation,
+                    hasMeaning: false,
                   ),
-                  textAlign: TextAlign.center,
+                  child: NextExercise(upcoming),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  materialName(upcoming.material),
-                  style: theme.textTheme.titleLarge,
-                  textAlign: TextAlign.center,
-                ),
-                if (upcoming.explanation case final explanation?) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    explanation,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
                 const SizedBox(height: 32),
               ],
               SizedBox(
