@@ -25,6 +25,7 @@ import 'acquisition_review.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
 import 'cue_semantics.dart';
+import 'goal_progress.dart';
 import 'goal_progress_screen.dart';
 import 'developer_screen.dart';
 import 'exercise_presentation.dart';
@@ -118,6 +119,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// The supported attempt whose transition has been dismissed.
   String? _acquisitionReviewed;
 
+  /// The goal count before the attempt just reviewed covered something, which
+  /// the bar counts up from when it comes back.
+  int? _countFrom;
+
   /// What the loop has decided next, as a transition can describe it.
   ///
   /// The scheduler decides ordinary work and supported work alike, so this
@@ -169,6 +174,15 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
       final history = loop.value!.session.journal.records;
+      final coverage = switch (ref.watch(goalTargetsProvider)) {
+        final targets? => coverageProgressFor(
+          committed,
+          history: history,
+          targets: targets,
+          focused: loop.value!.plan.focus?.isExclusive ?? false,
+        ),
+        null => null,
+      };
       return Scaffold(
         key: ValueKey(('review', committed.identity.attemptId)),
         // The review is still about the attempt that just ran, so the bar
@@ -183,6 +197,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           instrument: ref.watch(instrumentReadinessProvider),
           reading: loop.value?.lastReading,
           timingShortfall: loop.value?.lastTimingShortfall,
+          coverage: coverage,
           next: _upNext(loop.value!, committed),
           continues: loop.value?.acquisition != null,
           onExposed: (exposure) => notifier.recordFeedbackExposure(
@@ -190,8 +205,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
             postAttemptFeedback: exposure.feedback,
             progress: exposure.progress,
           ),
-          onNext: () =>
-              setState(() => _reviewed = committed.identity.attemptId),
+          onNext: () => setState(() {
+            _reviewed = committed.identity.attemptId;
+            _countFrom = coverage?.coveredBefore;
+          }),
         ),
       );
     }
@@ -234,7 +251,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         menu: const _PracticeActions(folded: true),
         onFinish: (completion) =>
             notifier.finishAcquisition(completion, attempt: attempt!),
-        onUnderWay: () => setState(() => _playing = attemptId),
+        onUnderWay: () => setState(() {
+          _playing = attemptId;
+          _countFrom = null;
+        }),
         onBackToReady: () => setState(() => _playing = null),
       ),
       AsyncData(:final value) when value.exercise != null => AttemptView(
@@ -254,7 +274,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
             notifier.finish(completion, attempt: attempt!),
         onDecline: (completion) =>
             notifier.decline(completion, attempt: attempt!),
-        onUnderWay: () => setState(() => _playing = attemptId),
+        onUnderWay: () => setState(() {
+          _playing = attemptId;
+          _countFrom = null;
+        }),
         onBackToReady: () => setState(() => _playing = null),
       ),
       AsyncData(:final value) => _NothingToPlay(state: value),
@@ -272,6 +295,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       appBar: Layout.of(context).isShort && presenting is AttemptView
           ? null
           : _PracticeAppBar(
+              countFrom: _countFrom,
               running: _playing == null
                   ? null
                   : loop.value?.exercise ??
@@ -340,7 +364,7 @@ class _Described extends StatelessWidget {
 /// notes are not arriving. Everything that is a setting goes behind the menu,
 /// which is where the settings this app has yet to grow will go too.
 class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _PracticeAppBar({this.running, this.showsTempo = true});
+  const _PracticeAppBar({this.running, this.showsTempo = true, this.countFrom});
 
   /// The attempt under way, whose task the bar carries instead of the app's
   /// name and its controls.
@@ -348,6 +372,9 @@ class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Whether a tempo was asked for at all.
   final bool showsTempo;
+
+  /// The goal count to rise from, after a review that raised it.
+  final int? countFrom;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -410,7 +437,7 @@ class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
             curve: const Interval(0.35, 1),
             builder: (context, arrival, child) =>
                 Opacity(opacity: arrival, child: child),
-            child: const _PracticeActions(),
+            child: _PracticeActions(countFrom: countFrom),
           ),
       ],
     );
@@ -421,9 +448,10 @@ class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
 ///
 /// Folded, they are one menu, for a window with no bar to hold them.
 class _PracticeActions extends ConsumerWidget {
-  const _PracticeActions({this.folded = false});
+  const _PracticeActions({this.folded = false, this.countFrom});
 
   final bool folded;
+  final int? countFrom;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -436,7 +464,7 @@ class _PracticeActions extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _GoalProgressButton(),
+        _GoalProgressButton(countFrom: countFrom),
         // First of the controls, because it is the only one of them about
         // what is practiced rather than about the app around it.
         const _FocusButton(),
@@ -720,14 +748,44 @@ class _MenuButton extends ConsumerWidget {
 /// A count and nothing else. The practice screen is for practicing, so what is
 /// left is one tap away rather than laid out here, and where the goal has no
 /// finish line this takes no room at all.
-class _GoalProgressButton extends ConsumerWidget {
-  const _GoalProgressButton();
+class _GoalProgressButton extends ConsumerStatefulWidget {
+  const _GoalProgressButton({this.countFrom});
+
+  /// The count shown first, rising to the current one once the screen has
+  /// settled.
+  final int? countFrom;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GoalProgressButton> createState() =>
+      _GoalProgressButtonState();
+}
+
+class _GoalProgressButtonState extends ConsumerState<_GoalProgressButton> {
+  int? _shown;
+  Timer? _rise;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.countFrom case final from?) {
+      _shown = from;
+      _rise = Timer(attemptTransition * 2, () => setState(() => _shown = null));
+    }
+  }
+
+  @override
+  void dispose() {
+    _rise?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final progress = ref.watch(goalProgressProvider);
     final plan = ref.watch(practiceLoopProvider).value?.plan;
     if (progress == null || plan == null) return const SizedBox.shrink();
+    final count = _shown ?? progress.covered;
+    final reduced = Motion.of(context).reduced;
     return TextButton.icon(
       onPressed: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -735,11 +793,33 @@ class _GoalProgressButton extends ConsumerWidget {
         ),
       ),
       icon: const Icon(Icons.flag_outlined, size: 18),
-      label: Text(
-        '${progress.covered}/${progress.total}',
-        semanticsLabel:
+      label: Semantics(
+        label:
             '${coverageScopeName(plan)}, ${progress.covered} of '
             '${progress.total} demonstrated',
+        excludeSemantics: true,
+        child: AnimatedSwitcher(
+          duration: attemptTransition,
+          switchInCurve: attemptCurve,
+          switchOutCurve: attemptCurve,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: reduced
+                ? child
+                : SlideTransition(
+                    // Up and out, and up from below in its place.
+                    position: Tween(
+                      begin: Offset(
+                        0,
+                        child.key == ValueKey(count) ? 0.5 : -0.5,
+                      ),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+          ),
+          child: Text('$count/${progress.total}', key: ValueKey(count)),
+        ),
       ),
     );
   }

@@ -43,7 +43,13 @@ enum ProgressFeedback {
 enum ProgressEventKind {
   firstCleanCompletion('FIRST_CLEAN_COMPLETION'),
   firstIndependentCompletion('FIRST_INDEPENDENT_COMPLETION'),
-  repeatedReliability('REPEATED_RELIABILITY');
+  repeatedReliability('REPEATED_RELIABILITY'),
+
+  /// A goal or focus target demonstrated for the first time.
+  targetCovered('TARGET_COVERED'),
+
+  /// The last of a goal's or focus's targets demonstrated.
+  scopeCovered('SCOPE_COVERED');
 
   const ProgressEventKind(this.id);
 

@@ -148,6 +148,8 @@ String? progressStatementFor(
       'First time through from memory$at.',
     ProgressEventKind.repeatedReliability =>
       'Clean on your last three attempts here.',
+    // Said by the coverage statement, which has the targets to name.
+    ProgressEventKind.targetCovered || ProgressEventKind.scopeCovered => null,
   };
 }
 

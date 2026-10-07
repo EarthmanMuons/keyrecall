@@ -13,6 +13,8 @@ import 'attempt_evidence.dart';
 import 'attempt_feedback.dart';
 import 'attempt_summary_help.dart';
 import 'exercise_presentation.dart';
+import 'goal_progress.dart';
+import 'goal_progress_screen.dart';
 import 'presentation_exposure.dart';
 import 'timing_shortfall.dart';
 
@@ -243,6 +245,7 @@ class AttemptReview extends StatelessWidget {
     this.continues = false,
     this.reading,
     this.timingShortfall,
+    this.coverage,
     this.onExposed,
     super.key,
   });
@@ -265,6 +268,10 @@ class AttemptReview extends StatelessWidget {
 
   /// Attempts available when deriving longitudinal progress evidence.
   final Iterable<AttemptRecord> history;
+
+  /// Goal targets this attempt covered, which take the place of what
+  /// [history] would otherwise say.
+  final CoverageProgress? coverage;
 
   /// Dismisses this and puts the next exercise on screen.
   final VoidCallback onNext;
@@ -298,8 +305,12 @@ class AttemptReview extends StatelessWidget {
       Measured(:final outcome) => AttemptEvidence.of(record.exercise, outcome),
       MeasurementUnavailable() => null,
     };
-    final progressEvents = progressEventsFor(record, history: history);
-    final progress = progressStatementFor(record, progressEvents);
+    final covering = coverage;
+    final progressEvents =
+        covering?.events ?? progressEventsFor(record, history: history);
+    final progress = covering == null
+        ? progressStatementFor(record, progressEvents)
+        : coverageStatement(covering);
     final reason = upcoming?.explanation;
 
     final silence = nothingWasPlayed(record.closure)
@@ -409,7 +420,12 @@ class AttemptReview extends StatelessWidget {
                           ),
                           onExposed: onExposed,
                           attempt: record.identity.attemptId,
-                          child: _ProgressStatement(progress),
+                          child: _ProgressStatement(
+                            progress,
+                            heading: covering == null
+                                ? 'Progress'
+                                : coverageHeading(covering),
+                          ),
                         ),
                       ],
                       const SizedBox(height: 40),
@@ -575,15 +591,15 @@ class _SilenceHelp extends StatelessWidget {
 /// stays factual and the container carries the emphasis, which keeps a
 /// measurement from reading as a reward.
 class _ProgressStatement extends StatelessWidget {
-  const _ProgressStatement(this.statement);
+  const _ProgressStatement(this.statement, {required this.heading});
 
   final String statement;
+  final String heading;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    const heading = 'Progress';
     return Semantics(
       label: '$heading. $statement',
       child: ExcludeSemantics(

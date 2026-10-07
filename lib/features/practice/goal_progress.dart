@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+
+import 'attempt_feedback.dart';
 
 /// One goal's targets, arranged the way the goal is shaped.
 ///
@@ -135,5 +138,69 @@ GoalProgress goalProgressOf(List<GoalTarget> targets, ScopeCoverage coverage) {
     fromMemory: targets.every(
       (target) => target.requirement.retrieval == CoverageRetrieval.unguided,
     ),
+  );
+}
+
+/// Targets one attempt demonstrated for the first time.
+@immutable
+class CoverageProgress {
+  /// What the attempt covered that nothing before it had.
+  final List<GoalTarget> newlyCovered;
+
+  /// Everything the scope asks for.
+  final List<GoalTarget> targets;
+
+  /// How many of [targets] are covered, counting this attempt.
+  final int covered;
+
+  /// Whether the scope is an exclusive focus rather than the whole goal.
+  final bool focused;
+
+  CoverageProgress({
+    required Iterable<GoalTarget> newlyCovered,
+    required Iterable<GoalTarget> targets,
+    required this.covered,
+    required this.focused,
+  }) : newlyCovered = List.unmodifiable(newlyCovered),
+       targets = List.unmodifiable(targets);
+
+  int get coveredBefore => covered - newlyCovered.length;
+
+  bool get completes => covered == targets.length;
+
+  List<ProgressEvent> get events => [
+    const ProgressEvent(ProgressEventKind.targetCovered),
+    if (completes) const ProgressEvent(ProgressEventKind.scopeCovered),
+  ];
+}
+
+/// What [current] covered of [targets] that no earlier record in [history]
+/// had, or null when it covered nothing new.
+CoverageProgress? coverageProgressFor(
+  AttemptRecord current, {
+  required Iterable<AttemptRecord> history,
+  required List<GoalTarget> targets,
+  required bool focused,
+}) {
+  final before = coverageOf(targets, [
+    for (final record in history)
+      if (record.journalSequence < current.journalSequence) record,
+  ]);
+  final newlyCovered = [
+    for (final target in targets)
+      if (!before.coveredTargetIds.contains(target.requirement.id) &&
+          assessRequirementAttempt(
+            requirement: target.requirement,
+            material: target.material,
+            record: current,
+          ).isCovered)
+        target,
+  ];
+  if (newlyCovered.isEmpty) return null;
+  return CoverageProgress(
+    newlyCovered: newlyCovered,
+    targets: targets,
+    covered: before.coveredTargets + newlyCovered.length,
+    focused: focused,
   );
 }

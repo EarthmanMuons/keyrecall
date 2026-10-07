@@ -329,6 +329,13 @@ when a run of clean attempts reaches three, and again whenever a new run does
 after an attempt that was not clean. Most reviews carry no progress statement.
 Coinciding events combine into one sentence rather than stacking notices.
 
+Where the active goal or exclusive focus has a finish line, **goal coverage**
+takes precedence: target covered when the attempt demonstrates a target no
+earlier record had, and scope covered when that was the last one. The statement
+names the target and the new count, or says the goal or focus is complete, and
+replaces the realization milestones for that review. After Continue, the bar's
+count rises from the old value to the new one.
+
 What the review actually showed is recorded in the feedback exposure stream; see
 [`history.md`](history.md).
 

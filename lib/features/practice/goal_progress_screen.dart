@@ -19,19 +19,27 @@ import 'practice_providers.dart';
 /// General technique has no finish line, so it has no progress here; the
 /// fluency report is what describes open-ended practice.
 final goalProgressProvider = Provider<GoalProgress?>((ref) {
+  final targets = ref.watch(goalTargetsProvider);
   final loop = ref.watch(practiceLoopProvider).value;
-  if (loop == null || !hasFinishLine(loop.plan)) return null;
+  if (targets == null || loop == null) return null;
+  return goalProgressOf(
+    targets,
+    coverageOf(targets, loop.session.journal.records),
+  );
+});
+
+/// What the active scope counts toward, or null where it has no finish line.
+final goalTargetsProvider = Provider<List<GoalTarget>?>((ref) {
+  final plan = ref.watch(
+    practiceLoopProvider.select((loop) => loop.value?.plan),
+  );
+  if (plan == null || !hasFinishLine(plan)) return null;
   final catalog = ref.watch(practiceCatalogProvider);
-  if (loop.plan.resolve(catalog) case ResolvedPlan(:final goal, :final focus)) {
-    final targets = PracticeScopeResolver().targetsOf(
+  if (plan.resolve(catalog) case ResolvedPlan(:final goal, :final focus)) {
+    return PracticeScopeResolver().targetsOf(
       goal: goal,
       focus: focus,
       catalog: catalog,
-    );
-    if (targets == null) return null;
-    return goalProgressOf(
-      targets,
-      coverageOf(targets, loop.session.journal.records),
     );
   }
   return null;
@@ -115,6 +123,53 @@ String progressExplanation(GoalProgress progress) =>
               'have played it the way the goal asks, recalling it yourself '
               'rather than following cues.'} '
     'Practice keeps coming back to it, and that never takes it away.';
+
+/// The heading over a review's coverage statement.
+String coverageHeading(CoverageProgress progress) =>
+    '${progress.focused ? 'Focus' : 'Goal'} '
+    '${progress.completes ? 'complete' : 'progress'}';
+
+/// What a review says about the targets an attempt covered.
+String coverageStatement(CoverageProgress progress) {
+  final first = progress.newlyCovered.first;
+  final name = coveredTargetName(first, progress.targets);
+  final total = progress.targets.length;
+  if (progress.completes) {
+    final memory = progress.targets.every(_fromMemory) ? ' from memory' : '';
+    final last = progress.newlyCovered.length == 1
+        ? ' The last was $name.'
+        : '';
+    return 'All $total demonstrated$memory.$last';
+  }
+  final memory = _fromMemory(first) ? ', from memory' : '';
+  final more = switch (progress.newlyCovered.length - 1) {
+    0 => '',
+    final others => ', and $others more',
+  };
+  return '$name$memory$more. ${progress.covered} of $total demonstrated.';
+}
+
+bool _fromMemory(GoalTarget target) =>
+    target.requirement.retrieval == CoverageRetrieval.unguided;
+
+/// A target named as much as it takes to tell it from the others its material
+/// has in [targets].
+String coveredTargetName(GoalTarget target, List<GoalTarget> targets) {
+  final material = materialName(target.material);
+  final siblings = [
+    for (final other in targets)
+      if (other.material == target.material) other.requirement.constraints,
+  ];
+  if (siblings.length == 1) return material;
+  final hands = [for (final constraints in siblings) constraints.hands];
+  final handsTellApart =
+      !hands.contains(null) && hands.toSet().length == hands.length;
+  final constraints = target.requirement.constraints;
+  final shape = handsTellApart
+      ? handsName(constraints.hands!)
+      : targetShapeName(constraints);
+  return '$material, ${shape[0].toLowerCase()}${shape.substring(1)}';
+}
 
 /// What a section is called: the family's plural, or its id for a family
 /// this build has no name for.
