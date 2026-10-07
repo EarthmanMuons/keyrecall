@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';

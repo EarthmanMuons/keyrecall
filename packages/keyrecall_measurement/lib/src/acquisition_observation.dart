@@ -1,5 +1,6 @@
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 import 'measurement_policy.dart';

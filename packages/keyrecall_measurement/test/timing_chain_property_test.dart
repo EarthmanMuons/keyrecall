@@ -653,17 +653,22 @@ void main() {
               (position - 1, position, waitMs),
           ],
         );
-        if (moments - 1 >= fewestWaitsForPace) {
+        // A clean traversal establishes exactly what the exercise's capacity
+        // promises, which is what lets the scheduler ask it in advance.
+        final capacity = TimingCapacity.of(exercise);
+        expect(capacity.waits, moments - 1);
+        expect(measurement.timing.hasPace, capacity.supportsPace);
+        expect(measurement.continuity != null, capacity.supportsContinuity);
+        expect(measurement.temporalStability != null, capacity.supportsSpread);
+        if (capacity.supportsPace) {
           expect(measurement.timing.paceMs, waitMs);
           expect(
             measurement.achievedTempoRatioFor(exercise.conditions),
             closeTo(60000 / bpm / waitMs, 1e-12),
           );
         }
-        if (moments - 1 >= fewestContiguousWaitsForContinuity) {
-          expect(measurement.continuity, 1);
-          expect(measurement.temporalStability, 1);
-        }
+        if (capacity.supportsContinuity) expect(measurement.continuity, 1);
+        if (capacity.supportsSpread) expect(measurement.temporalStability, 1);
         expect(
           measurement.handAsynchroniesMs,
           apart ? List.filled(moments, offsetMs) : isEmpty,

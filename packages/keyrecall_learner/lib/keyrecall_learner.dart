@@ -16,6 +16,7 @@ export 'src/model/memory_update_diagnostics.dart';
 export 'src/model/outcome.dart';
 export 'src/model/prediction.dart';
 export 'src/model/retained_consolidation.dart';
+export 'src/model/timing_capacity.dart';
 export 'src/params/learner_params.dart';
 export 'src/state/competency_state.dart';
 export 'src/state/learner_state.dart';

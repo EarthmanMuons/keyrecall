@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 import 'measurement_policy.dart';
@@ -21,27 +22,6 @@ typedef MomentGap = ({
   int gapMs,
   double? ratio,
 });
-
-/// The fewest waits a pace can be read from.
-///
-/// One wait is an interval, not a pace. Two supply no center either one
-/// cannot dominate. Three are the first that let a median set one of them
-/// aside.
-const int fewestWaitsForPace = 3;
-
-/// The fewest waits a spread can be read from.
-///
-/// Below this a single wait carries too much of the deviation for the result
-/// to describe the playing rather than that wait.
-const int fewestWaitsForSpread = 5;
-
-/// The fewest waits in one unbroken stretch a continuity claim needs.
-///
-/// Continuity is a claim about playing that did not stop, so it asks for a
-/// stretch that did not stop rather than for waits gathered from wherever they
-/// survived. Eight waits in one run and in four runs of two are the same
-/// arithmetic and not the same evidence, and only the first can support this.
-const int fewestContiguousWaitsForContinuity = 5;
 
 /// How the playing sat in time, and how much of that could be judged.
 ///

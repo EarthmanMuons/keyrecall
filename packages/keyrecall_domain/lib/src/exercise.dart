@@ -173,6 +173,17 @@ class Exercise {
     for (final opportunity in opportunities) opportunity.competency,
   });
 
+  /// How many transitions between consecutive moments one traversal plays.
+  ///
+  /// Every hand plays at every moment, so this is one fewer than the moments
+  /// [realize] produces, and the most waits any performance of it can supply.
+  late final int transitionCount =
+      handPathsFor(
+        conditions,
+        degreesPerOctave: material.topology.degreesPerOctave,
+      ).values.first.length -
+      1;
+
   @override
   bool operator ==(Object other) =>
       other is Exercise &&
