@@ -4,7 +4,7 @@
 # dependencies = ["fonttools>=4.50", "skia-pathops>=0.8"]
 # ///
 """
-Build the KeyRecall Symbols fonts from the vendored Bravura.
+Build the KeyRecall Symbols fonts from the Bravura bundled with crisp_notation.
 
     ./build-symbols.py            # write fonts/
 
@@ -19,9 +19,12 @@ Bravura ships one weight, so Bold is synthesized by stroking each outline.
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
+from urllib.request import url2pathname
 
 import pathops
 from fontTools.pens.boundsPen import BoundsPen
@@ -32,10 +35,7 @@ from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.tables._c_m_a_p import cmap_format_4, cmap_format_12
 
 ASSETS = Path(__file__).resolve().parent
-SOURCE = (
-    ASSETS.parent
-    / "third_party/crisp_notation/packages/crisp_notation/assets/fonts/Bravura.otf"
-)
+PACKAGE_CONFIG = ASSETS.parent / ".dart_tool/package_config.json"
 OUTPUT_DIR = ASSETS / "fonts"
 
 FAMILY = "KeyRecall Symbols"
@@ -227,8 +227,16 @@ def recompute_bounds(font: TTFont) -> None:
     font["CFF "].cff[font["CFF "].cff.fontNames[0]].FontBBox = box
 
 
+def bravura_source() -> Path:
+    """Bravura as bundled by the crisp_notation package that pub resolved."""
+    config = json.loads(PACKAGE_CONFIG.read_text())
+    package = next(p for p in config["packages"] if p["name"] == "crisp_notation")
+    root = urljoin(PACKAGE_CONFIG.as_uri(), package["rootUri"])
+    return Path(url2pathname(urlparse(root).path)) / "assets/fonts/Bravura.otf"
+
+
 def build(inst: Instance) -> Path:
-    font = TTFont(SOURCE)
+    font = TTFont(bravura_source())
     source_cmap = font.getBestCmap()
     targets = {target: source_cmap[source] for source, target in GLYPHS.items()}
 

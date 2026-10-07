@@ -9,24 +9,23 @@ cd "$temporary/repository"
 printf '[user]\nname = "Test"\nemail = "test@example.com"\n[signing]\nbehavior = "drop"\n' >"$temporary/jj.toml"
 export JJ_CONFIG="$temporary/jj.toml"
 jj git init --quiet
-vendor=third_party/crisp_notation/packages
-mkdir -p packages/{a,b,c,sim}/test packages/{a,b,bridge}/lib "$vendor/"{crisp_notation,crisp_notation_core}/{lib,test} lib test docs
-for directory in packages/{a,b,c,sim} "$vendor/"{crisp_notation,crisp_notation_core} .; do
+mkdir -p packages/{a,b,c,sim,notation,notation_core}/test packages/{a,b,bridge,notation,notation_core}/lib lib test docs
+for directory in packages/{a,b,c,sim,notation,notation_core} .; do
 	echo 'fixture' >"$directory/test/fixture_test.dart"
 done
 echo 'app fixture' >lib/app.dart
 echo 'package fixture' >packages/b/lib/existing.dart
-printf 'name: app\ndependencies:\n  flutter:\n    sdk: flutter\n  c: any\n  crisp_notation: any\n' >pubspec.yaml
+printf 'name: app\ndependencies:\n  flutter:\n    sdk: flutter\n  c: any\n  notation: any\n' >pubspec.yaml
 printf 'name: a\n' >packages/a/pubspec.yaml
 printf 'name: b\ndependencies:\n  bridge: any\n' >packages/b/pubspec.yaml
 printf 'name: bridge\ndependencies:\n  a: any\n' >packages/bridge/pubspec.yaml
 echo 'bridge' >packages/bridge/lib/source.dart
 printf 'name: c\ndev_dependencies:\n  b: any\n' >packages/c/pubspec.yaml
 printf 'name: keyrecall_simulation\n' >packages/sim/pubspec.yaml
-printf 'name: crisp_notation\ndependencies:\n  flutter:\n    sdk: flutter\n  crisp_notation_core: any\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' >"$vendor/crisp_notation/pubspec.yaml"
-printf 'name: crisp_notation_core\n' >"$vendor/crisp_notation_core/pubspec.yaml"
-echo 'notation' >"$vendor/crisp_notation/lib/source.dart"
-echo 'core' >"$vendor/crisp_notation_core/lib/source.dart"
+printf 'name: notation\ndependencies:\n  flutter:\n    sdk: flutter\n  notation_core: any\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' >packages/notation/pubspec.yaml
+printf 'name: notation_core\n' >packages/notation_core/pubspec.yaml
+echo 'notation' >packages/notation/lib/source.dart
+echo 'core' >packages/notation_core/lib/source.dart
 echo 'original' >packages/a/lib/source.dart
 jj describe --quiet -m 'Fixture'
 jj bookmark create upstream --quiet
@@ -44,7 +43,7 @@ reset_fixture() {
 }
 
 chain_packages=$'packages/a\npackages/b\npackages/c\n.'
-all_packages=$'packages/a\npackages/b\npackages/c\npackages/sim\nthird_party/crisp_notation/packages/crisp_notation\nthird_party/crisp_notation/packages/crisp_notation_core\n.'
+all_packages=$'packages/a\npackages/b\npackages/c\npackages/notation\npackages/notation_core\npackages/sim\n.'
 assert_plan 'No affected test suites.'
 echo 'documentation' >docs/guide.md
 assert_plan 'No affected test suites.'
@@ -89,11 +88,11 @@ reset_fixture
 echo 'bridge changed' >>packages/bridge/lib/source.dart
 assert_plan $'packages/b\npackages/c\n.'
 reset_fixture
-echo 'changed' >>"$vendor/crisp_notation/lib/source.dart"
-assert_plan $'third_party/crisp_notation/packages/crisp_notation\n.'
+echo 'changed' >>packages/notation/lib/source.dart
+assert_plan $'packages/notation\n.'
 reset_fixture
-echo 'changed' >>"$vendor/crisp_notation_core/lib/source.dart"
-assert_plan $'third_party/crisp_notation/packages/crisp_notation\nthird_party/crisp_notation/packages/crisp_notation_core\n.'
+echo 'changed' >>packages/notation_core/lib/source.dart
+assert_plan $'packages/notation\npackages/notation_core\n.'
 reset_fixture
 echo '# root manifest change' >>pubspec.yaml
 assert_plan "$all_packages"
@@ -127,10 +126,10 @@ export PATH="$temporary/runners:$PATH"
 export RUNNER_LOG="$temporary/runners.log"
 bin/test-from-upstream --all >"$temporary/output"
 sort "$RUNNER_LOG" >"$temporary/actual"
-printf '%s\n' 'dart a test' 'dart b test' 'dart c test' 'dart crisp_notation_core test' \
+printf '%s\n' 'dart a test' 'dart b test' 'dart c test' 'dart notation_core test' \
 	'dart sim test --total-shards 3 --shard-index 0' 'dart sim test --total-shards 3 --shard-index 1' \
 	'dart sim test --total-shards 3 --shard-index 2' \
-	'flutter crisp_notation test' 'flutter repository test' >"$temporary/expected"
+	'flutter notation test' 'flutter repository test' >"$temporary/expected"
 diff -u "$temporary/expected" "$temporary/actual"
 export FAIL_INVOCATION='c test'
 if bin/test-from-upstream --all >"$temporary/output"; then
