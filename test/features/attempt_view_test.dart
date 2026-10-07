@@ -639,6 +639,45 @@ void main() {
     expect(wakeLock.states, [true, true, false]);
   });
 
+  testWidgets('a view the next attempt replaced leaves it the shared '
+      'resources', (tester) async {
+    final wakeLock = _RecordingScreenWakeLock();
+    final sink = _ReleaseCountingSink();
+    Widget attempt(String id) => ProviderScope(
+      overrides: [
+        syntheticInstrument,
+        screenWakeLockProvider.overrideWithValue(wakeLock),
+        pulseClickerProvider.overrideWithValue(PulseClicker(sink: sink)),
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: AnimatedSwitcher(
+            duration: attemptTransition,
+            child: AttemptView(
+              key: ValueKey(id),
+              exercise: exerciseUnder(GuidanceContext.unguided),
+              presentation: presentationFor(GuidanceContext.unguided),
+              onFinish: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(attempt('a'));
+    await tester.pumpWidget(attempt('b'));
+    await tester.pump(attemptTransition * 2);
+
+    expect(find.byType(AttemptView), findsOneWidget);
+    expect(wakeLock.states.last, isTrue);
+    expect(sink.releases, 0);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(wakeLock.states.last, isFalse);
+    expect(sink.releases, 1);
+  });
+
   testWidgets('a surface for playing is on screen at every rung and phase', (
     tester,
   ) async {
@@ -1447,6 +1486,26 @@ class _RecordingScreenWakeLock implements ScreenWakeLock {
 
   @override
   Future<void> setEnabled(bool enabled) async => states.add(enabled);
+}
+
+/// An audio engine that counts how often it is let go.
+class _ReleaseCountingSink implements PulseAudioSink {
+  int releases = 0;
+
+  @override
+  void setFeedCallback(void Function(int)? callback) {}
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {}
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {}
+
+  @override
+  Future<void> release() async => releases++;
 }
 
 /// An audio engine that accepts everything it is offered, asking for the next

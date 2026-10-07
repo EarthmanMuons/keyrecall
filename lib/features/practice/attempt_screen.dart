@@ -22,6 +22,7 @@ import '../fluency/fluency_screen.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
 import 'acquisition_review.dart';
+import 'attempt_ownership.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
 import 'cue_semantics.dart';
@@ -1066,6 +1067,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   late final PulseClicker _pulse;
   late final AttemptTranscriptNotifier _transcript;
   late final ScreenWakeLock _screenWakeLock;
+  late final AttemptOwnership _ownership;
 
   @override
   void initState() {
@@ -1075,6 +1077,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _pulse = ref.read(pulseClickerProvider);
     _transcript = ref.read(attemptTranscriptProvider.notifier);
     _screenWakeLock = ref.read(screenWakeLockProvider);
+    _ownership = ref.read(attemptOwnershipProvider)..claim(this);
     _screenWakeLock.setEnabled(true).ignore();
     // The previous attempt's notes are still in the transcript, because
     // closing an attempt reads them after recording stops. Letting them go is
@@ -1101,15 +1104,18 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _screenWakeLock.setEnabled(false).ignore();
     _handover.dispose();
     _settling?.cancel();
     _beats?.dispose();
     _watchdog?.cancel();
     // Leaving the screen ends the attempt: a pulse that outlived it would keep
     // sounding over whatever comes next, and a recording that outlived it
-    // would take notes nobody played into it.
-    unawaited(_pulse.stop());
+    // would take notes nobody played into it. A view the next attempt has
+    // already replaced leaves the wake lock and the engine to that one.
+    if (_ownership.release(this)) {
+      _screenWakeLock.setEnabled(false).ignore();
+      unawaited(_pulse.stop());
+    }
     _transcript.release(_recording);
     super.dispose();
   }
@@ -1117,7 +1123,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _screenWakeLock.setEnabled(true).ignore();
+      if (_ownership.owns(this)) _screenWakeLock.setEnabled(true).ignore();
     } else if (_recording != null && !_finishing) {
       _leftForeground = true;
     }
