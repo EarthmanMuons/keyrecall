@@ -1081,7 +1081,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _pulse = ref.read(pulseClickerProvider);
     _transcript = ref.read(attemptTranscriptProvider.notifier);
     _screenWakeLock = ref.read(screenWakeLockProvider);
-    _ownership = ref.read(attemptOwnershipProvider)..claim(this);
+    _ownership = ref.read(attemptOwnershipProvider)
+      ..claim(this, onRevoked: _superseded);
     _screenWakeLock.setEnabled(true).ignore();
     // The previous attempt's notes are still in the transcript, because
     // closing an attempt reads them after recording stops. Letting them go is
@@ -1089,7 +1090,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // its own recording produced, which it does not have until the window
     // opens, so the frames before this callback runs are covered too.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _transcript.discard();
+      if (mounted && _owns) _transcript.discard();
     });
     // Warmed up while the learner reads the screen, so neither the first beat
     // nor the first drawn note is waiting on something to load.
@@ -1168,9 +1169,26 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// the exercise.
   bool get _canRecord => ref.watch(inputObservationProvider).isLive;
 
+  /// Whether this view still holds the shared attempt resources, which a view
+  /// replacing it takes while this one is still fading out.
+  bool get _owns => _ownership.owns(this);
+
+  /// Stops everything this view had scheduled, now that another holds the
+  /// resources it would have used.
+  ///
+  /// The pulse is this view's to stop, since it started it and the successor
+  /// prepares the engine only after this. Its recording is released on
+  /// dispose, as before, and the successor discards it first.
+  void _superseded() {
+    _settling?.cancel();
+    _stopBeats();
+    _watchdog?.cancel();
+    if (_askedForAPulse) unawaited(_pulse.stop());
+  }
+
   /// Hands the screen over to the attempt, and starts it.
   void _start() {
-    if (!ref.read(inputObservationProvider).isLive) return;
+    if (!_owns || !ref.read(inputObservationProvider).isLive) return;
     // Only where the rung has no further use for it. At the cued rung the
     // keyboard is the cue, and it stays where it is.
     if (_instrumentLeavesAtReady) _handover.forward();
@@ -1192,6 +1210,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// here silence is the reading rather than a signal: the learner ends the
   /// attempt with Done, leaving time for a final-note correction.
   void _beginListening() {
+    if (!_owns) return;
     setState(() {
       _phase = _Phase.playing;
       _recording = _transcript.start(widget.exercise.material);
@@ -1202,7 +1221,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// Gives up whatever was being recorded, so nothing of it is read later.
   void _abandonRecording() {
     _recording = null;
-    _transcript.discard();
+    if (_owns) _transcript.discard();
   }
 
   /// This attempt's capture, and nothing else's.
@@ -1212,6 +1231,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   }
 
   void _beginCountIn() {
+    if (!_owns) return;
     _settling?.cancel();
     _stopBeats();
     unawaited(_pulse.prepare());
@@ -1221,7 +1241,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       _shownContinuingBeats = 0;
     });
     _settling = Timer(attemptSettle, () {
-      if (mounted) _countInAndPlay();
+      if (mounted && _owns) _countInAndPlay();
     });
   }
 
@@ -1266,7 +1286,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
   /// Moves the screen to the beat [schedule] has reached, once a beat.
   void _readBeat(PulseSchedule schedule) {
-    if (!mounted || !identical(schedule, _schedule)) return;
+    if (!mounted || !_owns || !identical(schedule, _schedule)) return;
     final current = schedule.currentBeat;
     if (current == _beat) return;
     setState(() {
@@ -1302,7 +1322,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   }
 
   void _pause() {
-    if (_phase != _Phase.countIn) return;
+    if (!_owns || _phase != _Phase.countIn) return;
     _settling?.cancel();
     _stopBeats();
     unawaited(_pulse.stop());
@@ -1355,7 +1375,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   });
 
   Future<void> _decline() async {
-    if (_finishing) return;
+    if (_finishing || !_owns) return;
     _finishing = true;
     _watchdog?.cancel();
     _stopBeats();
@@ -1399,7 +1419,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   );
 
   Future<void> _finish(AttemptTermination termination) async {
-    if (_finishing) return;
+    if (_finishing || !_owns) return;
     _finishing = true;
     _watchdog?.cancel();
     _stopBeats();

@@ -642,7 +642,7 @@ void main() {
   testWidgets('a view the next attempt replaced leaves it the shared '
       'resources', (tester) async {
     final wakeLock = _RecordingScreenWakeLock();
-    final sink = _ReleaseCountingSink();
+    final sink = _CountingSink();
     Widget attempt(String id) => ProviderScope(
       overrides: [
         syntheticInstrument,
@@ -676,6 +676,52 @@ void main() {
     await tester.pump();
     expect(wakeLock.states.last, isFalse);
     expect(sink.releases, 1);
+  });
+
+  testWidgets('a view replaced during its count-in starts nothing', (
+    tester,
+  ) async {
+    final sink = _CountingSink();
+    final container = ProviderContainer(
+      overrides: [
+        syntheticInstrument,
+        screenWakeLockProvider.overrideWithValue(_RecordingScreenWakeLock()),
+        pulseClickerProvider.overrideWithValue(PulseClicker(sink: sink)),
+      ],
+    );
+    addTearDown(container.dispose);
+    Widget attempt(String id) => UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Scaffold(
+          body: AnimatedSwitcher(
+            duration: attemptTransition,
+            child: AttemptView(
+              key: ValueKey(id),
+              exercise: exerciseUnder(GuidanceContext.unguided),
+              presentation: presentationFor(GuidanceContext.unguided),
+              onFinish: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(attempt('a'));
+    await tester.tap(find.text('Ready'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpWidget(attempt('b'));
+    await tester.pump(attemptSettle);
+
+    expect(sink.feeds, 0, reason: 'no pulse from the replaced view');
+    expect(
+      container.read(attemptTranscriptProvider).recording,
+      0,
+      reason: 'no recording opened by the replaced view',
+    );
+
+    await tester.pump(attemptTransition * 2);
+    expect(find.text('Ready'), findsOneWidget);
   });
 
   testWidgets('a surface for playing is on screen at every rung and phase', (
@@ -1488,8 +1534,9 @@ class _RecordingScreenWakeLock implements ScreenWakeLock {
   Future<void> setEnabled(bool enabled) async => states.add(enabled);
 }
 
-/// An audio engine that counts how often it is let go.
-class _ReleaseCountingSink implements PulseAudioSink {
+/// An audio engine that counts what it is handed and how often it is let go.
+class _CountingSink implements PulseAudioSink {
+  int feeds = 0;
   int releases = 0;
 
   @override
@@ -1502,7 +1549,7 @@ class _ReleaseCountingSink implements PulseAudioSink {
   }) async {}
 
   @override
-  Future<void> feed(PcmArrayInt16 frames) async {}
+  Future<void> feed(PcmArrayInt16 frames) async => feeds++;
 
   @override
   Future<void> release() async => releases++;
