@@ -223,24 +223,27 @@ class NextPracticePreview {
 
 /// Which way a scheduler decision moved the challenge.
 ///
-/// Advance is the one a review emphasizes: something demonstrated earned a
-/// harder version. Support is calm rather than marked down, because stepping
-/// back is not a failure.
+/// Advance is the one a review emphasizes, and only where something
+/// demonstrated earned the harder version. A step the scheduler takes on a
+/// timer, for lack of anything else, or as the second half of a remediation
+/// cycle asks more of the learner without having been earned, so it is
+/// neutral. Support is calm rather than marked down, because stepping back is
+/// not a failure.
 enum ChallengeDirection { advance, support, neutral }
 
 ChallengeDirection challengeDirectionOf(ChallengeBypass? bypass) =>
     switch (bypass) {
-      ChallengeBypass.consolidation ||
       ChallengeBypass.executionProgression ||
       ChallengeBypass.guidanceProbe ||
-      ChallengeBypass.bootstrapProbe ||
-      ChallengeBypass.observationProbe ||
       ChallengeBypass.tempoProbe ||
-      ChallengeBypass.pulseWithdrawal ||
       ChallengeBypass.acquisitionProbe => ChallengeDirection.advance,
       ChallengeBypass.recovery ||
       ChallengeBypass.pulseSupport ||
       ChallengeBypass.acquisitionFloor => ChallengeDirection.support,
+      ChallengeBypass.consolidation ||
+      ChallengeBypass.bootstrapProbe ||
+      ChallengeBypass.observationProbe ||
+      ChallengeBypass.pulseWithdrawal ||
       ChallengeBypass.newMaterial ||
       ChallengeBypass.override ||
       null => ChallengeDirection.neutral,
@@ -810,7 +813,7 @@ class _Sparkle extends StatefulWidget {
 
 class _SparkleState extends State<_Sparkle>
     with SingleTickerProviderStateMixin {
-  static const Duration _turn = Duration(milliseconds: 480);
+  static const Duration _turn = Duration(milliseconds: 720);
 
   late final AnimationController _controller;
   late final Animation<double> _arrival;
@@ -820,7 +823,7 @@ class _SparkleState extends State<_Sparkle>
     super.initState();
     final delay =
         reviewArrivalDelay(ReviewPart.meaning, hasMeaning: true) +
-        attemptTransition ~/ 2;
+        attemptTransition;
     final total = delay + _turn;
     _controller = AnimationController(vsync: this, duration: total)..forward();
     _arrival = CurvedAnimation(
@@ -844,7 +847,7 @@ class _SparkleState extends State<_Sparkle>
     final icon = Icon(Icons.auto_awesome, size: 16, color: widget.color);
     if (Motion.of(context).reduced) return icon;
     return RotationTransition(
-      turns: Tween(begin: -0.25, end: 0.0).animate(_arrival),
+      turns: Tween(begin: -0.5, end: 0.0).animate(_arrival),
       child: ScaleTransition(
         scale: Tween(begin: 0.4, end: 1.0).animate(_arrival),
         child: icon,

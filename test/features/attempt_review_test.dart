@@ -177,11 +177,9 @@ void main() {
   group('which way the next exercise moves the challenge', () {
     test('what was demonstrated earning a harder version advances', () {
       for (final bypass in [
-        ChallengeBypass.consolidation,
         ChallengeBypass.executionProgression,
         ChallengeBypass.guidanceProbe,
         ChallengeBypass.tempoProbe,
-        ChallengeBypass.pulseWithdrawal,
         ChallengeBypass.acquisitionProbe,
       ]) {
         expect(
@@ -206,12 +204,21 @@ void main() {
       }
     });
 
-    test('new material and ordinary admissions are neutral', () {
-      expect(
-        challengeDirectionOf(ChallengeBypass.newMaterial),
-        ChallengeDirection.neutral,
-      );
-      expect(challengeDirectionOf(null), ChallengeDirection.neutral);
+    test('a harder step nothing demonstrated earned is neutral', () {
+      for (final bypass in [
+        ChallengeBypass.consolidation,
+        ChallengeBypass.bootstrapProbe,
+        ChallengeBypass.observationProbe,
+        ChallengeBypass.pulseWithdrawal,
+        ChallengeBypass.newMaterial,
+        null,
+      ]) {
+        expect(
+          challengeDirectionOf(bypass),
+          ChallengeDirection.neutral,
+          reason: '$bypass',
+        );
+      }
     });
   });
 
