@@ -242,8 +242,15 @@ Future<void> expectDerivedFromStorage(
   expect(live.stateHash, learnerStateHash(state), reason: 'state at $at');
   expect(live.history!.demonstratedShapes, shapesPlayedCleanly(records));
   expect(live.history!.retrievedMaterialHands, handsThatRetrieved(records));
+  expect(live.history!.startedExercises, {
+    for (final record in records)
+      if (record.closure.measurement case Measured(
+        :final outcome,
+      ) when outcome.started)
+        record.exercise,
+  });
   final evidence = executionEvidence(records);
-  expect(live.history!.attemptedExercises, {
+  expect(live.history!.executionEvidenceExercises, {
     for (final record in evidence) record.exercise,
   });
   final revisions = <ExecutionContext, int>{};
@@ -274,6 +281,13 @@ SelectionStage expectStageHeld(SlotContext live, CandidateSelected result) {
       expect(identical(winner, best), isTrue, reason: 'ranking chose $winner');
     case SelectionStage.acquisitionProbe:
       expect(winner.challengeBypass, ChallengeBypass.acquisitionProbe);
+    case SelectionStage.introductionBreadth:
+      expect(winner.challengeBypass, ChallengeBypass.newMaterial);
+      expect(best.challengeBypass, ChallengeBypass.newMaterial);
+      expect(
+        winner.exercise.material.familyId,
+        isNot(best.exercise.material.familyId),
+      );
     case SelectionStage.pulseCycle:
       expect(
         winner.challengeBypass,
@@ -291,7 +305,7 @@ SelectionStage expectStageHeld(SlotContext live, CandidateSelected result) {
     case SelectionStage.floorCheck:
       expect(floorOf(live.acquisitionFamilyFloor), contains(winner.exercise));
       expect(
-        live.history!.attemptedExercises,
+        live.history!.executionEvidenceExercises,
         isNot(contains(winner.exercise)),
       );
   }
@@ -553,10 +567,15 @@ void main() {
     runBehavior(
       PracticeBehavior(
         Reached({
-          // A pulse cycle takes a long session from an unsteady player, which
-          // this budget rarely generates.
+          // A pulse cycle takes a long session from an unsteady player, and a
+          // frontier step progression on material whose shape frontier fell
+          // behind, which this budget rarely generates. The slot property in
+          // keyrecall_scheduler reaches the second directly; a wider budget
+          // reaches both here.
           for (final stage in SelectionStage.values)
-            if (stage != SelectionStage.pulseCycle) stage.name,
+            if (stage != SelectionStage.pulseCycle &&
+                stage != SelectionStage.frontierStep)
+              stage.name,
           'acquisition',
           'acquisition history',
           'emphasis',

@@ -72,14 +72,14 @@ class DecisionFacts {
   final Map<ScaleForm, double> _minorTopology = {};
   bool? _fluentHandsTogether;
 
-  /// The exact ordinary exercises this learner has informatively attempted, or
-  /// null where the caller supplied no history.
+  /// The exact ordinary exercises this learner has begun, or null where the
+  /// caller supplied no history.
   ///
   /// Null and empty are different claims. Empty says nothing has been asked
   /// for, which is a fact a rule may act on; null says the caller does not
   /// keep this, and a rule that needs it does not apply at all. That is what
   /// lets every caller that predates it decide exactly as it did.
-  final Set<Exercise>? attemptedExercises;
+  final Set<Exercise>? startedExercises;
 
   /// Each material a hand has produced from memory, or null where the caller
   /// supplied no history.
@@ -94,12 +94,36 @@ class DecisionFacts {
   /// named none.
   final Set<String>? offeredMaterialIds;
 
+  /// The up and down shapes this slot's candidates offer, or null where the
+  /// caller named none.
+  ///
+  /// What a gateway may be ranked as: only work the slot could go on to offer.
+  final Set<UpAndDownShape>? offeredUpAndDown;
+
   DecisionFacts(
     this.state, {
-    this.attemptedExercises,
+    this.startedExercises,
     this.retrievedMaterialHands,
     this.offeredMaterialIds,
+    this.offeredUpAndDown,
   });
+
+  late final Set<(String, HandConfiguration)>? _startedHands =
+      startedExercises == null
+      ? null
+      : {
+          for (final exercise in startedExercises!)
+            (exercise.material.materialId, exercise.conditions.hands),
+        };
+
+  /// Whether [hands] has met [materialId] at all.
+  ///
+  /// Learner state records only the attempts that were timed, and one too
+  /// short to time is still a meeting, so history answers where the caller
+  /// keeps one. State still answers for what placement assumed.
+  bool hasPlayed(String materialId, HandConfiguration hands) =>
+      state.hasPlayed(materialId, hands) ||
+      (_startedHands?.contains((materialId, hands)) ?? false);
 
   /// Whether [hand] has produced [materialId] from memory.
   bool hasRetrieved(String materialId, Hand hand) =>
@@ -107,6 +131,25 @@ class DecisionFacts {
       (state.materialMemory[materialId]?.hasFactualRetrieval == true &&
           state.hasPlayed(materialId, hand.configuration));
 }
+
+/// An up and down shape, by what identifies it apart from tempo and guidance.
+typedef UpAndDownShape = (
+  String,
+  ExercisePattern,
+  HandConfiguration,
+  int,
+  HandMotion,
+);
+
+/// The up and down shape [exercise] is, or would be with its direction
+/// replaced.
+UpAndDownShape upAndDownShapeOf(Exercise exercise) => (
+  exercise.material.materialId,
+  exercise.pattern,
+  exercise.conditions.hands,
+  exercise.conditions.octaves,
+  exercise.conditions.handMotion,
+);
 
 /// The candidates considered and the reasoned outcome of one attempt slot.
 ///
@@ -206,6 +249,10 @@ enum SelectionStage {
 
   /// An owed check of a family's declared floor.
   floorCheck,
+
+  /// New material from the family that introduced least recently, in place of
+  /// new material from another.
+  introductionBreadth,
 }
 
 /// The scheduler selected one candidate to present.
@@ -456,12 +503,14 @@ class SchedulerPipeline {
             narrowed.selectable,
             session,
             demonstratedShapes: history?.demonstratedShapes ?? const {},
+            state: state,
+            history: history,
           );
     if (servedProbe == null && servedPulse == null && familyFloor != null) {
       final check = owedFloorCheck(
         state: state,
         floor: familyFloor,
-        attemptedParents: history?.attemptedExercises ?? const {},
+        attemptedParents: history?.executionEvidenceExercises ?? const {},
         selected: selected,
         traces: traces,
       );
@@ -505,6 +554,8 @@ class SchedulerPipeline {
           narrowed.selectable,
           session,
           demonstratedShapes: history?.demonstratedShapes ?? const {},
+          state: state,
+          history: history,
         );
         blockedReason = BlockedReason.safeEntryRejected;
       }
@@ -523,7 +574,7 @@ class SchedulerPipeline {
             state: state,
             progress: acquisition,
             floor: familyFloor,
-            attemptedParents: history?.attemptedExercises ?? const {},
+            attemptedParents: history?.executionEvidenceExercises ?? const {},
             traces: traces,
             afterAcquisition: session.lastAcquisitionParent != null,
             executionEvidenceRevisions:
@@ -725,7 +776,7 @@ class SchedulerPipeline {
     //
     // Introduction order rather than admission: it decides which of two
     // realizations a learner meets first.
-    if (facts?.attemptedExercises case final attempted?) {
+    if (facts?.startedExercises case final attempted?) {
       if (exercise.conditions.direction == ExerciseDirection.upDown &&
           !attempted.any(
             (earlier) =>
@@ -868,9 +919,55 @@ class SchedulerPipeline {
   /// Hands together is not an introduction. It is a transition off two
   /// frontiers that already exist, with its own prerequisite and entry tempo,
   /// which execution progression offers instead.
-  bool isIntroduction(LearnerState state, Exercise exercise) =>
+  bool isIntroduction(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) =>
       exercise.conditions.hands != HandConfiguration.together &&
-      !state.hasPlayed(exercise.material.materialId, exercise.conditions.hands);
+      !(facts?.hasPlayed ?? state.hasPlayed)(
+        exercise.material.materialId,
+        exercise.conditions.hands,
+      );
+
+  /// What [exercise]'s information is read off: itself, or for a first
+  /// meeting too short to time, the up and down it opens within the slot's
+  /// candidates.
+  ///
+  /// Introduction order asks a hand for a material ascending before up and
+  /// down, and a one-octave triad ascending cannot carry a motor score. Ranked
+  /// as itself, that first meeting claims no motor uncertainty, so a hand's
+  /// first triad would lose to any work that can, and for a learner with
+  /// progression always available it would never come. It is ranked as the
+  /// work it is the gateway to instead. The claim is spent in one slot, since
+  /// the meeting ends the introduction, and material already met is ranked as
+  /// itself. A follow-up the slot does not offer, because the goal or focus
+  /// excludes it, lends nothing: the meeting opens no measurable work there.
+  /// Scoring the literal candidate starves the hand; scoring an unavailable
+  /// follow-up invents information.
+  Exercise rankedAs(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) {
+    final conditions = exercise.conditions;
+    if (conditions.direction != ExerciseDirection.up ||
+        TimingCapacity.of(exercise).supportsMotorScore ||
+        !isIntroduction(state, exercise, facts: facts) ||
+        !(facts?.offeredUpAndDown?.contains(upAndDownShapeOf(exercise)) ??
+            false)) {
+      return exercise;
+    }
+    return Exercise.linear(
+      material: exercise.material,
+      hands: conditions.hands,
+      octaves: conditions.octaves,
+      direction: ExerciseDirection.upDown,
+      handMotion: conditions.handMotion,
+      tempoBpm: conditions.tempoBpm,
+      guidance: exercise.guidance,
+    );
+  }
 
   /// Whether [exercise] may be met for the first time at all.
   ///
@@ -909,7 +1006,7 @@ class SchedulerPipeline {
     Exercise exercise, {
     DecisionFacts? facts,
   }) =>
-      !state.hasPlayed(
+      !(facts?.hasPlayed ?? state.hasPlayed)(
         exercise.material.materialId,
         exercise.conditions.hands,
       ) &&
@@ -1377,16 +1474,19 @@ class SchedulerPipeline {
       (floor ?? config.challenge.pMin) <= prediction.overallP &&
       prediction.overallP <= config.challenge.pMax;
 
-  /// The narrowest supported shape there is: one hand, one octave, and the
-  /// notes in front of the learner.
+  /// The narrowest supported shape there is that can be timed: one hand, one
+  /// octave, and the notes in front of the learner.
   ///
   /// The only shape a learner with nothing in a family demonstrates anything
   /// from, so widening it would relax the floor for work that teaches them
-  /// nothing. See `docs/research/experiments/trajectories.md`.
+  /// nothing. See `docs/research/experiments/trajectories.md`. A traversal too
+  /// short to carry a motor score cannot establish motor execution evidence
+  /// however narrow it is, so it is not one.
   bool isBootstrapShape(Exercise exercise) =>
       exercise.conditions.hands != HandConfiguration.together &&
       exercise.conditions.octaves == 1 &&
-      exercise.guidance == GuidanceContext.continuouslyCued;
+      exercise.guidance == GuidanceContext.continuouslyCued &&
+      TimingCapacity.of(exercise).supportsMotorScore;
 
   /// Whether this candidate's execution context has yet to demonstrate
   /// anything.
@@ -1785,7 +1885,7 @@ class SchedulerPipeline {
   }) {
     EligibilityTier? best;
     for (final exercise in candidates) {
-      if (!isIntroduction(state, exercise)) continue;
+      if (!isIntroduction(state, exercise, facts: facts)) continue;
       if (!isIntroducible(state, exercise, facts: facts)) continue;
       final tier = eligibilityFor(
         state,
@@ -1887,7 +1987,7 @@ class SchedulerPipeline {
         // let a provisional candidate that clears the introduction minimum beat
         // a fully eligible one that does not.
         AdmissionException.newMaterial =>
-          !isIntroduction(state, exercise)
+          !isIntroduction(state, exercise, facts: facts)
               ? const _Silent()
               : !isIntroducible(state, exercise, facts: facts)
               ? const _Refuses()
@@ -2007,7 +2107,7 @@ class SchedulerPipeline {
       return const AdmissionDecision.refused(AdmissionRefusal.recovery);
     }
     if (bypass != null) return AdmissionDecision.admitted(bypass);
-    if (isIntroduction(state, exercise) &&
+    if (isIntroduction(state, exercise, facts: facts) &&
         exercise.conditions.tempoBpm !=
             entryTempoFor(
               state,
@@ -2109,10 +2209,15 @@ class SchedulerPipeline {
     // are answered once rather than once per candidate.
     final facts = DecisionFacts(
       state,
-      attemptedExercises: history?.attemptedExercises,
+      startedExercises: history?.startedExercises,
       retrievedMaterialHands: history?.retrievedMaterialHands,
       offeredMaterialIds: {
         for (final exercise in refined) exercise.material.materialId,
+      },
+      offeredUpAndDown: {
+        for (final exercise in refined)
+          if (exercise.conditions.direction == ExerciseDirection.upDown)
+            upAndDownShapeOf(exercise),
       },
     );
     final introducible = introducibleTier(
@@ -2252,6 +2357,7 @@ class SchedulerPipeline {
       state,
       exercise,
       memo: facts.execution,
+      hasPlayed: facts.hasPlayed,
     );
 
     // Ranking terms only for candidates that reached ranking. Nothing here
@@ -2261,6 +2367,7 @@ class SchedulerPipeline {
     //
     // Most candidates never get here. A slot evaluates ten thousand and for
     // most learners fewer than one in twenty survives admission.
+    final valued = rankedAs(state, exercise, facts: facts);
     final rankKey = priorityStatus.isReached
         ? RankKey(
             tier: eligibility.tier,
@@ -2270,9 +2377,9 @@ class SchedulerPipeline {
                 exercise.conditions.handMotion == HandMotion.contrary,
             retention: canonicalRankValue(retention(prediction, exercise)),
             information: informationCache.putIfAbsent(
-              informationKeyFor(exercise),
+              informationKeyFor(valued),
               () => canonicalRankValue(
-                information(state, exercise, learner.params),
+                information(state, valued, learner.params),
               ),
             ),
             diversity: diversity(exercise, session),
@@ -2609,11 +2716,24 @@ class SchedulerPipeline {
     List<CandidateTrace> selectable,
     SessionState session, {
     required Map<String, Set<RealizationShape>> demonstratedShapes,
+    LearnerState? state,
+    AttemptHistory? history,
   }) {
     if (overdueGuidanceProbe(selectable, session) case final probe?) {
       return (trace: probe, stage: SelectionStage.guidanceProbe);
     }
     final best = selectBest(selectable);
+    if (state != null && history != null) {
+      final introduced = introductionWithin(
+        selectable,
+        best,
+        state: state,
+        history: history,
+      );
+      if (!identical(introduced, best)) {
+        return (trace: introduced, stage: SelectionStage.introductionBreadth);
+      }
+    }
     final advanced = advancedWithin(
       selectable,
       best,
@@ -2625,6 +2745,41 @@ class SchedulerPipeline {
           ? SelectionStage.ranking
           : SelectionStage.frontierStep,
     );
+  }
+
+  /// New material from the family that introduced least recently, or
+  /// [chosen] where ranking chose anything else.
+  ///
+  /// Information ranks introductions within a family faithfully, but not
+  /// across families whose first shapes differ in what they can show: a first
+  /// shape too short to time can never claim the motor uncertainty another
+  /// family's can, so ranking alone would introduce that family last, every
+  /// time. Recency rather than a count, so a family that was out of scope for
+  /// a while is not owed a run of introductions when it returns.
+  ///
+  /// Only competing introductions are reordered. Retention, recovery,
+  /// progression, and anything else ranking chose over new material are left
+  /// to decide as they did.
+  CandidateTrace? introductionWithin(
+    List<CandidateTrace> selectable,
+    CandidateTrace? chosen, {
+    required LearnerState state,
+    required AttemptHistory history,
+  }) {
+    if (chosen == null || !widensCatalog(chosen, state)) return chosen;
+    final byFamily = <String, List<CandidateTrace>>{};
+    for (final trace in selectable) {
+      if (widensCatalog(trace, state)) {
+        (byFamily[trace.exercise.material.familyId] ??= []).add(trace);
+      }
+    }
+    if (byFamily.length < 2) return chosen;
+    int recency(String family) =>
+        history.lastIntroductionByFamily[family] ?? -1;
+    final chosenFamily = chosen.exercise.material.familyId;
+    final due = byFamily.keys.reduce((a, b) => recency(b) < recency(a) ? b : a);
+    if (recency(due) >= recency(chosenFamily)) return chosen;
+    return selectBest(byFamily[due]!) ?? chosen;
   }
 
   /// Whether [trace] was admitted as ordinary progression: through the band,

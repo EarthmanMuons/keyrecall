@@ -83,7 +83,7 @@ void main() {
     at: t0.plusDays(0.5),
     acquisitionFloor: floor,
     acquisition: acquisition,
-    history: AttemptHistory(attemptedExercises: attempted),
+    history: AttemptHistory(executionEvidenceExercises: attempted),
   );
 
   test('a host carries an offered task rather than a blocked slot', () async {

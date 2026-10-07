@@ -281,9 +281,10 @@ Object effectFacts(SchedulerVerdict verdict) => (
 Map<String, Object?> persistentFacts(PracticeSession session) => {
   'learner': encodeLearnerState(session.state),
   'acquisition': encodeAcquisitionProgress(session.acquisitionProgress),
+  'started': attemptHistoryOfRecords(session.journal.records).startedExercises,
   'attempted': attemptHistoryOfRecords(
     session.journal.records,
-  ).attemptedExercises,
+  ).executionEvidenceExercises,
   'revisions': attemptHistoryOfRecords(
     session.journal.records,
   ).executionEvidenceRevisions,

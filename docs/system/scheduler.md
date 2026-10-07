@@ -308,9 +308,27 @@ retrieval. A continuously cued candidate has zero retrieval opportunity, so it
 cannot win by exploiting a memory deficit it is structurally unable to resolve.
 
 **Information** is the weighted uncertainty this candidate's competency, memory,
-and execution evidence opportunities would expose. **Diversity** is the negative
-count of the material in the recent-history window. **Goals** is zero for
-anything no focus emphasized.
+and execution evidence opportunities would expose. Like retention, it counts
+only uncertainty the candidate can reduce: a traversal too short to carry a
+motor score (a one-octave triad ascending has three waits; see `TimingCapacity`)
+claims no motor competency or execution-residual uncertainty, while its topology
+and memory terms stand. **Diversity** is the negative count of the material in
+the recent-history window. **Goals** is zero for anything no focus emphasized.
+
+**A first meeting too short to time is ranked as what it opens.** Introduction
+order asks a hand for a material ascending before up and down, so a hand's first
+triad is exactly the shape that can claim the least. Ranked as itself it loses
+to any work that can be timed, and a learner with progression always available,
+which is every advanced placement, never meets a second hand at all. `rankedAs`
+reads such a candidate's information off the up and down realization it is the
+gateway to, and only when the slot's own candidates offer that realization: the
+same material, hands, span, and motion. No credit is borrowed from work the goal
+or focus excludes, since there the meeting opens nothing measurable. The claim
+is spent in one slot, because the meeting ends the introduction, and material a
+hand has already met is always ranked as itself, so this cannot reproduce the
+loop the observability gate removed. Both simplifications are wrong: scoring the
+literal candidate everywhere starves the second hand, and scoring a follow-up
+the slot does not offer invents information.
 
 Retention and information are sums of floating-point products, and two
 candidates that mean the same value can land a few bits apart depending on the
@@ -440,6 +458,16 @@ that work is unproductive. Family dose control asks what a family's recent
 attempts produced, independent of how much of the session it holds, and lowers
 how often a persistently unproductive one is offered. Both are live; see
 [`../decisions/pacing-and-tempo.md`](../decisions/pacing-and-tempo.md).
+
+**Introduction breadth** reorders competing introductions and nothing else. When
+ranking chose new material and another family also has new material selectable,
+the family whose last introduction is oldest in the attempt history goes first,
+and ranking still picks within it. Information ranks introductions faithfully
+within a family but not across families whose first shapes differ in what they
+can show, and without this a family entering through an untimeable shape would
+always be introduced last. It reads recency rather than a count, so a family
+that was out of scope for a while is not owed a run of introductions when it
+returns, and retention, recovery, and progression decide as before.
 
 An optional introduction cap withholds first exposures while a scope already
 holds its budget of unretrieved material. It is configurable, and null in the

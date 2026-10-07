@@ -42,7 +42,7 @@ void main() {
       at: t0.plusDays(1),
       acquisition: const AcquisitionProgress.empty(),
       acquisitionFamilyFloor: scaleAcquisitionFloor([floor]),
-      history: AttemptHistory(attemptedExercises: {floor}),
+      history: AttemptHistory(executionEvidenceExercises: {floor}),
     );
     expect(result, isA<AcquisitionOffered>());
     expect(SelectionEffect.of(result).guidanceProbeSelected, isFalse);

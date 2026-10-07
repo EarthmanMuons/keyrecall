@@ -11,13 +11,19 @@ import 'shape_frontier.dart';
 /// off every rule that reads it.
 @immutable
 class AttemptHistory {
+  /// Exact ordinary exercises the learner began.
+  ///
+  /// What introduction order reads: whether a material and hand has been asked
+  /// for ascending before it is asked for up and down. Whether that attempt
+  /// could be timed is a different question, so a traversal too short to time
+  /// still counts as having been asked for.
+  final Set<Exercise> startedExercises;
+
   /// Exact ordinary exercises that produced informative execution evidence.
   ///
-  /// Exact, because acquisition asks whether the declared floor itself was
-  /// attempted, and introduction order asks whether a material and hand has
-  /// been asked for ascending before it is asked for up and down. A
-  /// near-enough exercise answers neither.
-  final Set<Exercise> attemptedExercises;
+  /// What acquisition reads: whether the declared floor itself was tried and
+  /// demonstrated nothing.
+  final Set<Exercise> executionEvidenceExercises;
 
   /// Each material a hand has produced from memory, as material and hand.
   final Set<(String, Hand)> retrievedMaterialHands;
@@ -29,11 +35,19 @@ class AttemptHistory {
   /// memory.
   final Map<String, Set<RealizationShape>> demonstratedShapes;
 
+  /// Where each family last met a material for the first time, as that
+  /// attempt's position in the history.
+  ///
+  /// A family that has introduced nothing is absent.
+  final Map<String, int> lastIntroductionByFamily;
+
   const AttemptHistory({
-    this.attemptedExercises = const {},
+    this.startedExercises = const {},
+    this.executionEvidenceExercises = const {},
     this.retrievedMaterialHands = const {},
     this.executionEvidenceRevisions = const {},
     this.demonstratedShapes = const {},
+    this.lastIntroductionByFamily = const {},
   });
 
   /// A history in which nothing has happened yet.

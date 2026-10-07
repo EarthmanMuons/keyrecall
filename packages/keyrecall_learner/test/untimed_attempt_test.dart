@@ -75,6 +75,20 @@ void main() {
       expect(model.executionWasManaged(untimedOutcome()), isFalse);
     });
 
+    test('still readies the hand for the other to join it', () {
+      final state = model.newState(at: t0);
+      applyAttempt(state, exercise, untimedOutcome(), at: t0.plusDays(1));
+      final residual = state.materialExecution[executionContextOf(exercise)]!;
+
+      expect(
+        residual.coordinationReadyTempoAt(exercise.conditions.octaves),
+        exercise.conditions.tempoBpm,
+        reason: 'readiness asks for the right notes at a pace, not steadiness',
+      );
+      expect(residual.demonstratedTempoByOctaves, isEmpty);
+      expect(residual.lastEvidenceAt, isNull);
+    });
+
     test('is rejected as motor evidence it never was', () {
       final state = model.newState(at: t0);
       final outcome = untimedOutcome();

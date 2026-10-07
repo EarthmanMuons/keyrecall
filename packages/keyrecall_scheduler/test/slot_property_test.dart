@@ -233,6 +233,13 @@ void main() {
             );
           case SelectionStage.acquisitionProbe:
             expect(winner.challengeBypass, ChallengeBypass.acquisitionProbe);
+          case SelectionStage.introductionBreadth:
+            expect(winner.challengeBypass, ChallengeBypass.newMaterial);
+            expect(best.challengeBypass, ChallengeBypass.newMaterial);
+            expect(
+              winner.exercise.material.familyId,
+              isNot(best.exercise.material.familyId),
+            );
           case SelectionStage.pulseCycle:
             expect(
               winner.challengeBypass,

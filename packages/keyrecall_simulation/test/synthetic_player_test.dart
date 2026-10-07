@@ -1,4 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -122,5 +124,41 @@ void main() {
 
     expect(shapeOf(7), shapeOf(7));
     expect(shapeOf(7), isNot(shapeOf(8)));
+  });
+
+  test('no attempt carries timing measurement could not read', () {
+    // Measurement reads continuity and steadiness from waits, and a traversal
+    // with too few of them establishes neither however well it was played.
+    final candidates = generateCandidates(InstrumentProfile(), [
+      ...v1ScaleCatalog,
+      ...allRootPositionArpeggios,
+    ]);
+    final shapes = {
+      for (final exercise in candidates)
+        (exercise.material.familyId, exercise.conditions): exercise,
+    }.values;
+    final player = PlayerArchetypes.advanced.begin();
+    final profile = SyntheticProfile.advanced.build(start: DateTime.utc(2026));
+    final rng = PythonCompatibleRandom(0);
+    var untimed = 0;
+    for (final exercise in shapes) {
+      final capacity = TimingCapacity.of(exercise);
+      if (!capacity.supportsMotorScore) untimed++;
+      for (final outcome in [
+        player.play(exercise, rng, practising: false),
+        sampleOutcome(
+          profile: profile,
+          exercise: exercise,
+          at: DateTime.utc(2026),
+          rng: rng,
+          applyMemoryTransition: false,
+        ),
+      ]) {
+        if (!outcome.started) continue;
+        expect(outcome.continuity != null, capacity.supportsContinuity);
+        expect(outcome.temporalStability != null, capacity.supportsSpread);
+      }
+    }
+    expect(untimed, greaterThan(0), reason: 'some shape is too short to time');
   });
 }

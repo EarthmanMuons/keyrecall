@@ -171,4 +171,23 @@ void main() {
           'family keeps admission alive still reaches it',
     );
   });
+
+  test('a shape too short to time is not one, however narrow', () {
+    Exercise arpeggio(ExerciseDirection direction) => Exercise.linear(
+      material: allRootPositionArpeggios.first,
+      hands: HandConfiguration.right,
+      direction: direction,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+
+    expect(
+      pipeline.isBootstrapShape(arpeggio(ExerciseDirection.up)),
+      isFalse,
+      reason: 'it can carry no motor score, so it cannot establish one',
+    );
+    expect(
+      pipeline.isBootstrapShape(arpeggio(ExerciseDirection.upDown)),
+      isTrue,
+    );
+  });
 }

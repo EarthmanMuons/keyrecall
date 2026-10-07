@@ -301,6 +301,28 @@ void main() {
       expect(introduces(state, otherHand, [otherHand]), isFalse);
     });
 
+    test('a hand that played something too short to time has met it', () {
+      final short = Exercise.linear(
+        material: allRootPositionArpeggios.first,
+        hands: HandConfiguration.right,
+        direction: ExerciseDirection.up,
+      );
+      final state = learnerAt(1.0);
+      expect(pipeline.isIntroduction(state, short), isTrue);
+
+      expect(
+        pipeline.isIntroduction(
+          state,
+          short,
+          facts: DecisionFacts(state, startedExercises: {short}),
+        ),
+        isFalse,
+        reason:
+            'learner state records only timed attempts, and an untimed one '
+            'is still a meeting',
+      );
+    });
+
     test('hands together is never an introduction', () {
       // Both hands at once is a transition off two frontiers, with its own
       // prerequisite and its own conservative entry tempo. Reaching it

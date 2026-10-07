@@ -15,6 +15,17 @@ double retrievalOpportunity(Exercise exercise) =>
     ? exercise.guidance.retrievalDemand
     : 0.0;
 
+/// How capable this candidate is of generating motor evidence.
+///
+/// One when a traversal can carry a motor score and exactly zero otherwise,
+/// matching the evidence weights, which give the motor competencies and the
+/// execution residual nothing from an attempt that measured no timing. Without
+/// it, a candidate too short to time would claim the uncertainty of every
+/// motor competency it loads while being unable to reduce any of it, and keep
+/// claiming it, since its own attempts never shrink it.
+double motorEvidenceOpportunity(Exercise exercise) =>
+    TimingCapacity.of(exercise).supportsMotorScore ? 1.0 : 0.0;
+
 /// `1 - M`: how urgent it is to test this material before it is forgotten.
 ///
 /// A property of the material's memory state alone, independent of which
@@ -46,12 +57,14 @@ double retention(Prediction prediction, Exercise exercise) =>
 /// - the competencies the exercise loads, as a mask because a `Set` compares
 ///   by identity;
 /// - the guidance, which is all that [retrievalOpportunity] and the retrieval
-///   demand weighting depend on.
+///   demand weighting depend on;
+/// - whether [motorEvidenceOpportunity] is open.
 ///
 /// Deliberately not the exercise: tempo, span and direction reach this only
-/// through the competencies they load and the context they key, so candidates
-/// differing in those alone share an answer.
-typedef InformationKey = (ExecutionContext, int, GuidanceContext);
+/// through the competencies they load, the context they key, and whether a
+/// traversal is long enough to time, so candidates differing in those alone
+/// share an answer.
+typedef InformationKey = (ExecutionContext, int, GuidanceContext, bool);
 
 /// What the guidance-independent prediction channels vary with.
 ///
@@ -70,6 +83,7 @@ InformationKey informationKeyFor(Exercise exercise) => (
   executionContextOf(exercise),
   _competencyMask(exercise.structuralQ),
   exercise.guidance,
+  motorEvidenceOpportunity(exercise) > 0,
 );
 
 /// [competencies] as a bit per [Competency], so it can be compared by value.
@@ -102,6 +116,7 @@ double information(
   final motorQ = motorLoadings(q);
   final topologyQ = topologyLoadings(q);
   final retrievalDemand = exercise.guidance.retrievalDemand;
+  final motorOpportunity = motorEvidenceOpportunity(exercise);
 
   var competencyTerm = 0.0;
   for (final competency in Competency.values) {
@@ -109,7 +124,7 @@ double information(
     final loading =
         (competency.isTopology ? topologyQ[competency] : motorQ[competency]) ??
         0.0;
-    final weight = competency.isTopology ? retrievalDemand : 1.0;
+    final weight = competency.isTopology ? retrievalDemand : motorOpportunity;
     competencyTerm += variance * loading * weight;
   }
 
@@ -120,7 +135,8 @@ double information(
 
   final residual = state.materialExecution[executionContextOf(exercise)];
   final executionTerm =
-      residual?.residualVariance ?? params.materialExecution.priorVariance;
+      (residual?.residualVariance ?? params.materialExecution.priorVariance) *
+      motorOpportunity;
 
   return competencyTerm + memoryTerm + executionTerm;
 }

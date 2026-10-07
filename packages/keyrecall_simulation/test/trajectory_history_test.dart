@@ -77,7 +77,11 @@ void main() {
           ),
       ]);
       expect(history, isNotNull, reason: 'slot $index decided without one');
-      expect(history!.attemptedExercises, expected.attemptedExercises);
+      expect(history!.startedExercises, expected.startedExercises);
+      expect(
+        history.executionEvidenceExercises,
+        expected.executionEvidenceExercises,
+      );
       expect(history.retrievedMaterialHands, expected.retrievedMaterialHands);
       expect(
         history.executionEvidenceRevisions,
@@ -86,7 +90,7 @@ void main() {
       expect(history.demonstratedShapes, expected.demonstratedShapes);
     }
     expect(
-      pipeline.histories.last!.attemptedExercises,
+      pipeline.histories.last!.executionEvidenceExercises,
       isNotEmpty,
       reason: 'the run accumulated a history to read',
     );

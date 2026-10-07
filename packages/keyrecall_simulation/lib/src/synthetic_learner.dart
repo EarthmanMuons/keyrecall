@@ -416,14 +416,17 @@ Outcome sampleOutcome({
     final completed =
         motorQuality > 0.3 && rng.nextDouble() < motorQuality + 0.2;
 
+    // Drawn regardless, so the stream is unchanged, and kept only where
+    // measurement could read them from one traversal.
+    final capacity = TimingCapacity.of(exercise);
     outcome = Outcome(
       started: true,
       retrieval: retrieval,
       completed: completed,
       materialRetrieval: materialRetrieval,
       pitchIntegrity: pitchIntegrity,
-      continuity: continuity,
-      temporalStability: temporalStability,
+      continuity: capacity.supportsContinuity ? continuity : null,
+      temporalStability: capacity.supportsSpread ? temporalStability : null,
       achievedTempoRatio: noisy(motorQuality),
       topologyAccuracy: noisy(topologyQuality),
     );

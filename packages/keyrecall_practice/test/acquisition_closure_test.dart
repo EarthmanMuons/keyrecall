@@ -92,11 +92,12 @@ void main() {
       );
     }
     final restored = AttemptJournal.fromJsonLines(log.toJsonLines());
-    expect(attemptHistoryOfRecords(restored.records).attemptedExercises, {
-      parent,
-    });
     expect(
-      attemptHistoryOfRecords(restored.records).attemptedExercises,
+      attemptHistoryOfRecords(restored.records).executionEvidenceExercises,
+      {parent},
+    );
+    expect(
+      attemptHistoryOfRecords(restored.records).executionEvidenceExercises,
       isNot(contains(other)),
     );
   });
@@ -154,6 +155,60 @@ void main() {
       ('E_NATURAL_MINOR', Hand.right),
       ('E_NATURAL_MINOR', Hand.left),
     });
+  });
+
+  test('an attempt too short to time was still asked for', () {
+    final arpeggio = Exercise.linear(
+      material: allRootPositionArpeggios.first,
+      hands: HandConfiguration.right,
+      direction: ExerciseDirection.up,
+    );
+    final scale = Exercise.linear(
+      material: material,
+      hands: HandConfiguration.right,
+      direction: ExerciseDirection.up,
+    );
+    OrdinaryAttempt played(Exercise exercise, {required bool timed}) {
+      final outcome = Outcome(
+        started: true,
+        retrieval: FactualRetrieval.succeeded,
+        completed: true,
+        materialRetrieval: 1.0,
+        pitchIntegrity: 1.0,
+        continuity: timed ? 1.0 : null,
+        temporalStability: timed ? 1.0 : null,
+        achievedTempoRatio: 1.0,
+        topologyAccuracy: 1.0,
+      );
+      return (
+        exercise: exercise,
+        outcome: outcome,
+        weights: evidenceWeightsFor(exercise, outcome),
+      );
+    }
+
+    final history = attemptHistoryOf([
+      played(arpeggio, timed: false),
+      played(scale, timed: true),
+    ]);
+
+    expect(history.startedExercises, {arpeggio, scale});
+    expect(history.executionEvidenceExercises, {
+      scale,
+    }, reason: 'beginning an attempt is not the same fact as timing one');
+    expect(history.lastIntroductionByFamily, {
+      arpeggio.material.familyId: 0,
+      scale.material.familyId: 1,
+    });
+    expect(
+      attemptHistoryOf([
+        played(arpeggio, timed: false),
+        played(scale, timed: true),
+        played(arpeggio, timed: false),
+      ]).lastIntroductionByFamily[arpeggio.material.familyId],
+      0,
+      reason: 'meeting a material again introduces nothing',
+    );
   });
 
   group('serving a probe by presenting the parent', () {

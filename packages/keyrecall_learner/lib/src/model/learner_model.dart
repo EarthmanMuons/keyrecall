@@ -514,6 +514,12 @@ class LearnerModel {
         at: at,
       );
     }
+    _recordHandsTogetherReadiness(
+      state: state,
+      exercise: exercise,
+      outcome: outcome,
+      at: at,
+    );
 
     return _updateMaterialMemory(
       memory: state.materialMemoryFor(materialId, params),
@@ -564,6 +570,45 @@ class LearnerModel {
     }
   }
 
+  /// Records that the hand played [exercise] with the notes known, at the
+  /// tempo it was played at.
+  ///
+  /// A separate record from the frontier, and a separate bar: pitch rather
+  /// than motor quality, because a hand that plays the right notes unevenly is
+  /// ready for the other hand to join it. For the same reason it does not wait
+  /// on timing evidence: a traversal too short to say how steady it was still
+  /// says how fast it went and whether the notes were right.
+  void _recordHandsTogetherReadiness({
+    required LearnerState state,
+    required Exercise exercise,
+    required Outcome outcome,
+    required DateTime at,
+  }) {
+    // Absent when the attempt established no pace, which leaves the record
+    // untouched rather than filing one at zero.
+    final ratio = outcome.measuredTempoRatio;
+    if (ratio == null ||
+        !outcome.completed ||
+        outcome.pitchIntegrity <
+            params.materialExecution.handsTogetherPitchIntegrity) {
+      return;
+    }
+    // At the tempo actually played, since this is where hands-together work
+    // starts and so has to be where the hand actually is. The frontier records
+    // the request instead.
+    state
+        .materialExecutionFor(
+          executionContextOf(exercise),
+          at,
+          params,
+          familyId: exercise.material.familyId,
+        )
+        .readyForHandsTogether(
+          octaves: exercise.conditions.octaves,
+          tempoBpm: exercise.conditions.tempoBpm * ratio,
+        );
+  }
+
   void _updateExecutionResidual({
     required LearnerState state,
     required ExecutionContext context,
@@ -587,29 +632,6 @@ class LearnerModel {
           (1 - params.materialExecution.evidenceShrinkage * weight),
     );
     residual.lastEvidenceAt = at;
-
-    // Absent when the attempt established no pace, which leaves both records
-    // of a performed tempo untouched rather than filing one at zero.
-    final performedTempoBpm = switch (outcome.measuredTempoRatio) {
-      final ratio? => exercise.conditions.tempoBpm * ratio,
-      null => null,
-    };
-
-    // A separate record from the frontier, and a separate bar: pitch rather
-    // than motor quality, because a hand that plays the right notes unevenly is
-    // ready for the other hand to join it.
-    if (performedTempoBpm != null &&
-        outcome.completed &&
-        outcome.pitchIntegrity >=
-            params.materialExecution.handsTogetherPitchIntegrity) {
-      // At the tempo actually played, since this is where hands-together work
-      // starts and so has to be where the hand actually is. The frontier beside
-      // it records the request instead.
-      residual.readyForHandsTogether(
-        octaves: exercise.conditions.octaves,
-        tempoBpm: performedTempoBpm,
-      );
-    }
 
     // The execution frontier moves only on an attempt that was managed:
     // through to the end, and played rather than endured. A maximum rather than

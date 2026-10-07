@@ -224,7 +224,7 @@ void main() {
         at: t0,
         acquisition: const AcquisitionProgress.empty(),
         acquisitionFloor: entriesFor(floor),
-        history: AttemptHistory(attemptedExercises: {floor}),
+        history: AttemptHistory(executionEvidenceExercises: {floor}),
       );
       expect(result, isA<SelectionBlocked>());
       expect(result.traces.single.safety.isAllowed, isFalse);
@@ -243,7 +243,7 @@ void main() {
       at: t0,
       acquisition: acquisition,
       acquisitionFloor: entriesFor(floor),
-      history: AttemptHistory(attemptedExercises: attemptedParents),
+      history: AttemptHistory(executionEvidenceExercises: attemptedParents),
     );
 
     test('is absent unless the caller asks for it', () {
@@ -354,7 +354,7 @@ void main() {
       at: t0,
       acquisition: progress,
       acquisitionFloor: entriesFor(floor),
-      history: AttemptHistory(attemptedExercises: attemptedParents),
+      history: AttemptHistory(executionEvidenceExercises: attemptedParents),
     );
 
     test('presents the unchanged parent through its own bypass', () {

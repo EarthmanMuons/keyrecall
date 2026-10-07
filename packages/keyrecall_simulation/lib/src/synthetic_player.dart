@@ -546,14 +546,21 @@ class PlayerState {
       }
     }
 
+    // No more timing than measurement could read from one traversal, however
+    // well it went.
+    final capacity = TimingCapacity.of(exercise);
     return Outcome(
       started: true,
       retrieval: retrieval,
       completed: completed,
       materialRetrieval: noisy(available, retrievalZ),
       pitchIntegrity: pitchIntegrity,
-      continuity: noisy(motorQuality, continuityZ),
-      temporalStability: noisy(steadiness, stabilityZ),
+      continuity: capacity.supportsContinuity
+          ? noisy(motorQuality, continuityZ)
+          : null,
+      temporalStability: capacity.supportsSpread
+          ? noisy(steadiness, stabilityZ)
+          : null,
       achievedTempoRatio: performed / conditions.tempoBpm,
       topologyAccuracy: noisy(available, topologyZ),
       coordination: coordination,

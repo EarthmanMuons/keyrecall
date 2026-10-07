@@ -35,7 +35,7 @@ void main() {
             .eligibilityFor(
               state,
               traversal(ExerciseDirection.upDown, hands),
-              facts: DecisionFacts(state, attemptedExercises: attempted),
+              facts: DecisionFacts(state, startedExercises: attempted),
             )
             .code;
       }

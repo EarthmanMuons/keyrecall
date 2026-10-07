@@ -131,14 +131,22 @@ AttemptHistory attemptHistoryOf(
   Iterable<OrdinaryAttempt> attempts, {
   RequirementCompletionPolicy policy = RequirementCompletionPolicy.standard,
 }) {
-  final attempted = <Exercise>{};
+  final started = <Exercise>{};
+  final informative = <Exercise>{};
   final retrieved = <(String, Hand)>{};
   final revisions = <ExecutionContext, int>{};
   final shapes = <String, Set<RealizationShape>>{};
-  for (final (:exercise, :outcome, :weights) in attempts) {
-    final informative = outcome.started && weights.materialExecution > 0;
-    if (informative) {
-      attempted.add(exercise);
+  final introductions = <String, int>{};
+  final met = <String>{};
+  for (final (position, (:exercise, :outcome, :weights)) in attempts.indexed) {
+    if (outcome.started) {
+      started.add(exercise);
+      if (met.add(exercise.material.materialId)) {
+        introductions[exercise.material.familyId] = position;
+      }
+    }
+    if (outcome.started && weights.materialExecution > 0) {
+      informative.add(exercise);
       revisions.update(
         executionContextOf(exercise),
         (revision) => revision + 1,
@@ -164,10 +172,12 @@ AttemptHistory attemptHistoryOf(
     }
   }
   return AttemptHistory(
-    attemptedExercises: attempted,
+    startedExercises: started,
+    executionEvidenceExercises: informative,
     retrievedMaterialHands: retrieved,
     executionEvidenceRevisions: revisions,
     demonstratedShapes: shapes,
+    lastIntroductionByFamily: introductions,
   );
 }
 

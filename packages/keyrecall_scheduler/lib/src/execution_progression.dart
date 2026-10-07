@@ -339,15 +339,16 @@ double realizationFitFor(
 ///
 /// Derived rather than stored, which is what bounds it: it holds only while
 /// both hands satisfy coordination readiness for the material and the two have
-/// never produced execution evidence together on it. Nothing accumulates and
-/// nothing expires on a timer.
+/// never played it together. Nothing accumulates and nothing expires on a
+/// timer.
 ///
-/// **Execution evidence, not presentation.** An attempt that never started
-/// carries none, so it leaves the transition owed: the learner was shown the
-/// coordination task and did not meet it. Any attempt they did play spends it
-/// however badly it went, because what the scheduler owes is bringing newly
-/// available coordination work into practice, and how it went is then evidence
-/// like any other.
+/// **Played, not presented.** An attempt that never started leaves the
+/// transition owed: the learner was shown the coordination task and did not
+/// meet it. Any attempt they did play spends it however badly it went, and
+/// whether or not it was long enough to time, because what the scheduler owes
+/// is bringing newly available coordination work into practice, and how it
+/// went is then evidence like any other. [hasPlayed] answers from attempt
+/// history where the caller keeps one.
 ///
 /// Once per material rather than once per span, and direction is unread. The
 /// event is the learner moving from never having coordinated this scale to
@@ -360,9 +361,10 @@ bool isCoordinationTransition(
   LearnerState state,
   Exercise exercise, {
   ExecutionMemo? memo,
+  bool Function(String materialId, HandConfiguration hands)? hasPlayed,
 }) =>
     exercise.conditions.hands == HandConfiguration.together &&
-    !state.hasPlayed(
+    !(hasPlayed ?? state.hasPlayed)(
       exercise.material.materialId,
       HandConfiguration.together,
     ) &&

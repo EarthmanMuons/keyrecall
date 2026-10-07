@@ -15,7 +15,10 @@ import 'support/fixtures.dart';
 /// a few hand-built examples, and against states of different shapes, because
 /// a key can be complete for one learner and incomplete for another.
 void main() {
-  final candidates = generateCandidates(InstrumentProfile(), allScales);
+  final candidates = generateCandidates(InstrumentProfile(), [
+    ...allScales,
+    ...allRootPositionArpeggios,
+  ]);
 
   /// A learner with memory, frontiers and residuals in place, so the terms
   /// [information] reads are populated rather than all at their priors.
@@ -121,6 +124,16 @@ void main() {
       informationKeyFor(exercise(guidance: GuidanceContext.continuouslyCued)),
       isNot(base),
     );
+
+    final arpeggio = allRootPositionArpeggios.first;
+    final short = Exercise.linear(
+      material: arpeggio,
+      hands: HandConfiguration.right,
+      direction: ExerciseDirection.up,
+    );
+    final (context, mask, guidance, timed) = informationKeyFor(short);
+    expect(timed, isFalse, reason: 'too short to carry a motor score');
+    expect(informationKeyFor(short), isNot((context, mask, guidance, true)));
   });
 
   test('and ignores what information does not read', () {
