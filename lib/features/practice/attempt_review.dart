@@ -267,6 +267,9 @@ Duration reviewArrivalDelay(ReviewPart part, {required bool hasMeaning}) =>
 
 /// A part of a review rising into place after [delay], or simply there under
 /// reduced motion.
+///
+/// The same widgets either way, so a change of preference never remounts what
+/// is inside, and an exposure it already reported stays reported.
 class ReviewArrival extends StatefulWidget {
   const ReviewArrival({required this.delay, required this.child, super.key});
 
@@ -307,13 +310,15 @@ class _ReviewArrivalState extends State<ReviewArrival>
 
   @override
   Widget build(BuildContext context) {
-    if (Motion.of(context).reduced) return widget.child;
+    final arrival = Motion.of(context).reduced
+        ? kAlwaysCompleteAnimation
+        : _arrival;
     return FadeTransition(
-      opacity: _arrival,
+      opacity: arrival,
       child: AnimatedBuilder(
-        animation: _arrival,
+        animation: arrival,
         builder: (context, child) => Transform.translate(
-          offset: Offset(0, _rise * (1 - _arrival.value)),
+          offset: Offset(0, _rise * (1 - arrival.value)),
           child: child,
         ),
         child: widget.child,
@@ -844,13 +849,14 @@ class _SparkleState extends State<_Sparkle>
 
   @override
   Widget build(BuildContext context) {
-    final icon = Icon(Icons.auto_awesome, size: 16, color: widget.color);
-    if (Motion.of(context).reduced) return icon;
+    final arrival = Motion.of(context).reduced
+        ? kAlwaysCompleteAnimation
+        : _arrival;
     return RotationTransition(
-      turns: Tween(begin: -0.5, end: 0.0).animate(_arrival),
+      turns: Tween(begin: -0.5, end: 0.0).animate(arrival),
       child: ScaleTransition(
-        scale: Tween(begin: 0.4, end: 1.0).animate(_arrival),
-        child: icon,
+        scale: Tween(begin: 0.4, end: 1.0).animate(arrival),
+        child: Icon(Icons.auto_awesome, size: 16, color: widget.color),
       ),
     );
   }

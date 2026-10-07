@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_review.dart';
+import 'package:keyrecall/features/practice/presentation_exposure.dart';
 
 /// What the screen between attempts is allowed to say about what comes next.
 void main() {
@@ -236,6 +237,38 @@ void main() {
         lessThan(reviewArrivalDelay(ReviewPart.continuation, hasMeaning: true)),
       );
     });
+  });
+
+  testWidgets('a change of motion preference does not report a part again', (
+    tester,
+  ) async {
+    var reports = 0;
+    Widget review({required bool reduced}) => MaterialApp(
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+          child: ReviewArrival(
+            delay: Duration.zero,
+            child: ExposureGate(
+              presentation: 'progress',
+              onExposed: () async {
+                reports++;
+                return true;
+              },
+              child: const SizedBox(width: 100, height: 40),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(review(reduced: false));
+    await tester.pumpAndSettle();
+    expect(reports, 1);
+
+    await tester.pumpWidget(review(reduced: true));
+    await tester.pumpAndSettle();
+    expect(reports, 1);
   });
 
   group('an attempt nothing was played in', () {
