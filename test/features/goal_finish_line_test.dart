@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
-import 'package:keyrecall/features/practice/goal_screen.dart';
+import 'package:keyrecall/features/practice/goal_progress.dart';
 
 void main() {
   ActiveFocus focus(FocusStrength strength) => ActiveFocus(

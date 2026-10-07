@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'goal_progress.dart';
-import 'goal_screen.dart';
 import 'practice_providers.dart';
 
 /// Progress toward the goal in force, or null where there is no finish line

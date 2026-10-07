@@ -4,6 +4,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import 'goal_progress.dart';
 import 'goal_progress_screen.dart';
 import 'practice_focus.dart';
 import 'practice_providers.dart';
@@ -80,25 +81,6 @@ class GoalScreen extends ConsumerWidget {
 /// The registry resolution reads, so a goal that can be chosen here is one a
 /// stored plan can be resolved under.
 final List<String> offeredGoalIds = supportedGoals.keys.toList();
-
-/// What the coverage on screen is coverage of.
-///
-/// An exclusive focus is what decides it. Coverage counts the targets the
-/// active scope resolved to, and an exclusive focus is the one thing that
-/// makes those fewer than the goal's, so "1 of 1" under a goal heading would
-/// otherwise read as having finished the goal. An emphasis narrows nothing, so
-/// the count is still the goal's.
-String coverageScopeName(PracticePlan plan) =>
-    plan.focus?.isExclusive ?? false ? 'In this focus' : 'Goal progress';
-
-/// Whether coverage of [plan] is a count toward an end.
-///
-/// General technique is open-ended: it grows with the catalog and is never
-/// finished, so a fraction of it would read as a finish line that does not
-/// exist. A focus inside it is a chosen set and can be finished.
-bool hasFinishLine(PracticePlan plan) =>
-    plan.goalId != PracticeGoal.generalFluency.id ||
-    (plan.focus?.isExclusive ?? false);
 
 /// What a goal is called where a learner reads it.
 String goalName(String goalId) => switch (goalId) {
