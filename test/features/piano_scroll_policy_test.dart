@@ -264,6 +264,32 @@ void main() {
         );
       });
 
+      test('shows every note of a frame that fits', () {
+        final frames = <({Set<int> frame, Set<int> anchors})>[
+          (frame: {60, 64, 67, 72}, anchors: {60}),
+          (frame: {60, 64, 67, 72}, anchors: {72}),
+          (frame: {21, 24, 28, 33}, anchors: {21}),
+          (frame: {96, 100, 103, 108}, anchors: {108}),
+          (frame: {60, 76}, anchors: {60}),
+          (frame: {60, 76}, anchors: {76}),
+        ];
+        for (final (:frame, :anchors) in frames) {
+          final target = PianoScrollPolicy.frameTarget(
+            viewportAt(0),
+            frame: frame,
+            anchors: anchors,
+          );
+          for (final midi in frame) {
+            expect(leftOf(midi), greaterThanOrEqualTo(target), reason: '$midi');
+            expect(
+              rightOf(midi),
+              lessThanOrEqualTo(target + viewportWidth),
+              reason: '$midi',
+            );
+          }
+        }
+      });
+
       test('keeps the anchors in view when the frame does not fit', () {
         expect(
           PianoScrollPolicy.frameTarget(

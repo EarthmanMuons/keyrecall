@@ -318,7 +318,8 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
   }
 
   /// Where recentering scrolls to: the sounding notes, or the exercise while
-  /// nothing is sounding.
+  /// nothing is sounding. Recentering follows input; framing follows the
+  /// material.
   double _centerTarget(KeyboardViewport viewport) => _focusNotes.isEmpty
       ? _frameTarget(viewport)
       : PianoScrollPolicy.centerTarget(viewport, _focusNotes);
