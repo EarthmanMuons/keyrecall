@@ -159,7 +159,9 @@ class PulseClicker {
   /// Prepares the engine, if this device has one to give.
   ///
   /// Cheap to call again: the engine is released after each count-in, so this
-  /// is what brings it back for the next one.
+  /// is what brings it back for the next one. Called straight after a [stop]
+  /// nobody awaited, it waits for that release to finish before opening the
+  /// engine again, which is what lets one attempt hand the engine to the next.
   Future<void> prepare() async {
     // Taken before the wait, not after it. Waking up later must not make this
     // the current preparation: the stop it is queued behind may itself have
