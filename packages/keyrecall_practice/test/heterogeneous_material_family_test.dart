@@ -339,6 +339,46 @@ void main() {
       ScopeResolutionFailureCode.unrealizableRequirement,
     );
   });
+
+  test('a span the scope offers no way to open is refused', () {
+    final arpeggio = allRootPositionArpeggios.first;
+    ScopeResolution resolveUpTo(ExerciseDirection direction) {
+      CurriculumRequirement at(int octaves) => CurriculumRequirement(
+        id: '${arpeggio.materialId}:$octaves',
+        familyId: arpeggio.familyId,
+        materialId: arpeggio.materialId,
+        constraints: ExerciseConstraints(
+          hands: HandConfiguration.right,
+          octaves: octaves,
+          direction: direction,
+        ),
+      );
+      final curriculum = Curriculum(
+        id: 'SPAN_LADDER',
+        version: '1',
+        requirements: [at(1), at(2)],
+      );
+      return resolver.resolve(
+        goal: PracticeGoal(id: curriculum.id, curriculum: curriculum),
+        focus: PracticeFocus.unrestricted,
+        catalog: [arpeggio],
+        instrument: InstrumentProfile(),
+      );
+    }
+
+    final ascending = resolveUpTo(ExerciseDirection.up);
+    expect(ascending, isA<InvalidPracticeScope>());
+    final failure = (ascending as InvalidPracticeScope).failures.single;
+    expect(failure.code, ScopeResolutionFailureCode.unreachableSpanProgression);
+    expect(failure.requirementId, '${arpeggio.materialId}:2');
+    expect(failure.reference, contains('1-octave'));
+
+    expect(
+      resolveUpTo(ExerciseDirection.upDown),
+      isA<ValidPracticeScope>(),
+      reason: 'up and down at one octave can be timed, so it can open two',
+    );
+  });
 }
 
 CurriculumRequirement _requirement(String id, TechnicalMaterial material) =>

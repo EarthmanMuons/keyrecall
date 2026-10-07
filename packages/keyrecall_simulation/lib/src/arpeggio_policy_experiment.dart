@@ -782,7 +782,10 @@ CurriculumRequirement _requirement(
   constraints: ExerciseConstraints(
     hands: hands,
     octaves: octaves,
-    direction: ExerciseDirection.up,
+    // Up and down, with ascending on the way: a one-octave triad ascending is
+    // too short to time, so an ascending-only ladder could never open its
+    // second span.
+    direction: ExerciseDirection.upDown,
   ),
 );
 

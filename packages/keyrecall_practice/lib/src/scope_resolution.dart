@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
@@ -89,6 +90,39 @@ class ArpeggioPracticeMaterialFamily implements PracticeMaterialFamily {
   ) => _arpeggioAcquisitionFloorFor(requests, policy);
 }
 
+/// The span a target in [targets] needs evidence at and cannot get, or null.
+///
+/// A span that waits on a demonstrated frontier at the span before it can only
+/// open if [candidates] hold a shape there long enough to time, since an
+/// attempt with no motor score cannot establish the frontier it waits on.
+/// Hands together is exempt: it may also open on each hand's readiness alone.
+String? _unreachableSpan(
+  TechnicalMaterial material,
+  List<Exercise> targets,
+  List<Exercise> candidates,
+) {
+  if (!material.progression.requiresPreviousSpanEvidence) return null;
+  for (final target in targets) {
+    final conditions = target.conditions;
+    if (conditions.hands == HandConfiguration.together) continue;
+    final previous = material.progression.previousSpan(conditions.octaves);
+    if (previous == null) continue;
+    final reachable = candidates.any(
+      (exercise) =>
+          exercise.conditions.hands == conditions.hands &&
+          exercise.conditions.handMotion == conditions.handMotion &&
+          exercise.conditions.octaves == previous &&
+          TimingCapacity.of(exercise).supportsMotorScore,
+    );
+    if (!reachable) {
+      return '${material.materialId} ${conditions.hands.id}: no '
+          '$previous-octave shape can be timed to open ${conditions.octaves} '
+          'octaves';
+    }
+  }
+  return null;
+}
+
 /// The requirement id a goal with no curriculum of its own gives [materialId].
 ///
 /// A goal that names materials rather than a curriculum still has to produce
@@ -109,6 +143,11 @@ enum ScopeResolutionFailureCode {
   unknownMaterial,
   unknownFamily,
   unrealizableRequirement,
+
+  /// A span the scope can only unlock with evidence it offers no way to
+  /// produce: every shape at the span before it is too short to time.
+  unreachableSpanProgression,
+
   unsupportedCurriculumVersion,
   unresolvedSupport,
   focusOutsideGoal,
@@ -392,6 +431,17 @@ class PracticeScopeResolver {
             code: ScopeResolutionFailureCode.unrealizableRequirement,
             requirementId: requirement.id,
             reference: requirement.materialId,
+          ),
+        );
+        continue;
+      }
+      if (_unreachableSpan(material, targetCandidates, candidates)
+          case final gap?) {
+        failures.add(
+          ScopeResolutionFailure(
+            code: ScopeResolutionFailureCode.unreachableSpanProgression,
+            requirementId: requirement.id,
+            reference: gap,
           ),
         );
         continue;
