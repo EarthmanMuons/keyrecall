@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -11,11 +12,13 @@ void main() {
     bool routeCurrent = true,
     bool foreground = true,
     bool onScreen = true,
+    bool fadedIn = true,
   }) => ExposureConditions(
     isMounted: mounted,
     isRouteCurrent: routeCurrent,
     isForeground: foreground,
     isOnScreen: onScreen,
+    isFadedIn: fadedIn,
   );
 
   group('what counts as having reached the learner', () {
@@ -28,6 +31,38 @@ void main() {
       expect(conditions(foreground: false).isExposed, isFalse);
       expect(conditions(onScreen: false).isExposed, isFalse);
       expect(conditions(mounted: false).isExposed, isFalse);
+      expect(conditions(fadedIn: false).isExposed, isFalse);
+    });
+  });
+
+  group('fades it is still arriving through', () {
+    RenderBox under(Animation<double> opacity) {
+      final content = RenderConstrainedBox(
+        additionalConstraints: const BoxConstraints.tightFor(
+          width: 10,
+          height: 10,
+        ),
+      );
+      RenderAnimatedOpacity(opacity: opacity, child: content);
+      return content;
+    }
+
+    test('a fade still coming in holds it back', () {
+      final opacity = _Fade(0.4, AnimationStatus.forward);
+      expect(fadesOver(under(opacity)), [opacity]);
+    });
+
+    test('a fade that has arrived does not', () {
+      expect(fadesOver(under(_Fade(1, AnimationStatus.completed))), isEmpty);
+    });
+
+    test('a fade resting part of the way does not', () {
+      expect(fadesOver(under(_Fade(0.35, AnimationStatus.completed))), isEmpty);
+    });
+
+    test('a fade holding it at nothing does', () {
+      final opacity = _Fade(0, AnimationStatus.dismissed);
+      expect(fadesOver(under(opacity)), [opacity]);
     });
   });
 
@@ -219,6 +254,41 @@ void main() {
     });
   });
 
+  group('content fading in', () {
+    testWidgets('is reported once it has arrived, not when it mounts', (
+      tester,
+    ) async {
+      final asked = <int>[];
+      final fade = AnimationController(
+        vsync: tester,
+        duration: const Duration(milliseconds: 280),
+      );
+      addTearDown(fade.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FadeTransition(
+            opacity: fade,
+            child: ExposureGate(
+              presentation: 'arriving',
+              onExposed: () async {
+                asked.add(asked.length);
+                return true;
+              },
+              child: const SizedBox(width: 400, height: 50),
+            ),
+          ),
+        ),
+      );
+      unawaited(fade.forward());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 140));
+      expect(asked, isEmpty);
+
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(asked, [0]);
+    });
+  });
+
   group('content clipped by the scroll it sits in', () {
     /// A viewport 100 tall at the top of the window, with the gate 300 into
     /// its content: well inside the window, and clipped out of the box it
@@ -336,4 +406,27 @@ void main() {
       });
     }
   });
+}
+
+/// An opacity standing still wherever it is put, moving or not.
+class _Fade extends Animation<double> {
+  _Fade(this.value, this.status);
+
+  @override
+  final double value;
+
+  @override
+  final AnimationStatus status;
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
+
+  @override
+  void addStatusListener(AnimationStatusListener listener) {}
+
+  @override
+  void removeStatusListener(AnimationStatusListener listener) {}
 }

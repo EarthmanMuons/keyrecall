@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:material_ui/material_ui.dart';
@@ -12,10 +13,10 @@ import 'package:material_ui/material_ui.dart';
 /// was the thing on the device's screen: everything between the app and the
 /// learner's eyes was out of the way.
 ///
-/// Four conditions rather than one, because a mounted widget satisfies none of
-/// the other three. A retained screen goes on building behind a settings route,
-/// a backgrounded app keeps its tree, and a section below the fold of a scroll
-/// view is laid out and never seen.
+/// Five conditions rather than one, because a mounted widget satisfies none of
+/// the other four. A retained screen goes on building behind a settings route,
+/// a backgrounded app keeps its tree, a section below the fold of a scroll view
+/// is laid out and never seen, and a screen fading in is mounted at nothing.
 @immutable
 class ExposureConditions {
   /// Whether the widget reporting this is still in the tree.
@@ -30,22 +31,47 @@ class ExposureConditions {
   /// Whether it has been laid out somewhere the viewport covers.
   final bool isOnScreen;
 
+  /// Whether no fade above it is still bringing it in.
+  final bool isFadedIn;
+
   const ExposureConditions({
     required this.isMounted,
     required this.isRouteCurrent,
     required this.isForeground,
     required this.isOnScreen,
+    required this.isFadedIn,
   });
 
   /// Whether the learner had an opportunity to perceive it.
   bool get isExposed =>
-      isMounted && isRouteCurrent && isForeground && isOnScreen;
+      isMounted && isRouteCurrent && isForeground && isOnScreen && isFadedIn;
 
   @override
   String toString() =>
       'ExposureConditions(mounted: $isMounted, current: $isRouteCurrent, '
-      'foreground: $isForeground, onScreen: $isOnScreen)';
+      'foreground: $isForeground, onScreen: $isOnScreen, '
+      'fadedIn: $isFadedIn)';
 }
+
+/// The fades above [render] that keep it from being fully drawn yet: each one
+/// still running short of opaque, or holding it at nothing.
+///
+/// Arrival rather than any opacity at all, so a part that rises in after the
+/// screen is reported when it has arrived, not on the first frame it was
+/// mounted. A fade resting part of the way, like a dimmed paused staff, is
+/// settled and does not hold anything back.
+List<Animation<double>> fadesOver(RenderObject render) => [
+  for (
+    var ancestor = render.parent;
+    ancestor != null;
+    ancestor = ancestor.parent
+  )
+    if (ancestor is RenderAnimatedOpacity &&
+        (ancestor.opacity.value == 0 ||
+            (ancestor.opacity.value < 1 &&
+                ancestor.opacity.status.isAnimating)))
+      ancestor.opacity,
+];
 
 /// Whether [content] has any of itself inside [viewport].
 ///
@@ -146,6 +172,9 @@ class _ExposureGateState extends State<ExposureGate>
   ScrollPosition? _scroll;
   final List<Animation<double>> _moving = [];
 
+  /// Fades that held a report back, listened to so their arrival asks again.
+  final Set<Animation<double>> _fades = {};
+
   @override
   void initState() {
     super.initState();
@@ -194,9 +223,14 @@ class _ExposureGateState extends State<ExposureGate>
     for (final animation in _moving) {
       animation.removeListener(_scheduleCheck);
     }
+    for (final fade in _fades) {
+      fade.removeStatusListener(_onFade);
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
+
+  void _onFade(AnimationStatus _) => _scheduleCheck();
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) => _scheduleCheck();
@@ -212,7 +246,14 @@ class _ExposureGateState extends State<ExposureGate>
     final render = context.findRenderObject();
     final view = View.of(context);
     final viewport = Offset.zero & (view.physicalSize / view.devicePixelRatio);
+    final fading = render == null
+        ? const <Animation<double>>[]
+        : fadesOver(render);
+    for (final fade in fading) {
+      if (_fades.add(fade)) fade.addStatusListener(_onFade);
+    }
     return ExposureConditions(
+      isFadedIn: fading.isEmpty,
       isMounted: mounted,
       isRouteCurrent: ModalRoute.of(context)?.isCurrent ?? true,
       isForeground: appIsForeground(),
