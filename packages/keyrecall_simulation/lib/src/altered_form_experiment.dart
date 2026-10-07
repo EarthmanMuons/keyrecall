@@ -527,7 +527,9 @@ AlteredFormIntroduction _introductionAt(
         coordination.mean >= config.eligibility.fluentHandsTogetherFloor,
     sameTonicRetrievals: sameTonicRetrievals,
     naturalMinorHandsRetrieved: {
-      for (final (materialId, hand) in retrievedMaterialHands(records))
+      for (final (materialId, hand) in attemptHistoryOfRecords(
+        records,
+      ).retrievedMaterialHands)
         if (naturalMinorIds.contains(materialId)) (materialId, hand),
     }.length,
   );
@@ -626,13 +628,10 @@ class _StateRecordingPipeline extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     bool diagnose = true,
   }) {
     lastState = state;
@@ -645,13 +644,10 @@ class _StateRecordingPipeline extends SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
-      demonstratedShapes: demonstratedShapes,
       diagnose: diagnose,
     );
   }

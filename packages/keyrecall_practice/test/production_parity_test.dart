@@ -137,7 +137,9 @@ void _testProductionParity(List<TechnicalMaterial> catalog) {
               reopenedFailures++;
               expect(
                 pipeline.acquisitionSetAside(
-                  executionEvidenceRevisions(reopened.journal.records),
+                  attemptHistoryOfRecords(
+                    reopened.journal.records,
+                  ).executionEvidenceRevisions,
                   reopened.acquisitionProgress,
                   task.parent,
                 ),
@@ -279,8 +281,12 @@ Object effectFacts(SchedulerVerdict verdict) => (
 Map<String, Object?> persistentFacts(PracticeSession session) => {
   'learner': encodeLearnerState(session.state),
   'acquisition': encodeAcquisitionProgress(session.acquisitionProgress),
-  'attempted': attemptedExercises(session.journal.records),
-  'revisions': executionEvidenceRevisions(session.journal.records),
+  'attempted': attemptHistoryOfRecords(
+    session.journal.records,
+  ).attemptedExercises,
+  'revisions': attemptHistoryOfRecords(
+    session.journal.records,
+  ).executionEvidenceRevisions,
   'ordinary': [for (final record in session.journal.records) record.toJson()],
   'supported': [
     for (final record in session.acquisitionJournal.records) record.toJson(),
@@ -364,14 +370,11 @@ class _RecordingHost implements SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
   }) async => last = await inner.decide(
     epoch: epoch,
     state: state,
@@ -379,13 +382,10 @@ class _RecordingHost implements SchedulerHost {
     dueRequirementIds: dueRequirementIds,
     liveSupportHands: liveSupportHands,
     uncoveredTargetIds: uncoveredTargetIds,
-    demonstratedShapes: demonstratedShapes,
     at: at,
     acquisitionFloor: acquisitionFloor,
     acquisitionFamilyFloor: acquisitionFamilyFloor,
     acquisition: acquisition,
-    attemptedExercises: attemptedExercises,
-    retrievedMaterialHands: retrievedMaterialHands,
-    executionEvidenceRevisions: executionEvidenceRevisions,
+    history: history,
   );
 }

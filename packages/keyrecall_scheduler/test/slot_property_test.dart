@@ -101,7 +101,7 @@ practised(Plan plan) {
       session: session,
       candidates: candidates,
       at: at,
-      demonstratedShapes: shapes,
+      history: AttemptHistory(demonstratedShapes: shapes),
     );
     if (result case CandidateSelected(:final candidate)) {
       final exercise = candidate.exercise;
@@ -147,7 +147,7 @@ SelectionResult nextSlot(Plan plan, {bool reversed = false}) {
         session: session,
         candidates: reversed ? candidates.reversed.toList() : candidates,
         at: at,
-        demonstratedShapes: shapes,
+        history: AttemptHistory(demonstratedShapes: shapes),
       )
       .result;
 }
@@ -177,7 +177,7 @@ void main() {
               session: session,
               candidates: candidates,
               at: at,
-              demonstratedShapes: shapes,
+              history: AttemptHistory(demonstratedShapes: shapes),
             )
             .result;
 

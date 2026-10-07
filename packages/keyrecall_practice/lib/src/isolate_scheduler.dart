@@ -119,14 +119,11 @@ class IsolateScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
   }) async {
     final worker = _worker;
     if (worker == null) {
@@ -146,14 +143,11 @@ class IsolateScheduler implements SchedulerHost {
         dueRequirementIds: dueRequirementIds,
         liveSupportHands: liveSupportHands,
         uncoveredTargetIds: uncoveredTargetIds,
-        demonstratedShapes: demonstratedShapes,
         at: at,
         acquisitionFloor: acquisitionFloor,
         acquisitionFamilyFloor: acquisitionFamilyFloor,
         acquisition: acquisition,
-        attemptedExercises: attemptedExercises,
-        retrievedMaterialHands: retrievedMaterialHands,
-        executionEvidenceRevisions: executionEvidenceRevisions,
+        history: history,
       ),
     );
   }
@@ -173,14 +167,11 @@ class _DecisionRequest {
   final List<String> dueRequirementIds;
   final Map<String, Set<HandConfiguration>> liveSupportHands;
   final List<String> uncoveredTargetIds;
-  final Map<String, Set<RealizationShape>> demonstratedShapes;
   final DateTime at;
   final AcquisitionFloor? acquisitionFloor;
   final AcquisitionFloor? acquisitionFamilyFloor;
   final AcquisitionProgress? acquisition;
-  final Set<Exercise>? attemptedExercises;
-  final Set<(String, Hand)>? retrievedMaterialHands;
-  final Map<ExecutionContext, int> executionEvidenceRevisions;
+  final AttemptHistory? history;
 
   const _DecisionRequest({
     required this.id,
@@ -190,14 +181,11 @@ class _DecisionRequest {
     required this.dueRequirementIds,
     required this.liveSupportHands,
     required this.uncoveredTargetIds,
-    required this.demonstratedShapes,
     required this.at,
     required this.acquisitionFloor,
     required this.acquisitionFamilyFloor,
     required this.acquisition,
-    required this.attemptedExercises,
-    required this.retrievedMaterialHands,
-    required this.executionEvidenceRevisions,
+    required this.history,
   });
 }
 
@@ -411,13 +399,10 @@ class _Worker {
         acquisitionFloor: request.acquisitionFloor,
         acquisitionFamilyFloor: request.acquisitionFamilyFloor,
         acquisition: request.acquisition,
-        attemptedExercises: request.attemptedExercises,
-        retrievedMaterialHands: request.retrievedMaterialHands,
-        executionEvidenceRevisions: request.executionEvidenceRevisions,
+        history: request.history,
         practiceEntryPolicy: entry,
         emphasis: emphasis,
         uncoveredTargets: uncoveredTargetsIn(scope, request.uncoveredTargetIds),
-        demonstratedShapes: request.demonstratedShapes,
       );
       replies.send(
         _DecisionResponse(

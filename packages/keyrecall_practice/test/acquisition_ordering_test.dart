@@ -127,7 +127,7 @@ void main() {
     const pipeline = SchedulerPipeline(learner: learner);
     expect(
       pipeline.acquisitionSetAside(
-        executionEvidenceRevisions([record]),
+        attemptHistoryOfRecords([record]).executionEvidenceRevisions,
         failure,
         parent,
       ),
@@ -153,7 +153,7 @@ void main() {
     final restored = AttemptJournal.fromJsonLines(journal.toJsonLines());
     expect(
       pipeline.acquisitionSetAside(
-        executionEvidenceRevisions(restored.records),
+        attemptHistoryOfRecords(restored.records).executionEvidenceRevisions,
         failure,
         parent,
       ),
@@ -168,6 +168,12 @@ void main() {
         termination: AttemptTermination.learnerStopped,
       ),
     );
-    expect(executionEvidenceRevisions([record, silent])[context], 1);
+    expect(
+      attemptHistoryOfRecords([
+        record,
+        silent,
+      ]).executionEvidenceRevisions[context],
+      1,
+    );
   });
 }

@@ -188,23 +188,28 @@ void main() {
   });
 
   test('a returner is not handed the notes and the coordination at once', () {
-    final back = runTrajectorySessions(
+    final slots = runTrajectorySessions(
       player: decaying['matched']!,
       seed: 8,
       materials: catalog,
       sessions: schedule,
       assessment: set,
-    ).slots.where((slot) => slot.session == returned).first;
+    ).slots;
+    final back = slots.firstWhere((slot) => slot.session == returned);
+    final before = slots.lastWhere(
+      (slot) =>
+          slot.session < returned &&
+          slot.chosen.hasSameRealizationAs(back.chosen),
+    );
 
     expect(back.winner.challengeBypass, ChallengeBypass.executionProgression);
     expect(back.winner.isWithinChallengeBand, isFalse);
     expect(
-      back.winner.executionAdvance,
-      ExecutionAdvance.tempo,
+      back.chosen.guidance.independence,
+      lessThanOrEqualTo(before.chosen.guidance.independence),
       reason:
-          'a tempo step moves the axis its own frontier is evidence for, and '
-          'the hands-together step that used to be offered here moved the '
-          'guidance rung as well without evidence for that',
+          'a step on one axis leaves the guidance rung where the evidence for '
+          'it was earned, rather than asking for the notes as well',
     );
     expect(
       back.outcome.started,

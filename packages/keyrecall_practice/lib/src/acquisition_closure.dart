@@ -101,81 +101,76 @@ AcquisitionProbeServedRecord? acquisitionServiceOf({
       )
     : null;
 
-/// Exact ordinary tasks that produced informative execution evidence.
-///
-/// Rebuilt from ordinary history; acquisition history cannot establish that an
-/// ordinary realization was ever asked for.
-///
-/// Exact, and read by two rules that both need it to be. Acquisition asks
-/// whether the declared floor itself was attempted, and introduction order asks
-/// whether a material and hand has been asked for ascending before it is asked
-/// for up and down. A near-enough exercise answers neither.
-Set<Exercise> attemptedExercises(Iterable<AttemptRecord> records) => {
-  for (final record in records)
-    if (record.closure.measurement case Measured(
-      :final outcome,
-      :final weights,
-    ))
-      if (outcome.started && weights.materialExecution > 0) record.exercise,
-};
+/// One ordinary attempt as the scheduler's history reads it.
+typedef OrdinaryAttempt = ({
+  Exercise exercise,
+  Outcome outcome,
+  EvidenceWeights weights,
+});
 
-/// Each material a hand has produced from memory, as material and hand.
+/// The ordinary attempts in [records] that were measured.
 ///
-/// Memory is keyed by material alone and cannot say which hand retrieved it,
-/// so a prerequisite asked of one hand reads this instead. It is the same
-/// condition that forms memory: a successful factual retrieval. Hands together
-/// is both hands producing the scale, so it counts for each.
-Set<(String, Hand)> retrievedMaterialHands(Iterable<AttemptRecord> records) => {
-  for (final record in records)
-    if (record.closure.measurement case Measured(:final outcome))
-      if (outcome.retrieval == FactualRetrieval.succeeded)
-        for (final hand in record.exercise.conditions.hands.hands)
-          (record.exercise.material.materialId, hand),
-};
+/// Acquisition history is not here: it cannot establish that an ordinary
+/// realization was ever asked for.
+Iterable<OrdinaryAttempt> ordinaryAttemptsOf(Iterable<AttemptRecord> records) =>
+    [
+      for (final record in records)
+        if (record.closure.measurement case Measured(
+          :final outcome,
+          :final weights,
+        ))
+          (exercise: record.exercise, outcome: outcome, weights: weights),
+    ];
 
-/// The shapes each material has been played through cleanly in, from memory.
+/// What [attempts] tell the scheduler, in the order they happened.
 ///
-/// What the shape frontier steps past. Pitch accuracy is the covering one, and
-/// timing is not asked: this says what structure a learner has managed, not
-/// that any goal's standard was met.
-Map<String, Set<RealizationShape>> demonstratedShapes(
-  Iterable<AttemptRecord> records, {
+/// The one reading of ordinary history, shared by the app and by anything
+/// that simulates it, so the two cannot disagree about what a history
+/// implies.
+AttemptHistory attemptHistoryOf(
+  Iterable<OrdinaryAttempt> attempts, {
   RequirementCompletionPolicy policy = RequirementCompletionPolicy.standard,
 }) {
+  final attempted = <Exercise>{};
+  final retrieved = <(String, Hand)>{};
+  final revisions = <ExecutionContext, int>{};
   final shapes = <String, Set<RealizationShape>>{};
-  for (final record in records) {
-    if (record.exercise.guidance.isMaterialSupplied) continue;
-    if (record.closure.measurement case Measured(:final outcome)) {
-      if (outcome.started &&
-          outcome.completed &&
-          outcome.pitchIntegrity >= policy.minimumPitchIntegrity) {
-        shapes
-            .putIfAbsent(record.exercise.material.materialId, () => {})
-            .add(shapeOf(record.exercise));
+  for (final (:exercise, :outcome, :weights) in attempts) {
+    final informative = outcome.started && weights.materialExecution > 0;
+    if (informative) {
+      attempted.add(exercise);
+      revisions.update(
+        executionContextOf(exercise),
+        (revision) => revision + 1,
+        ifAbsent: () => 1,
+      );
+    }
+    // The same condition that forms memory. Hands together is both hands
+    // producing the scale, so it counts for each.
+    if (outcome.retrieval == FactualRetrieval.succeeded) {
+      for (final hand in exercise.conditions.hands.hands) {
+        retrieved.add((exercise.material.materialId, hand));
       }
     }
+    // Structure managed from memory: pitch accuracy is the covering one, and
+    // timing is not asked.
+    if (!exercise.guidance.isMaterialSupplied &&
+        outcome.started &&
+        outcome.completed &&
+        outcome.pitchIntegrity >= policy.minimumPitchIntegrity) {
+      shapes
+          .putIfAbsent(exercise.material.materialId, () => {})
+          .add(shapeOf(exercise));
+    }
   }
-  return shapes;
+  return AttemptHistory(
+    attemptedExercises: attempted,
+    retrievedMaterialHands: retrieved,
+    executionEvidenceRevisions: revisions,
+    demonstratedShapes: shapes,
+  );
 }
 
-/// Causal revisions reconstructed only from informative ordinary execution.
-Map<ExecutionContext, int> executionEvidenceRevisions(
-  Iterable<AttemptRecord> records,
-) {
-  final revisions = <ExecutionContext, int>{};
-  for (final record in records) {
-    if (record.closure.measurement case Measured(
-      :final outcome,
-      :final weights,
-    )) {
-      if (outcome.started && weights.materialExecution > 0) {
-        revisions.update(
-          executionContextOf(record.exercise),
-          (revision) => revision + 1,
-          ifAbsent: () => 1,
-        );
-      }
-    }
-  }
-  return revisions;
-}
+/// [attemptHistoryOf] the ordinary attempts in [records].
+AttemptHistory attemptHistoryOfRecords(Iterable<AttemptRecord> records) =>
+    attemptHistoryOf(ordinaryAttemptsOf(records));

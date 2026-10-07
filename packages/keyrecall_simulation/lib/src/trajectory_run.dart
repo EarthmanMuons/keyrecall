@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'held_out_assessment.dart';
@@ -132,6 +133,10 @@ Trajectory runTrajectorySessions({
   final recorded = <TrajectorySlot>[];
   final terminals = <TerminalTrajectorySlot>[];
   final history = <PriorSelection>[];
+  // What the app rebuilds from its journal before every decision, read the
+  // same way, so a rule that needs attempt history applies here as it does
+  // on a device.
+  final ordinary = <OrdinaryAttempt>[];
   final readings = <AssessmentReading>[];
   var nextIndex = 0;
 
@@ -180,6 +185,7 @@ Trajectory runTrajectorySessions({
         candidates: candidates,
         at: at,
         acquisitionFloor: acquisitionFloor,
+        history: attemptHistoryOf(ordinary),
         diagnose: false,
       );
       final selection = slotEvaluation.result;
@@ -298,11 +304,13 @@ Trajectory runTrajectorySessions({
         available,
       );
 
+      final weights = evidenceWeightsFor(exercise, outcome);
+      ordinary.add((exercise: exercise, outcome: outcome, weights: weights));
       learner.applyOutcome(
         state: state,
         exercise: exercise,
         outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
+        weights: weights,
         prediction: learner.predict(state, exercise, at: at),
         at: at,
       );

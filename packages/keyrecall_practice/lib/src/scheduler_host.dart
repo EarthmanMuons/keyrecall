@@ -197,10 +197,9 @@ abstract interface class SchedulerHost {
   /// [dueRequirementIds] names the requirements whose candidates the slot may
   /// choose between, against the bound scope.
   ///
-  /// [acquisition], [attemptedExercises], and [retrievedMaterialHands] are
-  /// rebuilt from persisted history by the caller, because a host holds no
-  /// history of its own. Omit them and the slot decides from learner state
-  /// alone.
+  /// [acquisition] and [history] are rebuilt from persisted history by the
+  /// caller, because a host holds no history of its own. Omit them and the
+  /// slot decides from learner state alone.
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
@@ -208,14 +207,11 @@ abstract interface class SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
   });
 
   /// Releases whatever computes decisions. A host is disposable: a session
@@ -262,14 +258,11 @@ class InProcessScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
   }) async {
     final slot = pipeline.evaluateSlot(
       state: state,
@@ -279,13 +272,10 @@ class InProcessScheduler implements SchedulerHost {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
       uncoveredTargets: uncoveredTargetsIn(_scope!, uncoveredTargetIds),
-      demonstratedShapes: demonstratedShapes,
     );
     final effect = SelectionEffect.of(slot.result);
     return switch (slot.result) {

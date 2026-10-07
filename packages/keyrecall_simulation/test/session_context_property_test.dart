@@ -54,12 +54,9 @@ class SlotContext {
   final AcquisitionFloor? acquisitionFloor;
   final AcquisitionFloor? acquisitionFamilyFloor;
   final AcquisitionProgress? acquisition;
-  final Set<Exercise>? attemptedExercises;
-  final Set<(String, Hand)>? retrievedMaterialHands;
-  final Map<ExecutionContext, int> executionEvidenceRevisions;
+  final AttemptHistory? history;
   final GoalEmphasis emphasis;
   final UncoveredTargets uncoveredTargets;
-  final Map<String, Set<RealizationShape>> demonstratedShapes;
   SelectionResult? result;
 
   SlotContext({
@@ -68,12 +65,9 @@ class SlotContext {
     required this.acquisitionFloor,
     required this.acquisitionFamilyFloor,
     required this.acquisition,
-    required this.attemptedExercises,
-    required this.retrievedMaterialHands,
-    required this.executionEvidenceRevisions,
+    required this.history,
     required this.emphasis,
     required this.uncoveredTargets,
-    required this.demonstratedShapes,
   });
 }
 
@@ -107,13 +101,10 @@ class RecordingPipeline extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     bool diagnose = true,
   }) {
     final context = last = SlotContext(
@@ -122,12 +113,9 @@ class RecordingPipeline extends SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
-      demonstratedShapes: demonstratedShapes,
     );
     if (askOnly) throw const _Recorded();
     final slot = super.evaluateSlot(
@@ -139,13 +127,10 @@ class RecordingPipeline extends SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
-      demonstratedShapes: demonstratedShapes,
       diagnose: diagnose,
     );
     context.result = slot.result;
@@ -255,10 +240,10 @@ Future<void> expectDerivedFromStorage(
   ).state.copy();
   learner.propagate(state, at);
   expect(live.stateHash, learnerStateHash(state), reason: 'state at $at');
-  expect(live.demonstratedShapes, shapesPlayedCleanly(records));
-  expect(live.retrievedMaterialHands, handsThatRetrieved(records));
+  expect(live.history!.demonstratedShapes, shapesPlayedCleanly(records));
+  expect(live.history!.retrievedMaterialHands, handsThatRetrieved(records));
   final evidence = executionEvidence(records);
-  expect(live.attemptedExercises, {
+  expect(live.history!.attemptedExercises, {
     for (final record in evidence) record.exercise,
   });
   final revisions = <ExecutionContext, int>{};
@@ -266,7 +251,7 @@ Future<void> expectDerivedFromStorage(
     final context = executionContextOf(record.exercise);
     revisions[context] = (revisions[context] ?? 0) + 1;
   }
-  expect(live.executionEvidenceRevisions, revisions);
+  expect(live.history!.executionEvidenceRevisions, revisions);
   expectSameProgress(
     live.acquisition,
     (await store.loadAcquisitionJournal(profile.id)).replay(),
@@ -281,7 +266,8 @@ SelectionStage expectStageHeld(SlotContext live, CandidateSelected result) {
   final best = pipeline.selectBest(result.selectable)!;
   bool advances(CandidateTrace trace) => advancesShapeFrontier(
     trace.exercise,
-    live.demonstratedShapes[trace.exercise.material.materialId] ?? const {},
+    live.history!.demonstratedShapes[trace.exercise.material.materialId] ??
+        const {},
   );
   switch (result.stage) {
     case SelectionStage.ranking:
@@ -304,7 +290,10 @@ SelectionStage expectStageHeld(SlotContext live, CandidateSelected result) {
       expect(winner.exercise.guidance, best.exercise.guidance);
     case SelectionStage.floorCheck:
       expect(floorOf(live.acquisitionFamilyFloor), contains(winner.exercise));
-      expect(live.attemptedExercises, isNot(contains(winner.exercise)));
+      expect(
+        live.history!.attemptedExercises,
+        isNot(contains(winner.exercise)),
+      );
   }
   return result.stage;
 }
@@ -456,7 +445,7 @@ class Learner {
         );
       }
       if (!live.emphasis.isEmpty) reached.add('emphasis');
-      if (live.demonstratedShapes.isNotEmpty) reached.add('shapes');
+      if (live.history!.demonstratedShapes.isNotEmpty) reached.add('shapes');
       if (live.acquisition?.byParent.isNotEmpty ?? false) {
         reached.add('acquisition history');
       }

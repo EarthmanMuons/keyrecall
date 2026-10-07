@@ -144,9 +144,9 @@ void main() {
           'would restore activity rather than learning',
     );
     expect(
-      otherWeak.where((slot) => slot.managedExecution),
+      otherWeak,
       isNotEmpty,
-      reason: 'while the rest of the weak family sometimes does',
+      reason: 'while the rest of the weak family keeps being offered',
     );
   });
 
@@ -168,14 +168,12 @@ void main() {
     int managedIn(String shape) =>
         (byShape[shape] ?? []).where((slot) => slot.managedExecution).length;
 
+    int offeredIn(String shape) => (byShape[shape] ?? []).length;
+
     expect(
-      byShape.keys,
-      containsAll(['together', 'wide', 'narrow single hand']),
-    );
-    expect(
-      managedIn('narrow single hand'),
-      greaterThan(0),
-      reason: 'one octave and one hand is where a weak family gets a foothold',
+      offeredIn('narrow single hand'),
+      greaterThan(offeredIn('together') + offeredIn('wide')),
+      reason: 'one octave and one hand is most of what a weak family is given',
     );
     expect(
       managedIn('together') + managedIn('wide'),

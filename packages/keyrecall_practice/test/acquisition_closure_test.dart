@@ -92,8 +92,13 @@ void main() {
       );
     }
     final restored = AttemptJournal.fromJsonLines(log.toJsonLines());
-    expect(attemptedExercises(restored.records), {parent});
-    expect(attemptedExercises(restored.records), isNot(contains(other)));
+    expect(attemptHistoryOfRecords(restored.records).attemptedExercises, {
+      parent,
+    });
+    expect(
+      attemptHistoryOfRecords(restored.records).attemptedExercises,
+      isNot(contains(other)),
+    );
   });
 
   test('a retrieval belongs to the hands that produced it', () {
@@ -144,7 +149,7 @@ void main() {
         ),
     ];
 
-    expect(retrievedMaterialHands(records), {
+    expect(attemptHistoryOfRecords(records).retrievedMaterialHands, {
       ('D_NATURAL_MINOR', Hand.right),
       ('E_NATURAL_MINOR', Hand.right),
       ('E_NATURAL_MINOR', Hand.left),

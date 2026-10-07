@@ -17,12 +17,12 @@ const pinned = [
   (
     player: 'advanced',
     seed: 7,
-    digest: '1142158a0a2d297c1c73f786968660cc8516e9ecf641d5ee00bf0d511e61a80e',
+    digest: '75dfdeb3968a371d1b32d68d3f401ad880b5620af5627f3568a7d0842f62f7ea',
   ),
   (
     player: 'true_beginner',
     seed: 3,
-    digest: 'eb474cbeff02fe809082394dd678b66898a2c98c5bd48fa85043813ed569b1d9',
+    digest: 'd215e50f67ab5ffea6cdf5c11e8fdcd566b96dbcb57e633a6e1c38f05a90e718',
   ),
 ];
 

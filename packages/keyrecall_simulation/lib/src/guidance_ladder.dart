@@ -173,13 +173,10 @@ class _LastSelection extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     bool diagnose = true,
   }) {
     final slot = super.evaluateSlot(
@@ -191,13 +188,10 @@ class _LastSelection extends SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
-      demonstratedShapes: demonstratedShapes,
       diagnose: diagnose,
     );
     last = slot.result;

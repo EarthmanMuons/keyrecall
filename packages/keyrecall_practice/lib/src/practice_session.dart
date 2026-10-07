@@ -683,7 +683,8 @@ class PracticeSession {
     if (scope.isNarrow && evaluated.isCaughtUp) {
       return PracticeCaughtUp(evaluated.coverage);
     }
-    final retrieved = retrievedMaterialHands(_journal.records);
+    final history = attemptHistoryOfRecords(_journal.records);
+    final retrieved = history.retrievedMaterialHands;
     // A narrow scope offers only what is due, so it is the one that can retire
     // material a dependent is still waiting on. A general session offers
     // everything already.
@@ -749,14 +750,11 @@ class PracticeSession {
           if (state.resolved.isTarget && !state.isCovered)
             state.resolved.requirement.id,
       ],
-      demonstratedShapes: demonstratedShapes(_journal.records),
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
-      attemptedExercises: attemptedExercises(_journal.records),
-      retrievedMaterialHands: retrieved,
-      executionEvidenceRevisions: executionEvidenceRevisions(_journal.records),
+      history: history,
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.
@@ -1053,7 +1051,9 @@ class PracticeSession {
       presentation: presentation,
       observedWallTime: logicalTime == at ? null : at,
       executionEvidenceRevision:
-          executionEvidenceRevisions(_journal.records)[executionContextOf(
+          attemptHistoryOfRecords(
+            _journal.records,
+          ).executionEvidenceRevisions[executionContextOf(
             outstanding.task.parent,
           )] ??
           0,

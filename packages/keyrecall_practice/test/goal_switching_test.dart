@@ -130,7 +130,7 @@ void main() {
   });
 
   test('each hand\'s retrievals do not depend on the goal at all', () {
-    expect(retrievedMaterialHands(history().records), {
+    expect(attemptHistoryOfRecords(history().records).retrievedMaterialHands, {
       (cMajor.materialId, Hand.right),
       (cMajor.materialId, Hand.left),
       (gMajor.materialId, Hand.right),
@@ -140,7 +140,7 @@ void main() {
 
   test('nor do the shapes each material was demonstrated in', () {
     expect(
-      demonstratedShapes(history().records),
+      attemptHistoryOfRecords(history().records).demonstratedShapes,
       {
         cMajor.materialId: {shapeOf(played(cMajor, HandConfiguration.right))},
         gMajor.materialId: {

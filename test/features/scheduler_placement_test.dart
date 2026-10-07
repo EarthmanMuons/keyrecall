@@ -131,14 +131,11 @@ class _ParityScheduler extends IsolateScheduler {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
   }) async {
     final verdict = await super.decide(
       epoch: epoch,
@@ -147,14 +144,11 @@ class _ParityScheduler extends IsolateScheduler {
       dueRequirementIds: dueRequirementIds,
       liveSupportHands: liveSupportHands,
       uncoveredTargetIds: uncoveredTargetIds,
-      demonstratedShapes: demonstratedShapes,
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
     );
     final directly = await _direct.decide(
       epoch: epoch,
@@ -163,14 +157,11 @@ class _ParityScheduler extends IsolateScheduler {
       dueRequirementIds: dueRequirementIds,
       liveSupportHands: liveSupportHands,
       uncoveredTargetIds: uncoveredTargetIds,
-      demonstratedShapes: demonstratedShapes,
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
     );
     expect(verdict.chosen?.exercise, directly.chosen?.exercise);
     expect(verdict.blockedReason, directly.blockedReason);

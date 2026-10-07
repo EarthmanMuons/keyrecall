@@ -5,6 +5,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'acquisition_floor.dart';
 import 'acquisition_progress.dart';
+import 'attempt_history.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
@@ -330,13 +331,10 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     final slot = evaluateSlot(
       state: state,
@@ -347,13 +345,10 @@ class SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
-      demonstratedShapes: demonstratedShapes,
     );
     SelectionEffect.of(slot.result).applyTo(session);
     return slot.result;
@@ -382,13 +377,10 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
-    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     bool diagnose = true,
   }) {
     final entryPolicy =
@@ -411,9 +403,7 @@ class SchedulerPipeline {
       session: session,
       candidates: candidates,
       at: at,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
-      executionEvidenceRevisions: executionEvidenceRevisions,
+      history: history,
       overrides: {
         ...overrides,
         for (final parent in owedProbes)
@@ -465,13 +455,13 @@ class SchedulerPipeline {
         : _choose(
             narrowed.selectable,
             session,
-            demonstratedShapes: demonstratedShapes,
+            demonstratedShapes: history?.demonstratedShapes ?? const {},
           );
     if (servedProbe == null && servedPulse == null && familyFloor != null) {
       final check = owedFloorCheck(
         state: state,
         floor: familyFloor,
-        attemptedParents: attemptedExercises ?? const {},
+        attemptedParents: history?.attemptedExercises ?? const {},
         selected: selected,
         traces: traces,
       );
@@ -504,9 +494,7 @@ class SchedulerPipeline {
           session: session,
           candidates: candidates,
           at: at,
-          attemptedExercises: attemptedExercises,
-          retrievedMaterialHands: retrievedMaterialHands,
-          executionEvidenceRevisions: executionEvidenceRevisions,
+          history: history,
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
           emphasis: emphasis,
@@ -516,7 +504,7 @@ class SchedulerPipeline {
         (trace: selected, :stage) = _choose(
           narrowed.selectable,
           session,
-          demonstratedShapes: demonstratedShapes,
+          demonstratedShapes: history?.demonstratedShapes ?? const {},
         );
         blockedReason = BlockedReason.safeEntryRejected;
       }
@@ -535,10 +523,11 @@ class SchedulerPipeline {
             state: state,
             progress: acquisition,
             floor: familyFloor,
-            attemptedParents: attemptedExercises ?? const {},
+            attemptedParents: history?.attemptedExercises ?? const {},
             traces: traces,
             afterAcquisition: session.lastAcquisitionParent != null,
-            executionEvidenceRevisions: executionEvidenceRevisions,
+            executionEvidenceRevisions:
+                history?.executionEvidenceRevisions ?? const {},
           );
 
     final diagnostics = !diagnose
@@ -2079,9 +2068,7 @@ class SchedulerPipeline {
     required SessionState session,
     required List<Exercise> candidates,
     required DateTime at,
-    Set<Exercise>? attemptedExercises,
-    Set<(String, Hand)>? retrievedMaterialHands,
-    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    AttemptHistory? history,
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
@@ -2122,8 +2109,8 @@ class SchedulerPipeline {
     // are answered once rather than once per candidate.
     final facts = DecisionFacts(
       state,
-      attemptedExercises: attemptedExercises,
-      retrievedMaterialHands: retrievedMaterialHands,
+      attemptedExercises: history?.attemptedExercises,
+      retrievedMaterialHands: history?.retrievedMaterialHands,
       offeredMaterialIds: {
         for (final exercise in refined) exercise.material.materialId,
       },
