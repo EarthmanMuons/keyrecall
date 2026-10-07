@@ -979,7 +979,9 @@ void main() {
           tempo: DemoInputTempo.brisk,
         );
     await tester.pump(const Duration(seconds: 2));
+    expect(finished, isEmpty, reason: 'the last note is held on screen first');
 
+    await tester.pump(attemptResolve);
     expect(
       finished,
       hasLength(1),

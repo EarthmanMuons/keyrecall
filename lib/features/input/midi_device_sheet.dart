@@ -5,6 +5,7 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../motion.dart';
 import 'input_source.dart';
 
 /// Discover instruments and manage the current MIDI connection.
@@ -273,7 +274,7 @@ class _ScanningStatusState extends State<_ScanningStatus>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (Motion.of(context).reduced) {
       _pulse.stop();
       _pulse.value = 1;
     } else if (!_pulse.isAnimating) {

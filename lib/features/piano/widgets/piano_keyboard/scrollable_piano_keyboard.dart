@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../motion.dart';
 import '../../models/piano_key_decoration.dart';
 import '../../services/piano_geometry.dart';
 import '../../services/piano_scroll_policy.dart';
@@ -241,14 +242,7 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
     final delta = (clamped - _ctl.offset).abs();
     if (delta < 1.0) return;
 
-    final disableAnimations =
-        MediaQuery.maybeOf(context)?.disableAnimations ??
-        WidgetsBinding
-            .instance
-            .platformDispatcher
-            .accessibilityFeatures
-            .disableAnimations;
-    if (disableAnimations) {
+    if (Motion.of(context).reduced) {
       _ctl.jumpTo(clamped);
       _updateIndicatorState();
       return;
@@ -711,7 +705,8 @@ class _OffscreenNoteCue extends StatelessWidget {
         curve: Curves.easeOutCubic,
         child: AnimatedScale(
           scale: showScale,
-          duration: const Duration(milliseconds: 140),
+          duration: Motion.of(context)
+              .travel(const Duration(milliseconds: 140)),
           curve: Curves.easeOutCubic,
           child: Center(
             child: Material(

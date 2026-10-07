@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'features/practice/onboarding.dart';
 import 'features/practice/practice_providers.dart';
 import 'layout.dart';
+import 'motion.dart';
 import 'preferences.dart';
 import 'theme.dart';
 import 'theme_mode.dart';
@@ -52,8 +53,9 @@ class KeyRecallApp extends ConsumerWidget {
       darkTheme: keyRecallTheme(darkColorScheme),
       themeMode: ref.watch(themeModeProvider),
       // Above the navigator, so routes, sheets, and dialogs all read the same
-      // layout.
-      builder: (context, child) => LayoutScope(child: child!),
+      // layout and motion.
+      builder: (context, child) =>
+          MotionScope(child: LayoutScope(child: child!)),
       home: const OnboardingGate(),
     );
   }

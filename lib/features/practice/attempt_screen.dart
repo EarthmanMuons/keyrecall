@@ -13,6 +13,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import '../../motion.dart';
 import '../../theme_mode.dart';
 import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
@@ -61,6 +62,11 @@ const Curve attemptCurve = Curves.easeInOutCubic;
 /// cue to start playing, and sounding it while the screen is still moving asks
 /// somebody to read a new layout and catch a beat at the same time.
 const Duration attemptSettle = Duration(milliseconds: 400);
+
+/// How long a completed traversal stays on screen before the review replaces
+/// it, so the last note is seen to land. Pacing rather than motion, so reduced
+/// motion keeps it.
+const Duration attemptResolve = Duration(milliseconds: 220);
 
 /// The space under the last thing on the practice screen.
 const double _bottomInset = 16;
@@ -143,7 +149,16 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: attemptTransition,
+    switchInCurve: attemptCurve,
+    switchOutCurve: attemptCurve,
+    child: _screen(),
+  );
+
+  /// The attempt, its review, or what stands in for either, keyed by which of
+  /// them it is so a change between them is a transition.
+  Widget _screen() {
     final loop = ref.watch(practiceLoopProvider);
     final notifier = ref.read(practiceLoopProvider.notifier);
 
@@ -155,6 +170,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     if (committed != null && committed.identity.attemptId != _reviewed) {
       final history = loop.value!.session.journal.records;
       return Scaffold(
+        key: ValueKey(('review', committed.identity.attemptId)),
         // The review is still about the attempt that just ran, so the bar
         // keeps holding it. Continue hands the screen back, and the bar comes
         // back with it.
@@ -186,6 +202,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final closed = loop.value?.lastAcquisition;
     if (closed != null && closed.identity.attemptId != _acquisitionReviewed) {
       return AcquisitionReview(
+        key: ValueKey(('acquisitionReview', closed.identity.attemptId)),
         record: closed,
         next: _upNext(loop.value!, null),
         continues: loop.value?.acquisition != null,
@@ -249,6 +266,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     };
 
     return Scaffold(
+      key: ValueKey(('attempt', attemptId)),
       // A short window gives an exercise the bar's height, and the view
       // carries the bar's controls itself.
       appBar: Layout.of(context).isShort && presenting is AttemptView
@@ -337,6 +355,7 @@ class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final task = running;
+    final reduced = Motion.of(context).reduced;
 
     return AppBar(
       // Both of them sit where a name sits, against the leading edge.
@@ -362,13 +381,15 @@ class _PracticeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
-          child: SlideTransition(
-            position: Tween(
-              begin: const Offset(0, 0.6),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
+          child: reduced
+              ? child
+              : SlideTransition(
+                  position: Tween(
+                    begin: const Offset(0, 0.6),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
         ),
         child: task == null
             ? const Wordmark(key: ValueKey('wordmark'))
@@ -977,11 +998,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _handover = AnimationController(
-      vsync: this,
-      duration: attemptTransition,
-      value: 1,
-    )..reverse();
+    _handover = AnimationController(vsync: this, value: 1);
     _pulse = ref.read(pulseClickerProvider);
     _transcript = ref.read(attemptTranscriptProvider.notifier);
     _screenWakeLock = ref.read(screenWakeLockProvider);
@@ -998,6 +1015,14 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // nor the first drawn note is waiting on something to load.
     unawaited(_pulse.prepare());
     unawaited(warmStaffRendering());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _handover.duration = Motion.of(context).travel(attemptTransition);
+    // The first time through, which is the instrument arriving.
+    if (_phase == _Phase.ready && _handover.isCompleted) _handover.reverse();
   }
 
   @override
@@ -1272,7 +1297,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   Future<void> _handOverTheScreen() async {
     if (_handover.isCompleted) return;
     _handover.forward();
-    await Future<void>.delayed(attemptTransition);
+    await Future<void>.delayed(_handover.duration!);
   }
 
   /// What this attempt ran under, and what of it the app supplied.
@@ -1316,8 +1341,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
             ),
     );
     _transcript.stop();
-    setState(() => _phase = _Phase.finishing);
-    await _handOverTheScreen();
+    if (termination == AttemptTermination.traversalCompleted) {
+      await Future<void>.delayed(attemptResolve);
+    }
+    if (mounted) {
+      setState(() => _phase = _Phase.finishing);
+      await _handOverTheScreen();
+    }
     // What was played is the evidence. Nobody is asked how it went.
     await widget.onFinish(completion);
   }
@@ -1390,8 +1420,9 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // takes it from there. Collapsed rather than hidden, so the music grows
     // into the room it leaves as it leaves it. A short window has no bar to
     // hand it to, so there it stays.
+    final motion = Motion.of(context);
     final task = AnimatedCrossFade(
-      duration: attemptTransition,
+      duration: motion.travel(attemptTransition),
       sizeCurve: attemptCurve,
       crossFadeState: _phase == _Phase.ready || layout.isShort
           ? CrossFadeState.showFirst
@@ -1505,7 +1536,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // taken off the bottom, so what is below the last thing on screen looks
     // the same whichever thing it is.
     final controls = AnimatedSize(
-      duration: attemptTransition,
+      duration: motion.travel(attemptTransition),
       curve: attemptCurve,
       alignment: Alignment.bottomCenter,
       child: Padding(
@@ -1914,6 +1945,10 @@ class _NotationState extends State<_Notation> {
       if (!mounted || !_scroll.hasClients) return;
       final end = _scroll.position.maxScrollExtent;
       if (end <= _scroll.offset) return;
+      if (Motion.of(context).reduced) {
+        _scroll.jumpTo(end);
+        return;
+      }
       unawaited(
         _scroll.animateTo(
           end,
