@@ -344,6 +344,40 @@ void main() {
       expectMatchesScan(state);
     });
 
+    test('lists a hand\'s residuals across motion and nothing else', () {
+      final state = model.newState(at: t0);
+      residual(state, c, HandConfiguration.together, HandMotion.parallel);
+      residual(
+        state,
+        c,
+        HandConfiguration.together,
+        HandMotion.contrary,
+      ).demonstratedTempoByOctaves[1] = 72;
+      residual(state, c, HandConfiguration.right, HandMotion.parallel);
+      residual(
+        state,
+        d,
+        HandConfiguration.together,
+        HandMotion.parallel,
+      ).demonstratedTempoByOctaves[1] = 60;
+
+      for (final materialId in [c, d]) {
+        for (final hands in HandConfiguration.values) {
+          expect(state.executionsOf(materialId, hands).toSet(), {
+            for (final entry in state.materialExecution.entries)
+              if (entry.key.$1 == materialId && entry.key.$2 == hands)
+                entry.value,
+          }, reason: '$materialId $hands');
+        }
+      }
+      bool demonstrated(String materialId, HandConfiguration hands) => state
+          .executionsOf(materialId, hands)
+          .any((residual) => residual.demonstratedTempoByOctaves.isNotEmpty);
+      expect(demonstrated(c, HandConfiguration.together), isTrue);
+      expect(demonstrated(c, HandConfiguration.right), isFalse);
+      expect(demonstrated(d, HandConfiguration.right), isFalse);
+    });
+
     test('follows residuals added, removed, copied, and adopted', () {
       final state = model.newState(at: t0);
       residual(

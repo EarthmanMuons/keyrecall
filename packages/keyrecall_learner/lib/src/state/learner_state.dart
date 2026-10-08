@@ -57,8 +57,8 @@ class LearnerState {
 
   /// Execution residual per material, hand configuration, and hand motion.
   ///
-  /// Always an indexed map built by the constructor, which [hasPlayed] relies
-  /// on; replacing it with an ordinary map would break that lookup.
+  /// Always an indexed map built by the constructor, which [executionsOf]
+  /// relies on; replacing it with an ordinary map would break that lookup.
   final Map<ExecutionContext, MaterialExecutionState> materialExecution;
 
   LearnerState({
@@ -159,8 +159,17 @@ class LearnerState {
   /// Motion-agnostic: parallel and contrary hands-together work both answer
   /// whether this hand configuration has met this material, and the frontiers
   /// keep apart what each demonstrated.
-  bool hasPlayed(String materialId, HandConfiguration hands) =>
-      (materialExecution as _ExecutionResiduals).hasEvidence(materialId, hands);
+  bool hasPlayed(String materialId, HandConfiguration hands) => executionsOf(
+    materialId,
+    hands,
+  ).any((residual) => residual.lastEvidenceAt != null);
+
+  /// The execution residuals [hands] holds for [materialId], across hand
+  /// motion.
+  Iterable<MaterialExecutionState> executionsOf(
+    String materialId,
+    HandConfiguration hands,
+  ) => (materialExecution as _ExecutionResiduals).of(materialId, hands);
 
   /// Requires every propagating layer to stand exactly at [now].
   ///
@@ -308,12 +317,13 @@ class _ExecutionResiduals
     addAll(residuals);
   }
 
-  /// Whether any residual for [materialId] under [hands] holds evidence.
-  bool hasEvidence(String materialId, HandConfiguration hands) =>
-      _contexts[(materialId, hands)]?.any(
-        (context) => _residuals[context]!.lastEvidenceAt != null,
-      ) ??
-      false;
+  /// The residuals for [materialId] under [hands].
+  Iterable<MaterialExecutionState> of(
+    String materialId,
+    HandConfiguration hands,
+  ) =>
+      _contexts[(materialId, hands)]?.map((context) => _residuals[context]!) ??
+      const [];
 
   @override
   MaterialExecutionState? operator [](Object? key) => _residuals[key];

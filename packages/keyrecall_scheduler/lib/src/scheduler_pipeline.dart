@@ -116,6 +116,22 @@ class DecisionFacts {
             (exercise.material.materialId, exercise.conditions.hands),
         };
 
+  late final Set<(TechnicalMaterial, HandConfiguration)>? _ascendingStarts =
+      startedExercises == null
+      ? null
+      : {
+          for (final exercise in startedExercises!)
+            if (exercise.conditions.direction == ExerciseDirection.up)
+              (exercise.material, exercise.conditions.hands),
+        };
+
+  /// Whether [hands] has been asked for [material] ascending, or null where
+  /// the caller supplied no history.
+  bool? hasStartedAscending(
+    TechnicalMaterial material,
+    HandConfiguration hands,
+  ) => _ascendingStarts?.contains((material, hands));
+
   /// Whether [hands] has met [materialId] at all.
   ///
   /// Learner state records only the attempts that were timed, and one too
@@ -776,21 +792,14 @@ class SchedulerPipeline {
     //
     // Introduction order rather than admission: it decides which of two
     // realizations a learner meets first.
-    if (facts?.startedExercises case final attempted?) {
-      if (exercise.conditions.direction == ExerciseDirection.upDown &&
-          !attempted.any(
-            (earlier) =>
-                earlier.material == material &&
-                earlier.conditions.hands == hands &&
-                earlier.conditions.direction == ExerciseDirection.up,
-          )) {
-        return EligibilityDecision(
-          EligibilityTier.provisionallyEligible,
-          'up and down asks for a reversal this hand has not been asked for '
-          'ascending yet',
-          code: EligibilityReason.directionPrerequisite,
-        );
-      }
+    if (exercise.conditions.direction == ExerciseDirection.upDown &&
+        facts?.hasStartedAscending(material, hands) == false) {
+      return EligibilityDecision(
+        EligibilityTier.provisionallyEligible,
+        'up and down asks for a reversal this hand has not been asked for '
+        'ascending yet',
+        code: EligibilityReason.directionPrerequisite,
+      );
     }
 
     if (exercise.conditions.octaves > 1) {
@@ -1274,12 +1283,9 @@ class SchedulerPipeline {
     ];
     return prerequisites.every(
       (materialId) => hands.every(
-        (hand) => state.materialExecution.entries.any(
-          (entry) =>
-              entry.key.$1 == materialId &&
-              entry.key.$2 == hand &&
-              entry.value.demonstratedTempoByOctaves.isNotEmpty,
-        ),
+        (hand) => state
+            .executionsOf(materialId, hand)
+            .any((residual) => residual.demonstratedTempoByOctaves.isNotEmpty),
       ),
     );
   }
