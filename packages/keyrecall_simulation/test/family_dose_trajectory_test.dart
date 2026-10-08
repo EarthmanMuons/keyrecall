@@ -20,14 +20,19 @@ void main() {
   const dosing = SchedulerPipeline(learner: learner);
   final sessions = LongitudinalSchedules.named('normal_month', slots: 12);
 
-  Trajectory run(SyntheticPlayer player, SchedulerPipeline pipeline) =>
-      runTrajectorySessions(
-        player: player,
-        seed: 4,
-        materials: v1ScaleCatalog,
-        sessions: sessions,
-        pipeline: pipeline,
-      );
+  Trajectory run(
+    SyntheticPlayer player,
+    SchedulerPipeline pipeline, {
+    int seed = 4,
+    void Function(int slot, DoseDecision dose)? observeDose,
+  }) => runTrajectorySessions(
+    player: player,
+    seed: seed,
+    materials: v1ScaleCatalog,
+    sessions: sessions,
+    pipeline: pipeline,
+    observeDose: observeDose,
+  );
 
   List<Exercise> chosen(Trajectory trajectory) => [
     for (final slot in trajectory.slots) slot.chosen,
@@ -42,14 +47,46 @@ void main() {
     expect(chosen(run(player, dosing)), chosen(run(player, baseline)));
   });
 
-  test(
-    'a learner whose coordination never yields practises a different one',
-    () {
-      final player = PlayerArchetypes.coordinationLimited;
+  test('a learner whose coordination never yields is held back from it', () {
+    // The contraction is asserted directly, because it can hold back hands
+    // together without changing the run: a slot whose winner was never going
+    // to be hands together chooses the same thing either way. How often it
+    // does change the run is a characterization of these ten seeds, not a
+    // guarantee; seven of them change under the current scheduler.
+    final player = PlayerArchetypes.coordinationLimited;
+    var changed = 0;
+    for (var seed = 0; seed < 10; seed++) {
+      bool heldBack(SchedulerPipeline pipeline, List<Exercise> into) {
+        var contracted = false;
+        into.addAll(
+          chosen(
+            run(
+              player,
+              pipeline,
+              seed: seed,
+              observeDose: (_, dose) => contracted |=
+                  dose.disposition == DoseDisposition.contracted &&
+                  dose.contracted.containsKey('hands:together'),
+            ),
+          ),
+        );
+        return contracted;
+      }
 
-      expect(chosen(run(player, dosing)), isNot(chosen(run(player, baseline))));
-    },
-  );
+      final dosed = <Exercise>[];
+      final undosed = <Exercise>[];
+      expect(heldBack(dosing, dosed), isTrue, reason: 'seed $seed');
+      expect(heldBack(baseline, undosed), isFalse, reason: 'seed $seed');
+      if (dosed.length != undosed.length ||
+          [
+            for (var i = 0; i < dosed.length; i++) dosed[i] == undosed[i],
+          ].contains(false)) {
+        changed++;
+      }
+    }
+
+    expect(changed, greaterThanOrEqualTo(5));
+  });
 
   test('a contracted family is asked for less, never never', () {
     final trajectory = run(PlayerArchetypes.coordinationLimited, dosing);

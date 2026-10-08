@@ -1145,4 +1145,172 @@ void main() {
       expect(decision.code, EligibilityReason.bandExecutionFloor);
     });
   });
+
+  group('an introduction at the hand\'s own pace', () {
+    final owned = ArpeggioMaterial('C', ArpeggioQuality.major);
+    final unmet = ArpeggioMaterial('D', ArpeggioQuality.major);
+
+    /// A learner short of the early transfer band, whose right hand plays the
+    /// arpeggio it owns at [pace].
+    LearnerState pacedAt(double pace, {TechnicalMaterial? family}) {
+      final material = family ?? owned;
+      final state = learnerAt(-1.0);
+      state.materialExecutionFor(
+          (material.materialId, HandConfiguration.right, HandMotion.parallel),
+          t0,
+          learnerParams,
+          familyId: material.familyId,
+        )
+        ..lastEvidenceAt = t0
+        ..pacedTempoBpm = pace;
+      return state;
+    }
+
+    EligibilityReason codeAt(
+      LearnerState state,
+      double tempoBpm, {
+      TechnicalMaterial? material,
+      int octaves = 1,
+    }) => pipeline
+        .eligibilityFor(
+          state,
+          Exercise.linear(
+            material: material ?? unmet,
+            hands: HandConfiguration.right,
+            octaves: octaves,
+            tempoBpm: tempoBpm,
+            guidance: GuidanceContext.continuouslyCued,
+          ),
+        )
+        .code;
+
+    test('meets the band at the entry tempo it is admitted at', () {
+      final state = pacedAt(84);
+      expect(
+        pipeline.entryTempoFor(
+          state,
+          Exercise.linear(
+            material: unmet,
+            hands: HandConfiguration.right,
+            octaves: 1,
+          ),
+        ),
+        84,
+      );
+
+      expect(codeAt(state, 84), EligibilityReason.bandExecutionMet);
+      expect(codeAt(state, 60), EligibilityReason.bandExecutionMet);
+    });
+
+    test('is not discounted at a tempo faster than its entry', () {
+      expect(codeAt(pacedAt(84), 96), EligibilityReason.bandExecutionFloor);
+    });
+
+    test('is not discounted once the hand has played the material', () {
+      final state = pacedAt(84);
+      state
+              .materialExecutionFor(
+                (
+                  unmet.materialId,
+                  HandConfiguration.right,
+                  HandMotion.parallel,
+                ),
+                t0,
+                learnerParams,
+                familyId: unmet.familyId,
+              )
+              .lastEvidenceAt =
+          t0;
+
+      expect(codeAt(state, 84), EligibilityReason.bandExecutionFloor);
+    });
+
+    test('is not discounted beyond the gentlest shape', () {
+      final state = pacedAt(84);
+      expect(
+        pipeline.isIntroduction(
+          state,
+          Exercise.linear(
+            material: unmet,
+            hands: HandConfiguration.right,
+            octaves: 2,
+            tempoBpm: 84,
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        codeAt(state, 84, octaves: 2),
+        isNot(EligibilityReason.bandExecutionMet),
+      );
+    });
+
+    test('stays open in both families as the hand speeds up', () {
+      for (final pace in [72.0, 84.0, 100.0, 120.0]) {
+        expect(
+          codeAt(pacedAt(pace), pace),
+          EligibilityReason.bandExecutionMet,
+          reason: 'arpeggio at $pace',
+        );
+        final ownedScale = TechnicalMaterial('C', ScaleForm.major);
+        final unmetScale = TechnicalMaterial('D', ScaleForm.major);
+        final state = pacedAt(pace, family: ownedScale);
+        final entry = pipeline.entryTempoFor(
+          state,
+          Exercise.linear(
+            material: unmetScale,
+            hands: HandConfiguration.right,
+            octaves: 1,
+          ),
+        );
+        expect(
+          codeAt(state, entry, material: unmetScale),
+          isNot(EligibilityReason.bandExecutionFloor),
+          reason: 'scale at $pace',
+        );
+      }
+    });
+
+    test('is never held more strictly than the same meeting at the gentle '
+        'tempo', () {
+      for (final material in allPracticeMaterials) {
+        final family = material is ArpeggioMaterial
+            ? owned
+            : TechnicalMaterial('C', ScaleForm.major);
+        if (material == family) continue;
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          for (final pace in [72.0, 96.0, 132.0]) {
+            final state = learnerAt(-1.0);
+            state.materialExecutionFor(
+                (family.materialId, hands, HandMotion.parallel),
+                t0,
+                learnerParams,
+                familyId: family.familyId,
+              )
+              ..lastEvidenceAt = t0
+              ..pacedTempoBpm = pace;
+            Exercise at(double tempoBpm) => Exercise.linear(
+              material: material,
+              hands: hands,
+              octaves: 1,
+              tempoBpm: tempoBpm,
+              guidance: GuidanceContext.continuouslyCued,
+            );
+            final gentle = pipeline.eligibilityFor(state, at(60)).tier;
+            final entry = pipeline
+                .eligibilityFor(
+                  state,
+                  at(pipeline.entryTempoFor(state, at(60))),
+                )
+                .tier;
+            expect(
+              entry.index,
+              greaterThanOrEqualTo(gentle.index),
+              reason: '${material.materialId} ${hands.name} at pace $pace',
+            );
+          }
+        }
+      }
+    });
+  });
 }

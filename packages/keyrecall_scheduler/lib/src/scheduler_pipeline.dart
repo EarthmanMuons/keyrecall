@@ -867,9 +867,10 @@ class SchedulerPipeline {
       // shown.
       //
       // Difficulty is compositional, so the floor below discounts by one band
-      // when the key is met at the gentlest conditions the catalog offers.
-      // Unfamiliar geography and a harder way of playing are separate asks,
-      // and the floor protects against taking both at once.
+      // when the key is met at the gentlest conditions the catalog offers, or
+      // as the introduction those conditions resolve to once the hand has a
+      // pace of its own. Unfamiliar geography and a harder way of playing are
+      // separate asks, and the floor protects against taking both at once.
       final demonstrated =
           state.materialExecution[executionContextOf(exercise)]
               ?.demonstratedTempoAt(exercise.conditions.octaves) ??
@@ -883,7 +884,9 @@ class SchedulerPipeline {
         );
       }
 
-      final asked = _isGentlest(exercise, entryPolicy)
+      final asked =
+          _isGentlest(exercise, entryPolicy) ||
+              _isPrescribedIntroduction(state, exercise, entryPolicy, facts)
           ? _bandBefore(band)
           : band;
       final (:execution, :floor) = _readiness(
@@ -1347,6 +1350,29 @@ class SchedulerPipeline {
       exercise.conditions.octaves == 1 &&
       exercise.conditions.hands != HandConfiguration.together &&
       exercise.conditions.tempoBpm <= entryPolicy.tempoFor(exercise.material);
+
+  /// Whether [exercise] is the first meeting [resolveIntroduction] prescribes
+  /// for a hand that has never played its material: the gentlest shape, at
+  /// the entry tempo the hand's own pace sets rather than the family's.
+  ///
+  /// Without it, an introduction is held to the full band once that pace
+  /// passes the gentle tempo, and admission takes introductions only at the
+  /// entry tempo, so a family's later bands could never open.
+  bool _isPrescribedIntroduction(
+    LearnerState state,
+    Exercise exercise,
+    PracticeEntryPolicy entryPolicy,
+    DecisionFacts? facts,
+  ) =>
+      exercise.conditions.octaves == 1 &&
+      isIntroduction(state, exercise, facts: facts) &&
+      exercise.conditions.tempoBpm ==
+          entryTempoFor(
+            state,
+            exercise,
+            practiceEntryPolicy: entryPolicy,
+            memo: facts?.execution,
+          );
 
   /// The band before [band], or [band] itself when it is the first.
   static AdmissionBand _bandBefore(AdmissionBand band) =>
