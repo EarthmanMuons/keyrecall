@@ -1009,6 +1009,22 @@ retention load, depth of progression on what is already met, and its effect on
 each archetype. A family-share target is not the measure; the rotation exists so
 that neither family is starved, not so that both are held to a ratio.
 
+### Demo history written beside the live store
+
+The developer tool that creates a demo profile runs its simulated practice on a
+background isolate through a second `FilePracticeStore` over the app's storage
+root. That breaks the one-store-per-root contract `PracticeStore` documents: two
+stores serialize nothing against each other. Nothing collides today, because the
+run writes only the profile it just created and the live store detects a changed
+journal before appending to it, but a run that fails partway leaves a
+half-generated profile on the roster.
+
+The intended shape is to generate into a temporary root the isolate owns, verify
+that the finished history replays, then publish the profile into the live root
+through the profile lifecycle and select it only once that succeeds. Publishing
+a whole history atomically is the part that needs design, alongside profile ids
+and erasure. Worth taking before demo provisioning becomes automatic.
+
 ## Domain expansion
 
 The long-term technical-practice domain may include:
