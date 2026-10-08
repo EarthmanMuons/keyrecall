@@ -33,6 +33,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- The band discount for a key still being introduced lasts until that hand has
+  played it timed, in force from scheduler model version `v1-14`. A one-octave
+  first meeting cannot be timed, so ending the discount with it held the up and
+  down it opens to the full band at the tempo the meeting was admitted at. The
+  meeting still ends the introduction for admission and introduction order.
 - A key's first meeting at the entry tempo a hand's own pace sets is held to the
   band before its own, as one at the gentle tempo already was, in force from
   scheduler model version `v1-13`. Introductions are admitted only at that

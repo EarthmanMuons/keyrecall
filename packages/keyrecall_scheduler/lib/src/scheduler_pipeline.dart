@@ -868,9 +868,9 @@ class SchedulerPipeline {
       //
       // Difficulty is compositional, so the floor below discounts by one band
       // when the key is met at the gentlest conditions the catalog offers, or
-      // as the introduction those conditions resolve to once the hand has a
-      // pace of its own. Unfamiliar geography and a harder way of playing are
-      // separate asks, and the floor protects against taking both at once.
+      // is still being introduced at the entry tempo the hand's own pace sets.
+      // Unfamiliar geography and a harder way of playing are separate asks,
+      // and the floor protects against taking both at once.
       final demonstrated =
           state.materialExecution[executionContextOf(exercise)]
               ?.demonstratedTempoAt(exercise.conditions.octaves) ??
@@ -886,7 +886,7 @@ class SchedulerPipeline {
 
       final asked =
           _isGentlest(exercise, entryPolicy) ||
-              _isPrescribedIntroduction(state, exercise, entryPolicy, facts)
+              _isIntroductoryAccommodation(state, exercise, entryPolicy, facts)
           ? _bandBefore(band)
           : band;
       final (:execution, :floor) = _readiness(
@@ -1351,21 +1351,28 @@ class SchedulerPipeline {
       exercise.conditions.hands != HandConfiguration.together &&
       exercise.conditions.tempoBpm <= entryPolicy.tempoFor(exercise.material);
 
-  /// Whether [exercise] is the first meeting [resolveIntroduction] prescribes
-  /// for a hand that has never played its material: the gentlest shape, at
-  /// the entry tempo the hand's own pace sets rather than the family's.
+  /// Whether [exercise] is introductory work its hand may still be given at
+  /// the entry tempo: the gentlest shape in either direction, at the tempo the
+  /// hand's own pace sets, on material that hand has not yet played timed.
   ///
-  /// Without it, an introduction is held to the full band once that pace
-  /// passes the gentle tempo, and admission takes introductions only at the
-  /// entry tempo, so a family's later bands could never open.
-  bool _isPrescribedIntroduction(
+  /// Longer-lived than [isIntroduction], which ends with the first meeting. A
+  /// one-octave first meeting cannot be timed, so ending the accommodation
+  /// there would hold its up and down to the full band at the very tempo the
+  /// meeting was admitted at. It ends with the first attempt that gave the
+  /// execution residual evidence, whether that attempt went well or badly,
+  /// after which the hand's own record decides.
+  bool _isIntroductoryAccommodation(
     LearnerState state,
     Exercise exercise,
     PracticeEntryPolicy entryPolicy,
     DecisionFacts? facts,
   ) =>
       exercise.conditions.octaves == 1 &&
-      isIntroduction(state, exercise, facts: facts) &&
+      exercise.conditions.hands != HandConfiguration.together &&
+      !state.hasPlayed(
+        exercise.material.materialId,
+        exercise.conditions.hands,
+      ) &&
       exercise.conditions.tempoBpm ==
           entryTempoFor(
             state,
