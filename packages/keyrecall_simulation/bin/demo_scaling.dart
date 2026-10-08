@@ -25,13 +25,14 @@ Future<void> main(List<String> arguments) async {
 
   final sessions = <DemoSession>[];
   var planned = 0;
-  for (final session in demoSessions(
+  for (final (:start, :slots) in demoSessions(
     from: demoHistoryStart,
     until: demoHistoryStart.add(Duration(days: attempts)),
   )) {
     if (planned >= attempts) break;
-    sessions.add(session);
-    planned += session.slots;
+    final kept = math.min(slots, attempts - planned);
+    sessions.add((start: start, slots: kept));
+    planned += kept;
   }
 
   final root = Directory.systemTemp.createTempSync('demo_scaling');
@@ -44,6 +45,8 @@ Future<void> main(List<String> arguments) async {
   );
   final pipeline = _TimedPipeline();
   final rows = <_Bucket>[_Bucket()];
+  var done = 0;
+  PracticeSession? last;
 
   stdout.writeln(
     [
@@ -72,17 +75,23 @@ Future<void> main(List<String> arguments) async {
       pipeline: pipeline,
       onOpen: (elapsed) => rows.last.opens.add(elapsed),
       onDecision: (session, elapsed) {
+        done++;
+        last = session;
         final row = rows.last
           ..decisions.add(elapsed)
           ..scheduling.add(pipeline.last)
           ..candidates.add(pipeline.candidates);
         if (row.decisions.length < bucket) return;
-        final done = rows.length * bucket;
         stdout.writeln(row.summary(done, session));
         stderr.writeln('$done decisions (${stopwatch.elapsed.inSeconds}s)');
         rows.add(_Bucket());
       },
     );
+    // A short final bucket, or a run that ended before its count.
+    if (rows.last.decisions.isNotEmpty) {
+      stdout.writeln(rows.last.summary(done, last!));
+    }
+    if (done != attempts) stderr.writeln('ended after $done of $attempts');
   } finally {
     root.deleteSync(recursive: true);
   }
