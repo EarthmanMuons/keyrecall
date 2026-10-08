@@ -551,6 +551,48 @@ void main() {
       expect(journal.records.map((r) => r.journalSequence), [0, 1]);
     });
 
+    test(
+      'a record that landed before its write failed is not written twice',
+      () async {
+        final records = await practise(
+          await openSession(InMemoryPracticeStore()),
+          attempts: 2,
+        );
+        final store = FilePracticeStore(root);
+        await store.appendAttempt(records.first);
+        journalFile().writeAsStringSync(
+          '${canonicalJson(records.last.toJson())}\n',
+          mode: FileMode.append,
+        );
+
+        await store.appendAttempt(records.last);
+
+        final journal = await FilePracticeStore(root).loadJournal(alice.id);
+        expect(journal.records.map((r) => r.journalSequence), [0, 1]);
+        expect(journalFile().readAsLinesSync(), hasLength(3));
+      },
+    );
+
+    test('a record torn partway is written whole when retried', () async {
+      final records = await practise(
+        await openSession(InMemoryPracticeStore()),
+        attempts: 2,
+      );
+      final store = FilePracticeStore(root);
+      await store.appendAttempt(records.first);
+      final line = canonicalJson(records.last.toJson());
+      journalFile().writeAsStringSync(
+        line.substring(0, line.length ~/ 2),
+        mode: FileMode.append,
+      );
+
+      await store.appendAttempt(records.last);
+
+      final journal = await FilePracticeStore(root).loadJournal(alice.id);
+      expect(journal.records.map((r) => r.journalSequence), [0, 1]);
+      expect(journalFile().readAsLinesSync().last, line);
+    });
+
     test('an erase by another store starts the journal over', () async {
       final store = FilePracticeStore(root);
       await practise(await openSession(store), attempts: 2);
@@ -564,6 +606,70 @@ void main() {
 
       final journal = await FilePracticeStore(root).loadJournal(alice.id);
       expect(journal.records.map((r) => r.journalSequence), [0]);
+    });
+  });
+
+  group('selection diagnostics held across appends', () {
+    File selectionFile() => File('${root.path}/${alice.id}/selections.jsonl');
+
+    test('a reopened store keeps the first write for an attempt', () async {
+      await FilePracticeStore(
+        root,
+      ).appendSelectionDiagnostics(alice.id, 'a', 'first');
+
+      final reopened = FilePracticeStore(root);
+      await reopened.appendSelectionDiagnostics(alice.id, 'a', 'second');
+      await reopened.appendSelectionDiagnostics(alice.id, 'b', 'other');
+
+      expect(await reopened.loadSelectionDiagnostics(alice.id), {
+        'a': 'first',
+        'b': 'other',
+      });
+      expect(selectionFile().readAsLinesSync(), hasLength(2));
+    });
+
+    test('notices another store writing the same attempt first', () async {
+      final store = FilePracticeStore(root);
+      await store.appendSelectionDiagnostics(alice.id, 'a', 'first');
+      await FilePracticeStore(
+        root,
+      ).appendSelectionDiagnostics(alice.id, 'b', 'theirs');
+
+      await store.appendSelectionDiagnostics(alice.id, 'b', 'ours');
+
+      expect((await store.loadSelectionDiagnostics(alice.id))['b'], 'theirs');
+      expect(selectionFile().readAsLinesSync(), hasLength(2));
+    });
+
+    test('a write that failed is written when retried', () async {
+      final store = FilePracticeStore(root);
+      await store.appendSelectionDiagnostics(alice.id, 'a', 'first');
+
+      Process.runSync('chmod', ['a-w', selectionFile().path]);
+      try {
+        await expectLater(
+          store.appendSelectionDiagnostics(alice.id, 'b', 'second'),
+          throwsA(isA<FileSystemException>()),
+        );
+      } finally {
+        Process.runSync('chmod', ['u+w', selectionFile().path]);
+      }
+      await store.appendSelectionDiagnostics(alice.id, 'b', 'second');
+
+      expect(await FilePracticeStore(root).loadSelectionDiagnostics(alice.id), {
+        'a': 'first',
+        'b': 'second',
+      });
+    });
+
+    test('an erase by another store starts them over', () async {
+      final store = FilePracticeStore(root);
+      await store.appendSelectionDiagnostics(alice.id, 'a', 'before');
+
+      await FilePracticeStore(root).erase(alice.id);
+      await store.appendSelectionDiagnostics(alice.id, 'a', 'after');
+
+      expect(await store.loadSelectionDiagnostics(alice.id), {'a': 'after'});
     });
   });
 

@@ -62,6 +62,11 @@ class FilePracticeStore implements PracticeStore {
   final Map<String, ({FileStat stat, AttemptJournalIndex index})>
   _journalIndexes = {};
 
+  /// Which attempts each profile's selection diagnostics already hold, valid
+  /// on the same terms as [_journalIndexes].
+  final Map<String, ({FileStat stat, Set<String> attemptIds})>
+  _diagnosedAttempts = {};
+
   FilePracticeStore(this.root, {this.params = v1LearnerParams});
 
   /// A store rooted at [path].
@@ -415,7 +420,11 @@ class FilePracticeStore implements PracticeStore {
   ) async {
     await _recoverErase(profileId);
     final file = _selectionFile(profileId);
-    if (!file.existsSync()) return {};
+    if (!file.existsSync()) {
+      _diagnosedAttempts.remove(profileId);
+      return {};
+    }
+    final stat = file.statSync();
     final contents = await _readCompleteContents(file);
     final samples = <String, String>{};
     try {
@@ -436,7 +445,21 @@ class FilePracticeStore implements PracticeStore {
         location: file.path,
       );
     }
+    _diagnosedAttempts[profileId] = (
+      stat: stat,
+      attemptIds: samples.keys.toSet(),
+    );
     return samples;
+  }
+
+  /// Which attempts [profileId]'s selection diagnostics hold, read again only
+  /// when the file has changed since it was last read or written here.
+  Future<Set<String>> _diagnosedAttemptIds(String profileId) async {
+    final held = _diagnosedAttempts[profileId];
+    if (held != null && _unchanged(held.stat, _selectionFile(profileId))) {
+      return held.attemptIds;
+    }
+    return (await _loadSelectionDiagnostics(profileId)).keys.toSet();
   }
 
   @override
@@ -455,14 +478,26 @@ class FilePracticeStore implements PracticeStore {
     String attemptId,
     String diagnostics,
   ) async {
-    final existing = await _loadSelectionDiagnostics(profileId);
-    if (existing.containsKey(attemptId)) return;
+    await _recoverErase(profileId);
     final file = _selectionFile(profileId);
     await file.parent.create(recursive: true);
     await truncateTornTail(file);
-    await _appendLine(
-      file,
-      canonicalJson({'attempt_id': attemptId, 'diagnostics': diagnostics}),
+    final diagnosed = await _diagnosedAttemptIds(profileId);
+    // First write wins, as it does when read: diagnostics are not evidence,
+    // and a retry may describe the same decision differently.
+    if (diagnosed.contains(attemptId)) return;
+    try {
+      await _appendLine(
+        file,
+        canonicalJson({'attempt_id': attemptId, 'diagnostics': diagnostics}),
+      );
+    } catch (_) {
+      _diagnosedAttempts.remove(profileId);
+      rethrow;
+    }
+    _diagnosedAttempts[profileId] = (
+      stat: file.statSync(),
+      attemptIds: diagnosed..add(attemptId),
     );
   }
 
@@ -709,6 +744,7 @@ class FilePracticeStore implements PracticeStore {
 
   Future<void> _finishErase(String profileId) async {
     _journalIndexes.remove(profileId);
+    _diagnosedAttempts.remove(profileId);
     final erasable = {
       for (final file in [
         _journalFile(profileId),
