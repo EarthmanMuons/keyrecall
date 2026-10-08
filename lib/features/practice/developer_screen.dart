@@ -280,53 +280,41 @@ class _Tools extends ConsumerWidget {
   );
 }
 
-/// Creates the demo profile, showing how far through its history it is.
-class _DemoProfileTool extends ConsumerStatefulWidget {
+/// Starts demo generation and shows where it stands, which outlives this
+/// screen.
+class _DemoProfileTool extends ConsumerWidget {
   const _DemoProfileTool();
 
   @override
-  ConsumerState<_DemoProfileTool> createState() => _DemoProfileToolState();
-}
-
-class _DemoProfileToolState extends ConsumerState<_DemoProfileTool> {
-  bool _running = false;
-  String? _progress;
-
-  Future<void> _create() async {
-    final messenger = ScaffoldMessenger.of(context);
-    setState(() => _running = true);
-    try {
-      final profile = await createDemoProfile(
-        ref,
-        onSession: (completed, total) {
-          if (mounted) setState(() => _progress = '$completed of $total days');
-        },
-      );
-      messenger.showSnackBar(
-        SnackBar(content: Text('practicing as ${profile.displayName}')),
-      );
-    } on Object catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _running = false;
-          _progress = null;
-        });
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(demoGenerationProvider, (_, next) {
+      final message = switch (next) {
+        DemoCreated(:final profile) => 'practicing as ${profile.displayName}',
+        DemoFailed(:final error) => '$error',
+        _ => null,
+      };
+      if (message != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => _Tool(
-    icon: Icons.history,
-    title: 'Create demo profile',
-    subtitle: _running
-        ? 'Practicing ${_progress ?? 'the first day'}'
-        : '${demoHistoryEnd.difference(demoHistoryStart).inDays} days of '
+    });
+    final generation = ref.watch(demoGenerationProvider);
+    return _Tool(
+      icon: Icons.history,
+      title: 'Create demo profile',
+      subtitle: switch (generation) {
+        DemoRunning(total: 0) => 'Practicing the first day',
+        DemoRunning(:final completed, :final total) =>
+          'Practicing $completed of $total days',
+        _ =>
+          '${demoHistoryEnd.difference(demoHistoryStart).inDays} days of '
               'simulated practice, then switch to it',
-    onTap: _running ? null : _create,
-  );
+      },
+      onTap: generation is DemoRunning
+          ? null
+          : () => ref.read(demoGenerationProvider.notifier).start(),
+    );
+  }
 }
 
 class _Tool extends StatelessWidget {
