@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'python_compatible_random.dart';
 import 'synthetic_performance.dart';
@@ -64,7 +65,8 @@ List<DemoSession> demoSessions({
 /// instrument is synthetic. Attempts are spaced a minute or two apart, the
 /// time one actually takes, and ids are numbered rather than random, so the
 /// same inputs write the same journal. [onSession] reports each session as it
-/// closes.
+/// closes; [onOpen] and [onDecision] time each opening and each decision, for
+/// a run that is measuring the app rather than populating it.
 Future<void> practiceDemoHistory({
   required PracticeStore store,
   required Profile profile,
@@ -72,7 +74,10 @@ Future<void> practiceDemoHistory({
   required List<TechnicalMaterial> materials,
   required List<DemoSession> sessions,
   int seed = 0,
+  SchedulerPipeline? pipeline,
   void Function(int completed, int total)? onSession,
+  void Function(Duration elapsed)? onOpen,
+  void Function(PracticeSession session, Duration elapsed)? onDecision,
 }) async {
   final playing = player.begin();
   final random = PythonCompatibleRandom(seed);
@@ -81,17 +86,22 @@ Future<void> practiceDemoHistory({
 
   for (final (index, (:start, :slots)) in sessions.indexed) {
     playing.restUntil(start);
+    final opening = Stopwatch()..start();
     final session = await PracticeSession.open(
       store: store,
       profile: profile,
       materials: materials,
+      pipeline: pipeline,
       sessionId: 'demo-session-$index',
       nextId: () => 'demo-${ids++}',
     );
+    onOpen?.call(opening.elapsed);
     var at = start;
     for (var slot = 0; slot < slots; slot++) {
       at = at.add(Duration(seconds: 50 + spacing.nextInt(100)));
+      final deciding = Stopwatch()..start();
       final decision = await session.decideOutcome(at: at);
+      onDecision?.call(session, deciding.elapsed);
       if (decision case PresentedAttempt(:final exercise, decision: final d)) {
         await session.acknowledgePresentation(d.attemptId);
         await session.closeWithOutcome(
