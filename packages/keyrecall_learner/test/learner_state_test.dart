@@ -264,4 +264,122 @@ void main() {
       expect(residual.pacedTempoBpm, isPositive);
     });
   });
+
+  group('what a hand has played', () {
+    final c = cMajor.materialId;
+    final d = dHarmonicMinor.materialId;
+
+    bool scanned(
+      LearnerState state,
+      String materialId,
+      HandConfiguration hands,
+    ) => state.materialExecution.entries.any(
+      (entry) =>
+          entry.key.$1 == materialId &&
+          entry.key.$2 == hands &&
+          entry.value.lastEvidenceAt != null,
+    );
+
+    MaterialExecutionState residual(
+      LearnerState state,
+      String materialId,
+      HandConfiguration hands,
+      HandMotion motion,
+    ) => state.materialExecutionFor(
+      (materialId, hands, motion),
+      t0,
+      params,
+      familyId: cMajor.familyId,
+    );
+
+    void expectMatchesScan(LearnerState state) {
+      for (final materialId in [c, d]) {
+        for (final hands in HandConfiguration.values) {
+          expect(
+            state.hasPlayed(materialId, hands),
+            scanned(state, materialId, hands),
+            reason: '$materialId $hands',
+          );
+        }
+      }
+    }
+
+    test('is answered per material and hand, across hand motion', () {
+      final state = model.newState(at: t0);
+      residual(
+        state,
+        c,
+        HandConfiguration.right,
+        HandMotion.parallel,
+      ).lastEvidenceAt = t0;
+      residual(state, c, HandConfiguration.together, HandMotion.parallel);
+      residual(
+        state,
+        c,
+        HandConfiguration.together,
+        HandMotion.contrary,
+      ).lastEvidenceAt = t0;
+      residual(state, d, HandConfiguration.left, HandMotion.parallel);
+
+      expect(state.hasPlayed(c, HandConfiguration.right), isTrue);
+      expect(state.hasPlayed(c, HandConfiguration.left), isFalse);
+      expect(state.hasPlayed(c, HandConfiguration.together), isTrue);
+      expect(state.hasPlayed(d, HandConfiguration.left), isFalse);
+      expectMatchesScan(state);
+    });
+
+    test('follows evidence recorded on a residual in place', () {
+      final state = model.newState(at: t0);
+      final held = residual(
+        state,
+        d,
+        HandConfiguration.left,
+        HandMotion.parallel,
+      );
+      expect(state.hasPlayed(d, HandConfiguration.left), isFalse);
+
+      held.lastEvidenceAt = t0;
+
+      expect(state.hasPlayed(d, HandConfiguration.left), isTrue);
+      expectMatchesScan(state);
+    });
+
+    test('follows residuals added, removed, copied, and adopted', () {
+      final state = model.newState(at: t0);
+      residual(
+        state,
+        c,
+        HandConfiguration.together,
+        HandMotion.contrary,
+      ).lastEvidenceAt = t0;
+      residual(
+        state,
+        c,
+        HandConfiguration.together,
+        HandMotion.parallel,
+      ).lastEvidenceAt = t0;
+      final copy = state.copy();
+      expectMatchesScan(copy);
+
+      state.materialExecution.remove((
+        c,
+        HandConfiguration.together,
+        HandMotion.contrary,
+      ));
+      expect(state.hasPlayed(c, HandConfiguration.together), isTrue);
+      state.materialExecution.removeWhere((key, _) => key.$1 == c);
+      expect(state.hasPlayed(c, HandConfiguration.together), isFalse);
+      expectMatchesScan(state);
+      expect(copy.hasPlayed(c, HandConfiguration.together), isTrue);
+
+      state.adoptFrom(copy);
+      expect(state.hasPlayed(c, HandConfiguration.together), isTrue);
+      expectMatchesScan(state);
+
+      copy.materialExecution.clear();
+      state.adoptFrom(copy);
+      expect(state.hasPlayed(c, HandConfiguration.together), isFalse);
+      expectMatchesScan(state);
+    });
+  });
 }

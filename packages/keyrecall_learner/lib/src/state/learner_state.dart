@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import '../params/learner_params.dart';
@@ -61,7 +63,7 @@ class LearnerState {
     Map<String, MaterialMemoryState>? materialMemory,
     Map<ExecutionContext, MaterialExecutionState>? materialExecution,
   }) : materialMemory = materialMemory ?? {},
-       materialExecution = materialExecution ?? {};
+       materialExecution = _ExecutionResiduals(materialExecution ?? const {});
 
   /// A cold-start state with every competency at the configured prior.
   ///
@@ -155,12 +157,7 @@ class LearnerState {
   /// whether this hand configuration has met this material, and the frontiers
   /// keep apart what each demonstrated.
   bool hasPlayed(String materialId, HandConfiguration hands) =>
-      materialExecution.entries.any(
-        (entry) =>
-            entry.key.$1 == materialId &&
-            entry.key.$2 == hands &&
-            entry.value.lastEvidenceAt != null,
-      );
+      (materialExecution as _ExecutionResiduals).hasEvidence(materialId, hands);
 
   /// Requires every propagating layer to stand exactly at [now].
   ///
@@ -291,4 +288,66 @@ class LearnerState {
       'LearnerState(${competencies.length} competencies, '
       '${materialMemory.length} materials, '
       '${materialExecution.length} execution contexts)';
+}
+
+/// Execution residuals, also indexed by material and hand configuration.
+///
+/// Every write passes through here, so the index cannot fall behind the map
+/// however a caller changes it. It holds which contexts exist rather than
+/// whether they hold evidence, because evidence is recorded on a residual in
+/// place.
+class _ExecutionResiduals
+    extends MapBase<ExecutionContext, MaterialExecutionState> {
+  final Map<ExecutionContext, MaterialExecutionState> _residuals = {};
+  final Map<(String, HandConfiguration), Set<ExecutionContext>> _contexts = {};
+
+  _ExecutionResiduals(Map<ExecutionContext, MaterialExecutionState> residuals) {
+    addAll(residuals);
+  }
+
+  /// Whether any residual for [materialId] under [hands] holds evidence.
+  bool hasEvidence(String materialId, HandConfiguration hands) =>
+      _contexts[(materialId, hands)]?.any(
+        (context) => _residuals[context]!.lastEvidenceAt != null,
+      ) ??
+      false;
+
+  @override
+  MaterialExecutionState? operator [](Object? key) => _residuals[key];
+
+  @override
+  void operator []=(ExecutionContext key, MaterialExecutionState value) {
+    _residuals[key] = value;
+    _contexts.putIfAbsent((key.$1, key.$2), () => {}).add(key);
+  }
+
+  @override
+  MaterialExecutionState? remove(Object? key) {
+    if (key is! ExecutionContext || !_residuals.containsKey(key)) return null;
+    final contexts = _contexts[(key.$1, key.$2)]!..remove(key);
+    if (contexts.isEmpty) _contexts.remove((key.$1, key.$2));
+    return _residuals.remove(key);
+  }
+
+  @override
+  void clear() {
+    _residuals.clear();
+    _contexts.clear();
+  }
+
+  @override
+  Iterable<ExecutionContext> get keys => _residuals.keys;
+
+  @override
+  Iterable<MaterialExecutionState> get values => _residuals.values;
+
+  @override
+  Iterable<MapEntry<ExecutionContext, MaterialExecutionState>> get entries =>
+      _residuals.entries;
+
+  @override
+  int get length => _residuals.length;
+
+  @override
+  bool containsKey(Object? key) => _residuals.containsKey(key);
 }
