@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'demo_history.dart';
@@ -11,9 +12,10 @@ import 'player_archetypes.dart';
 /// ready for [publishDemoProfile].
 ///
 /// [staging] is a storage root of its own, so the run is the only store
-/// writing there and a failure leaves nothing a roster reads. The finished
-/// history is opened once before returning, which replays it, so what gets
-/// published is known to reopen.
+/// writing there and a failure leaves nothing a roster reads. Before returning,
+/// the whole journal is replayed from placement without a checkpoint and has
+/// to reproduce itself, and reopening it the way the app will, from the saved
+/// checkpoint, has to reach the same state.
 Future<Profile> prepareDemoProfile(
   Directory staging, {
   required List<DemoSession> sessions,
@@ -36,11 +38,29 @@ Future<Profile> prepareDemoProfile(
     sessions: sessions,
     onSession: onSession,
   );
-  await PracticeSession.open(
+  const learner = LearnerModel();
+  final replayed = replayJournal(
+    await store.loadJournal(profile.id),
+    model: learner,
+    initial: learner.placementState(profile.placement, at: profile.createdAt),
+  );
+  if (!replayed.isFaithful) {
+    throw StateError(
+      'the demo history does not replay: ${replayed.divergences.first}',
+    );
+  }
+  final reopened = await PracticeSession.open(
     store: FilePracticeStore(staging),
     profile: profile,
     materials: allPracticeMaterials,
+    learner: learner,
   );
+  if (learnerStateHash(reopened.state) != learnerStateHash(replayed.state)) {
+    throw StateError(
+      'reopening the demo history from its checkpoint does not reach the '
+      'state a full replay does',
+    );
+  }
   return profile;
 }
 
