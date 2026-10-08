@@ -981,6 +981,34 @@ whether a derived session window should be reconstructed under the version that
 observed each attempt or under the version reading it now. Worth settling when a
 learner version actually changes that criterion, not before.
 
+### Acquisition tasks in trajectory runs
+
+The trajectory runner decides ordinary slots against the production pipeline
+with the app's attempt history, but it does not play acquisition tasks: it never
+passes a family floor, and a slot that would offer one ends the session. A
+weak-family simulation therefore shows ordinary work being offered without the
+supported path the app would actually take, which is why a skewed player can run
+eighty slots with nothing managed in the family it is weak in.
+
+The goal is parity with production, not a change to acquisition policy: hand the
+runner the family floor and acquisition progress a session would, and play the
+offered task through the same performance model the experiments that drive a
+real `PracticeSession` already use. Worth taking before any finding about how a
+weak family recovers is read off a trajectory run.
+
+### Introduction pacing and breadth
+
+With introductions rotating between families, a long-break schedule introduces
+roughly twelve to fourteen materials per family within eighty slots for the
+intermediate and advanced archetypes. Whether that breadth is pedagogically
+appropriate is open, and the optional introduction cap is null in the shipped
+configuration.
+
+An experiment rather than a tuning pass: compare introduction pacing against
+retention load, depth of progression on what is already met, and its effect on
+each archetype. A family-share target is not the measure; the rotation exists so
+that neither family is starved, not so that both are held to a ratio.
+
 ## Domain expansion
 
 The long-term technical-practice domain may include:
