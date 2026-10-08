@@ -73,7 +73,7 @@ Future<void> main(List<String> arguments) async {
       materials: allPracticeMaterials,
       sessions: sessions,
       pipeline: pipeline,
-      onOpen: (elapsed) => rows.last.opens.add(elapsed),
+      onOpen: (_, elapsed) => rows.last.opens.add(elapsed),
       onDecision: (session, elapsed) {
         done++;
         last = session;

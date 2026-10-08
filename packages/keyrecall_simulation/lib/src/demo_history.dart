@@ -74,9 +74,10 @@ Future<void> practiceDemoHistory({
   required List<TechnicalMaterial> materials,
   required List<DemoSession> sessions,
   int seed = 0,
+  PracticeGoal goal = PracticeGoal.generalFluency,
   SchedulerPipeline? pipeline,
   void Function(int completed, int total)? onSession,
-  void Function(Duration elapsed)? onOpen,
+  void Function(PracticeSession session, Duration elapsed)? onOpen,
   void Function(PracticeSession session, Duration elapsed)? onDecision,
 }) async {
   final playing = player.begin();
@@ -91,11 +92,12 @@ Future<void> practiceDemoHistory({
       store: store,
       profile: profile,
       materials: materials,
+      goal: goal,
       pipeline: pipeline,
       sessionId: 'demo-session-$index',
       nextId: () => 'demo-${ids++}',
     );
-    onOpen?.call(opening.elapsed);
+    onOpen?.call(session, opening.elapsed);
     var at = start;
     for (var slot = 0; slot < slots; slot++) {
       at = at.add(Duration(seconds: 50 + spacing.nextInt(100)));

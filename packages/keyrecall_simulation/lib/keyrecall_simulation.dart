@@ -41,6 +41,7 @@ export 'src/resumable_output.dart';
 export 'src/return_cost.dart';
 export 'src/scheduler_agent.dart';
 export 'src/scheduler_benchmark.dart';
+export 'src/service_census.dart';
 export 'src/synthetic_learner.dart';
 export 'src/synthetic_performance.dart';
 export 'src/synthetic_player.dart';
