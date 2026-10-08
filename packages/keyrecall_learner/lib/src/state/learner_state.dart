@@ -56,6 +56,9 @@ class LearnerState {
   final Map<String, MaterialMemoryState> materialMemory;
 
   /// Execution residual per material, hand configuration, and hand motion.
+  ///
+  /// Always an indexed map built by the constructor, which [hasPlayed] relies
+  /// on; replacing it with an ordinary map would break that lookup.
   final Map<ExecutionContext, MaterialExecutionState> materialExecution;
 
   LearnerState({
