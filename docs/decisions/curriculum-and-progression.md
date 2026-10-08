@@ -307,6 +307,33 @@ testing a memory this app has never seen formed.
 which is why it reads factual observation history rather than the model's belief
 about that history.
 
+## What covers a requirement
+
+**Decision.** A requirement is covered by one attempt that matches its structure
+and was completed, retrieved the material, sounded at least 0.9 of its pitches
+correctly, and carried a self-paced motor score of at least 0.5, with
+coordination of at least 0.75 where both hands played
+(`RequirementCompletionPolicy.standard`). An attempt that cannot be timed, such
+as a one-octave triad ascending, cannot cover anything.
+
+**Why.** KeyRecall develops playable skill, not recall of which notes belong to
+a scale, and this is the least that shows a recognizable, controlled traversal:
+finished, accurate, retrieved, and timed. Relaxing it to match the fluency
+report's "played from memory" would leave fewer requirements due without the
+learner having shown the execution that is missing. A short traversal still
+counts as evidence of what it can observe, its pitches, its retrieval, the
+fingering begun, and the first timed attempt still ends introductory
+accommodation whether or not it covers.
+
+**Consequences.** Covered is a minimum demonstration, not mastery: one attempt
+says nothing about reliability, which retrieval health and further practice
+answer. The thresholds are provisional, kept while allocation is studied rather
+than validated by research. The report and the scheduler read the same evidence
+and need not name the same milestone: a material can be retrieved without cues
+and not yet demonstrated, and still be due, with nothing contradictory once each
+is named for what it is. To a learner the milestone is "demonstrated"; covered
+is the curriculum's term for it.
+
 ## Grades are not admission bands
 
 **Decision.** Examination curricula supply the _shape_ of progression, never a

@@ -1135,6 +1135,18 @@ Still deferred beyond it, because nothing yet measures them: consistency and
 robustness across conditions, and current readiness as distinct from longer-term
 retention. Both wait on performance envelopes and transient session state.
 
+### Retrieval and demonstration in the report
+
+The headline fraction is "played from memory", a successful unguided retrieval,
+while a requirement is covered only by a completed, accurate, timed attempt. On
+the seeded developing run the report shows 12 of 24 arpeggios played from memory
+and 8 of 24 demonstrated, and both are true. The report should show the
+dimensions apart rather than as one ladder: encountered, recalled without cues,
+and demonstrated, with demonstrated read against the requirement and scope it
+belongs to, since a focused curriculum can ask for a different structure than
+General Fluency does. A goal-focused report can lead with demonstrated; General
+Fluency can show both without folding one into the other.
+
 ### A hand shown rather than named
 
 The task statement says which hand plays in words, and words are easy to read
