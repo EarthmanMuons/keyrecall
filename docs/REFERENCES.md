@@ -51,13 +51,22 @@ procedural skill retention and decay. _Psychological Bulletin_.
 elapsed time, so material-specific readiness is not a monotonic accumulation of
 history. The basis for mean reversion in `MaterialExecutionState`.
 
-**[Wiseheart2017]** Wiseheart, M., D'Souza, A. A., & Chae, B. (2017). Lack of
+**[Wiseheart2017]** Wiseheart, M., D'Souza, A. A., & Chae, J. (2017). Lack of
 spacing effects during piano learning. _PLOS ONE_.
-<https://pubmed.ncbi.nlm.nih.gov/28843958/> (and the surgical motor-skill
-distributed-practice review at the same entry) → A limit, deliberately recorded:
-verbal spacing results do not transfer wholesale to motor practice. Why
-KeyRecall's spacing claims are narrowed to retrieval of material rather than to
-motor execution.
+<https://doi.org/10.1371/journal.pone.0182986> → A limit, deliberately recorded:
+novices learning a short piano sequence showed no spacing effect at lags of up
+to 15 minutes and a 5-minute retention interval, which the authors attribute to
+how little was forgotten at those lags. It says nothing about spacing across
+days or months, but it is a reason not to assume verbal spacing results transfer
+wholesale to motor practice, and part of why KeyRecall's spacing claims are
+narrowed to retrieval of material rather than to motor execution.
+
+**[CecilioFernandes2018]** Cecilio-Fernandes, D., Cnossen, F., Jaarsma, D. A. D.
+C., & Tio, R. A. (2018). Avoiding surgical skill decay: A systematic review on
+the spacing of training sessions. _Journal of Surgical Education_.
+<https://pubmed.ncbi.nlm.nih.gov/28843958/> → Distributed practice in a motor
+domain far from the keyboard, kept beside the piano study as context rather than
+as evidence about piano practice.
 
 **[Krakauer2006]** Krakauer, J. W., & Shadmehr, R. (2006). Consolidation of
 motor memory. _Trends in Neurosciences_.
