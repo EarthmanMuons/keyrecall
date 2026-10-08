@@ -1011,27 +1011,33 @@ that neither family is starved, not so that both are held to a ratio.
 
 ### First attempts at a newly admitted key
 
-Once an introduction at the hand's own pace meets its band, the developing
-archetype on the seeded 120-day demo schedule meets 14 of 24 arpeggios rather
-than 6, and its first attempt in a hand falters (incomplete, or pitch integrity
-under 0.9) on 25 of 33 arpeggio introductions, against 8 of 17 before. The entry
-tempo is the median pace that hand shows on arpeggios it owns, so it is the
-first suspect, but the rate alone does not establish it: an unfamiliar
-fingering, its geometry, and the synthetic player's own assumptions could each
-produce it. Whether a first meeting is pitched right is a calibration question
-for the entry tempo and the challenge floor an introduction gets, separate from
-whether the key may be met at all. There is no success rate to aim for here.
+Under scheduler v1-14, on the seeded 120-day demo schedule, the developing
+archetype meets 14 of 24 arpeggio materials and plays 12 of them from memory.
+Counted by material and hand instead, 20 of its 26 single-hand arpeggio strands
+reach a timed attempt, and 17 of those first timed attempts falter (incomplete,
+or pitch integrity under 0.9); 11 of the 20 were at the tempo of the meeting
+before them. The accommodation now lasts until there is evidence, so this is no
+longer the scheduler losing the follow-up: obtaining evidence and offering
+something achievable are separate accomplishments. The entry tempo, the median
+pace that hand shows on arpeggios it owns, is the first suspect, but the rate
+alone does not establish it: an unfamiliar fingering, its geometry, and the
+synthetic player's own assumptions could each produce it. Whether a first timed
+attempt is pitched right is a calibration question for the entry tempo and the
+challenge floor, separate from whether the key may be met at all. There is no
+success rate to aim for here.
 
 ### Practice allocation between families
 
-On the same run, arpeggio attempts fall from 118 to 31 to 28 across the thirds
-of the history even as more arpeggios become admissible, and they fell the same
-way before admission was corrected (156, 47, 30). Before the correction, an
-arpeggio not yet met reached ranking in about two thirds of decisions and still
-never won after the first third, which points at ranking rather than admission.
-Why ranking favors scales this strongly for a developing learner, and whether it
-should, is a priority question. As with introduction pacing, a family share is
-not the measure.
+On the same run, arpeggio attempts fall from 153 to 68 to 57 across the thirds
+of the history, against 118, 31, 28 under v1-13 and 156, 47, 30 before
+introductions could open later bands. Six single-hand arpeggio strands are met
+and never timed. Under v1-12, an arpeggio not yet met reached ranking in about
+two thirds of decisions and still never won after the first third, which points
+at ranking and the selection stages after it rather than at admission. Why
+ranking favors scales this strongly for a developing learner, and whether it
+should, is the question a service census answers: for each strand of useful
+work, how often it was actionable, how long it waited, and what won instead. As
+with introduction pacing, a family share is not the measure.
 
 ### Session opening grows with the journal
 
