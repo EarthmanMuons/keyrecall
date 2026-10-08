@@ -42,6 +42,7 @@ citation key is not an argument.
 | [`player-calibration.md`](experiments/player-calibration.md)       | Can a synthetic player be fitted to a real session          |
 | [`fluency-tempo.md`](experiments/fluency-tempo.md)                 | Which rule a typical-tempo chart can read                   |
 | [`pulse-remediation.md`](experiments/pulse-remediation.md)         | What a timing-remediation rule would have to work with      |
+| [`service-census.md`](experiments/service-census.md)               | How due work is served, how long it waits, and what wins    |
 
 ## How to read a negative result here
 
