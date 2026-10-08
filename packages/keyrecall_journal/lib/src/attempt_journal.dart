@@ -79,10 +79,9 @@ class AttemptJournal {
 
   final List<AttemptRecord> _records = [];
   final List<String> _contentHashes = [];
-  final Map<String, String> _hashByAttemptId = {};
-  final Map<String, int> _lastIndexBySession = {};
+  final AttemptJournalIndex _index;
 
-  AttemptJournal(this.header);
+  AttemptJournal(this.header) : _index = AttemptJournalIndex(header.profileId);
 
   /// Every attempt, oldest first.
   List<AttemptRecord> get records => List.unmodifiable(_records);
@@ -94,10 +93,14 @@ class AttemptJournal {
   bool get isEmpty => _records.isEmpty;
 
   /// Whether [attemptId] has already been recorded.
-  bool contains(String attemptId) => _hashByAttemptId.containsKey(attemptId);
+  bool contains(String attemptId) => _index.contains(attemptId);
 
   /// The sequence the next appended record must carry.
   int get nextSequence => _records.length;
+
+  /// What this journal checks an appended record against, as an independent
+  /// copy.
+  AttemptJournalIndex get index => _index.copy();
 
   /// Appends [record], or does nothing if that exact attempt is already
   /// recorded.
@@ -112,64 +115,10 @@ class AttemptJournal {
   /// timestamp precedes the previous attempt, or when its attempt index does
   /// not advance within its session.
   bool append(AttemptRecord record) {
-    final location = 'attempt ${record.identity.attemptId}';
-
-    if (record.identity.profileId != header.profileId) {
-      throw JournalFormatException(
-        'attempt belongs to profile ${record.identity.profileId}, but this '
-        'journal holds ${header.profileId}',
-        location: location,
-      );
-    }
-
-    final hash = contentHash(record.toJson());
-    final existing = _hashByAttemptId[record.identity.attemptId];
-    if (existing != null) {
-      if (existing == hash) return false;
-      throw JournalFormatException(
-        'attempt id ${record.identity.attemptId} is already recorded with '
-        'different content; an id that returns with new content is a '
-        'collision, not a retry',
-        location: location,
-      );
-    }
-
-    if (record.journalSequence != nextSequence) {
-      throw JournalFormatException(
-        'journal sequence ${record.journalSequence} is not the expected '
-        '$nextSequence; a gap means a record was lost, and a repeat means one '
-        'was duplicated',
-        location: location,
-      );
-    }
-
-    if (_records.isNotEmpty) {
-      final previous = _records.last.identity.occurredAt;
-      if (record.identity.occurredAt.isBefore(previous)) {
-        throw JournalFormatException(
-          'attempt time ${encodeTime(record.identity.occurredAt)} precedes the '
-          'previous attempt at ${encodeTime(previous)}; the model timeline '
-          'cannot run backward, because propagating backward is illegal',
-          location: location,
-        );
-      }
-    }
-
-    final sessionId = record.identity.sessionId;
-    final index = record.identity.indexInSession;
-    final lastIndex = _lastIndexBySession[sessionId];
-    if (lastIndex != null && index <= lastIndex) {
-      throw JournalFormatException(
-        'attempt index $index does not advance past $lastIndex in session '
-        '$sessionId',
-        location: location,
-      );
-    }
-
+    final hash = _index.admit(record);
+    if (hash == null) return false;
     _records.add(record);
     _contentHashes.add(hash);
-    _hashByAttemptId[record.identity.attemptId] = hash;
-    _lastIndexBySession[sessionId] = index;
     return true;
   }
 
@@ -309,4 +258,110 @@ class AttemptJournal {
   @override
   String toString() =>
       'AttemptJournal(${header.profileId}, ${_records.length} attempts)';
+}
+
+/// What an [AttemptJournal] checks an appended record against: every attempt
+/// id it holds with its content, where its timeline stands, and how far each
+/// session has advanced.
+///
+/// Everything [AttemptJournal.append] validates and nothing it does not need,
+/// so an adapter can keep admitting appends without keeping the history they
+/// came from.
+class AttemptJournalIndex {
+  /// Which profile the journal belongs to.
+  final String profileId;
+
+  final Map<String, String> _hashByAttemptId;
+  final Map<String, int> _lastIndexBySession;
+  DateTime? _lastOccurredAt;
+  int _nextSequence;
+
+  AttemptJournalIndex(this.profileId)
+    : _hashByAttemptId = {},
+      _lastIndexBySession = {},
+      _nextSequence = 0;
+
+  AttemptJournalIndex._copy(AttemptJournalIndex other)
+    : profileId = other.profileId,
+      _hashByAttemptId = {...other._hashByAttemptId},
+      _lastIndexBySession = {...other._lastIndexBySession},
+      _lastOccurredAt = other._lastOccurredAt,
+      _nextSequence = other._nextSequence;
+
+  /// An independent copy of this index.
+  AttemptJournalIndex copy() => AttemptJournalIndex._copy(this);
+
+  /// The sequence the next admitted record must carry.
+  int get nextSequence => _nextSequence;
+
+  /// Whether [attemptId] has already been admitted.
+  bool contains(String attemptId) => _hashByAttemptId.containsKey(attemptId);
+
+  /// Admits [record] and returns its content hash, or returns null if that
+  /// exact attempt is already admitted.
+  ///
+  /// Throws [JournalFormatException] when the record belongs to another
+  /// profile, reuses an attempt id with different content, does not carry the
+  /// next sequence, precedes the previous attempt, or does not advance its
+  /// session. Nothing changes when it throws.
+  String? admit(AttemptRecord record) {
+    final location = 'attempt ${record.identity.attemptId}';
+
+    if (record.identity.profileId != profileId) {
+      throw JournalFormatException(
+        'attempt belongs to profile ${record.identity.profileId}, but this '
+        'journal holds $profileId',
+        location: location,
+      );
+    }
+
+    final hash = contentHash(record.toJson());
+    final existing = _hashByAttemptId[record.identity.attemptId];
+    if (existing != null) {
+      if (existing == hash) return null;
+      throw JournalFormatException(
+        'attempt id ${record.identity.attemptId} is already recorded with '
+        'different content; an id that returns with new content is a '
+        'collision, not a retry',
+        location: location,
+      );
+    }
+
+    if (record.journalSequence != nextSequence) {
+      throw JournalFormatException(
+        'journal sequence ${record.journalSequence} is not the expected '
+        '$nextSequence; a gap means a record was lost, and a repeat means one '
+        'was duplicated',
+        location: location,
+      );
+    }
+
+    if (_lastOccurredAt case final previous?) {
+      if (record.identity.occurredAt.isBefore(previous)) {
+        throw JournalFormatException(
+          'attempt time ${encodeTime(record.identity.occurredAt)} precedes the '
+          'previous attempt at ${encodeTime(previous)}; the model timeline '
+          'cannot run backward, because propagating backward is illegal',
+          location: location,
+        );
+      }
+    }
+
+    final sessionId = record.identity.sessionId;
+    final index = record.identity.indexInSession;
+    final lastIndex = _lastIndexBySession[sessionId];
+    if (lastIndex != null && index <= lastIndex) {
+      throw JournalFormatException(
+        'attempt index $index does not advance past $lastIndex in session '
+        '$sessionId',
+        location: location,
+      );
+    }
+
+    _nextSequence++;
+    _lastOccurredAt = record.identity.occurredAt;
+    _hashByAttemptId[record.identity.attemptId] = hash;
+    _lastIndexBySession[sessionId] = index;
+    return hash;
+  }
 }

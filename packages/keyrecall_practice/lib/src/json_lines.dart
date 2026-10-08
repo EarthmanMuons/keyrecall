@@ -68,7 +68,7 @@ Future<CommittedLines> readCommittedLines(File file) async {
 /// and put them back afterward, so a second interruption during recovery would
 /// destroy history that the first one left intact.
 Future<void> truncateTornTail(File file) async {
-  if (!file.existsSync()) return;
+  if (!file.existsSync() || await _endsCommitted(file)) return;
   final bytes = await file.readAsBytes();
   final committedLength = _committedLength(bytes);
   if (committedLength == bytes.length) return;
@@ -84,10 +84,24 @@ Future<void> truncateTornTail(File file) async {
   }
 }
 
+/// Whether [file] is empty or ends in a newline, read from its last byte.
+Future<bool> _endsCommitted(File file) async {
+  final handle = await file.open();
+  try {
+    final length = await handle.length();
+    if (length == 0) return true;
+    await handle.setPosition(length - 1);
+    return await handle.readByte() == _newline;
+  } finally {
+    await handle.close();
+  }
+}
+
+const int _newline = 0x0a;
+
 int _committedLength(Uint8List bytes) {
-  const newline = 0x0a;
   for (var i = bytes.length - 1; i >= 0; i--) {
-    if (bytes[i] == newline) return i + 1;
+    if (bytes[i] == _newline) return i + 1;
   }
   return 0;
 }

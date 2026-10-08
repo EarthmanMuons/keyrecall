@@ -53,6 +53,15 @@ class FilePracticeStore implements PracticeStore {
 
   final ProfileWriteQueue _queue = ProfileWriteQueue();
 
+  /// Each journal's append index, valid while its file is as it was then.
+  ///
+  /// Saves rereading the whole journal to admit one record. Checked against
+  /// the file's size and modification time, which every append changes; a
+  /// different writer is outside what this store supports, and this detects
+  /// one only as reliably as those two values do.
+  final Map<String, ({FileStat stat, AttemptJournalIndex index})>
+  _journalIndexes = {};
+
   FilePracticeStore(this.root, {this.params = v1LearnerParams});
 
   /// A store rooted at [path].
@@ -156,6 +165,7 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(profileId);
     final file = _journalFile(profileId);
     if (!file.existsSync()) {
+      _journalIndexes.remove(profileId);
       return AttemptJournal(
         JournalHeader(
           profileId: profileId,
@@ -163,11 +173,32 @@ class FilePracticeStore implements PracticeStore {
         ),
       );
     }
+    // Before the read, so a change during it leaves the index looking stale
+    // rather than current.
+    final stat = file.statSync();
     final journal = AttemptJournal.fromJsonLines(
       await _readCommittedLines(file, profileId),
     );
     _requireOwnership(journal.header.profileId, profileId, file);
+    _journalIndexes[profileId] = (stat: stat, index: journal.index);
     return journal;
+  }
+
+  /// What [profileId]'s journal admits appends against, read again only when
+  /// the file has changed since it was last read or written here.
+  Future<AttemptJournalIndex> _journalIndex(String profileId) async {
+    final held = _journalIndexes[profileId];
+    if (held != null && _unchanged(held.stat, _journalFile(profileId))) {
+      return held.index;
+    }
+    return (await _loadJournal(profileId, null)).index;
+  }
+
+  static bool _unchanged(FileStat held, File file) {
+    final current = file.statSync();
+    return current.type == held.type &&
+        current.size == held.size &&
+        current.modified == held.modified;
   }
 
   @override
@@ -190,13 +221,19 @@ class FilePracticeStore implements PracticeStore {
       await _appendLine(file, canonicalJson(header.toJson()));
     }
 
-    // Read-modify-validate before writing: the journal enforces contiguous
-    // sequence, forward time, and conflicting-id detection, and those checks
-    // have to run against what is actually on disk.
-    final journal = await _loadJournal(record.profileId, null);
-    if (!journal.append(record)) return;
-
-    await _appendLine(file, canonicalJson(record.toJson()));
+    // Validate before writing: the journal enforces contiguous sequence,
+    // forward time, and conflicting-id detection, and those checks have to run
+    // against what is actually on disk, which the index is only while the file
+    // is unchanged.
+    final index = await _journalIndex(record.profileId);
+    try {
+      if (index.admit(record) == null) return;
+      await _appendLine(file, canonicalJson(record.toJson()));
+    } catch (_) {
+      _journalIndexes.remove(record.profileId);
+      rethrow;
+    }
+    _journalIndexes[record.profileId] = (stat: file.statSync(), index: index);
   }
 
   @override
@@ -304,10 +341,9 @@ class FilePracticeStore implements PracticeStore {
     final file = _feedbackFile(exposure.profileId);
     await file.parent.create(recursive: true);
     await truncateTornTail(file);
-    final journal = await _loadJournal(exposure.profileId, null);
-    if (!journal.records.any(
-      (record) => record.identity.attemptId == exposure.attemptId,
-    )) {
+    if (!(await _journalIndex(
+      exposure.profileId,
+    )).contains(exposure.attemptId)) {
       throw StateError('feedback refers to an attempt that is not recorded');
     }
     final existing = await _loadFeedbackExposures(exposure.profileId);
@@ -672,6 +708,7 @@ class FilePracticeStore implements PracticeStore {
   }
 
   Future<void> _finishErase(String profileId) async {
+    _journalIndexes.remove(profileId);
     final erasable = {
       for (final file in [
         _journalFile(profileId),

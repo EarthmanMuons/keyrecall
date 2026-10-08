@@ -508,6 +508,65 @@ void main() {
     });
   });
 
+  group('an append index held across appends', () {
+    test('notices another store appending to the same journal', () async {
+      final session = await openSession(FilePracticeStore(root));
+      await practise(session, attempts: 2);
+
+      final other = await openSession(
+        FilePracticeStore(root),
+        sessionId: 'session-2',
+        ids: countingIds('other'),
+      );
+      await practise(other, attempts: 1, startDay: 10);
+
+      await expectLater(
+        practise(session, attempts: 1, startDay: 20),
+        throwsA(isA<JournalFormatException>()),
+      );
+      final journal = await FilePracticeStore(root).loadJournal(alice.id);
+      expect(journal.records.map((r) => r.journalSequence), [0, 1, 2]);
+    });
+
+    test('a write that failed is admitted again when retried', () async {
+      final records = await practise(
+        await openSession(InMemoryPracticeStore()),
+        attempts: 2,
+      );
+      final store = FilePracticeStore(root);
+      await store.appendAttempt(records.first);
+
+      Process.runSync('chmod', ['a-w', journalFile().path]);
+      try {
+        await expectLater(
+          store.appendAttempt(records.last),
+          throwsA(isA<FileSystemException>()),
+        );
+      } finally {
+        Process.runSync('chmod', ['u+w', journalFile().path]);
+      }
+      await store.appendAttempt(records.last);
+
+      final journal = await FilePracticeStore(root).loadJournal(alice.id);
+      expect(journal.records.map((r) => r.journalSequence), [0, 1]);
+    });
+
+    test('an erase by another store starts the journal over', () async {
+      final store = FilePracticeStore(root);
+      await practise(await openSession(store), attempts: 2);
+
+      await FilePracticeStore(root).erase(alice.id);
+      await practise(
+        await openSession(store, sessionId: 'session-2'),
+        attempts: 1,
+        startDay: 10,
+      );
+
+      final journal = await FilePracticeStore(root).loadJournal(alice.id);
+      expect(journal.records.map((r) => r.journalSequence), [0]);
+    });
+  });
+
   group('separation', () {
     test('each profile gets its own directory', () async {
       final store = FilePracticeStore(root);
