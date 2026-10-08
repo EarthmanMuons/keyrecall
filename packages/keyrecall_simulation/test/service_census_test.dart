@@ -23,6 +23,7 @@ void main() {
     covered: !due,
     admitted: fullyRanked,
     fullyRanked: fullyRanked,
+    materialRanked: fullyRanked,
     heldForRecovery: false,
     servedMaterial: served,
     served: served,
@@ -184,7 +185,7 @@ void main() {
     test('is pinned', () {
       expect(
         census.digest,
-        '1365ae547063a2f794b9f00543ed7a91867ffd22b27314207f38d51a2983244d',
+        '9ce32c549d83d54cc1e3bcf63959832d3756fb04e70cd6da8877974f386852c3',
       );
     });
   });
@@ -272,6 +273,17 @@ void main() {
       byDecision.putIfAbsent(observation.decision, () => []).add(observation);
     }
     var materialOnly = 0;
+    for (final observation in census.observations) {
+      expect(
+        !observation.fullyRanked || observation.materialRanked,
+        isTrue,
+        reason: observation.canonical,
+      );
+    }
+    expect(
+      census.observations.where((o) => o.materialRanked && !o.fullyRanked),
+      isNotEmpty,
+    );
     for (final pair in byDecision.values) {
       expect(pair.where((o) => o.served), hasLength(lessThanOrEqualTo(1)));
       if (pair.any((o) => o.servedMaterial && !o.served)) materialOnly++;

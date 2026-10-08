@@ -80,7 +80,7 @@ void _report(String player, ServiceCensus census, int top) {
       ..writeln('  lost to        ${_lostTo(census, family, top)}')
       ..writeln(
         '  progression    opportunities ${sum((r) => r.progressionOpportunities)}, '
-        'served ${sum((r) => r.progressionServed)}, longest missed run '
+        'served ${sum((r) => r.progressionServed)}, longest run of missed opportunities '
         '${own.fold(0, (m, r) => r.longestMissedProgression > m ? r.longestMissedProgression : m)}',
       );
     final waiting = [...own]
@@ -93,8 +93,9 @@ void _report(String player, ServiceCensus census, int top) {
       if (r.longestMissedOpportunities == 0) break;
       stdout.writeln(
         '    ${r.materialId.padRight(28)} actionable ${r.actionable}, served '
-        '${r.served}, longest missed run ${r.longestMissedOpportunities}, '
-        'longest due without service ${r.longestDueWithoutService}',
+        '${r.served}, longest run of missed actionable opportunities '
+        '${r.longestMissedOpportunities}, longest run of decisions due without '
+        'service ${r.longestDueWithoutService}',
       );
     }
   }

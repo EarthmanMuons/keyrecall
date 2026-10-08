@@ -28,8 +28,13 @@ class RequirementObservation {
   /// At least one realization passed admission, at any tier.
   final bool admitted;
 
-  /// At least one fully eligible realization reached ranking.
+  /// At least one fully eligible realization in the structure the requirement
+  /// asks for reached ranking.
   final bool fullyRanked;
+
+  /// At least one fully eligible realization of its material reached ranking,
+  /// whether or not it could serve this requirement.
+  final bool materialRanked;
 
   /// Due, nothing admitted, and something was refused for a recovery target.
   final bool heldForRecovery;
@@ -69,6 +74,7 @@ class RequirementObservation {
     required this.covered,
     required this.admitted,
     required this.fullyRanked,
+    required this.materialRanked,
     required this.heldForRecovery,
     required this.servedMaterial,
     required this.served,
@@ -95,6 +101,7 @@ class RequirementObservation {
     covered,
     admitted,
     fullyRanked,
+    materialRanked,
     heldForRecovery,
     servedMaterial,
     served,
@@ -151,8 +158,8 @@ class RequirementService {
   final int heldForRecovery;
   final int blocked;
 
-  /// The most actionable opportunities missed in a row, counting only
-  /// decisions at which it was actionable.
+  /// The most consecutive actionable opportunities missed, counting only
+  /// decisions at which it was actionable: a run is not consecutive decisions.
   final int longestMissedOpportunities;
 
   /// The most decisions in a row it stayed due without being served.
@@ -490,18 +497,22 @@ class ServiceCensusPipeline extends SchedulerPipeline {
   ) {
     final resolved = requirementState.resolved;
     final material = resolved.material;
-    final ranked = [
+    final constraints = resolved.requirement.constraints;
+    final materialRanked = [
       for (final trace in own)
         if (trace.isRanked &&
             trace.eligibility.tier == EligibilityTier.fullyEligible)
           trace,
     ];
+    final ranked = [
+      for (final trace in materialRanked)
+        if (constraints.matchesStructure(trace.exercise)) trace,
+    ];
     final best = selectBest(ranked);
     final due = requirementState.isDue;
     final servedMaterial = winner?.exercise.material == material;
     final served =
-        servedMaterial &&
-        resolved.requirement.constraints.matchesStructure(winner!.exercise);
+        servedMaterial && constraints.matchesStructure(winner!.exercise);
 
     String? loss;
     if (due && best != null && !served) {
@@ -541,6 +552,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       covered: requirementState.isCovered,
       admitted: own.any((trace) => trace.admissionRefusal == null),
       fullyRanked: best != null,
+      materialRanked: materialRanked.isNotEmpty,
       heldForRecovery:
           due &&
           !own.any((trace) => trace.admissionRefusal == null) &&
