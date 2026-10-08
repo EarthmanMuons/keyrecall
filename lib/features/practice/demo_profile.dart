@@ -10,11 +10,8 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 import 'practice_providers.dart';
 import 'profile_color.dart';
 
-/// How far back a demo profile's history reaches.
-const Duration demoHistorySpan = Duration(days: 120);
-
-/// Creates a profile with months of synthetic practice behind it, and
-/// practices as it.
+/// Creates a profile with a fixed four months of synthetic practice behind
+/// it, and practices as it.
 ///
 /// For exploring how the app reads a long history. The practice is a
 /// [PlayerArchetypes.developing] player run through the real session, so the
@@ -27,11 +24,10 @@ Future<Profile> createDemoProfile(
   final lifecycle = await ref.read(profileLifecycleProvider.future);
   final root = await ref.read(storageRootProvider.future);
   final player = PlayerArchetypes.developing;
-  final now = DateTime.now().toUtc();
   final creation = await lifecycle.create(
     displayName: 'Demo',
     placement: player.placement,
-    createdAt: now.subtract(demoHistorySpan),
+    createdAt: demoHistoryStart,
     presentationHint: ProfileColor.unusedAmong(
       await lifecycle.repository.list(),
     ).name,
@@ -43,7 +39,7 @@ Future<Profile> createDemoProfile(
     ProfileNotCreated(:final cause) => throw cause,
   };
 
-  final sessions = demoSessions(from: profile.createdAt, until: now);
+  final sessions = demoSessions(from: demoHistoryStart, until: demoHistoryEnd);
   final progress = ReceivePort();
   progress.listen((message) {
     final (completed, total) = message as (int, int);

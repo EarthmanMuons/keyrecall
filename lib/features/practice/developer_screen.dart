@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
+import 'package:keyrecall_simulation/keyrecall_simulation.dart'
+    show demoHistoryEnd, demoHistoryStart;
 import 'package:material_ui/material_ui.dart';
 
 import '../input/input.dart';
@@ -321,8 +323,8 @@ class _DemoProfileToolState extends ConsumerState<_DemoProfileTool> {
     title: 'Create demo profile',
     subtitle: _running
         ? 'Practicing ${_progress ?? 'the first day'}'
-        : '${demoHistorySpan.inDays} days of simulated practice, then switch '
-              'to it',
+        : '${demoHistoryEnd.difference(demoHistoryStart).inDays} days of '
+              'simulated practice, then switch to it',
     onTap: _running ? null : _create,
   );
 }

@@ -8,49 +8,51 @@ import 'python_compatible_random.dart';
 import 'synthetic_performance.dart';
 import 'synthetic_player.dart';
 
+/// When demo history starts, fixed so every run produces the same history.
+final DateTime demoHistoryStart = DateTime.utc(2026, 6);
+
+/// When demo history ends.
+final DateTime demoHistoryEnd = DateTime.utc(2026, 9, 29);
+
 /// One day [practiceDemoHistory] practices on.
 typedef DemoSession = ({DateTime start, int slots});
 
-/// Practice days from [from] through [until], at the irregular pace a real
+/// Practice days after [from] through [until], at the irregular pace a real
 /// learner keeps.
 ///
 /// Mostly evenings, fewer on weekends, with the occasional stretch away so the
-/// history has gaps to return from. Deterministic in [seed].
+/// history has gaps to return from. Days and hours are UTC, so the result
+/// depends on [seed] and nothing else.
 List<DemoSession> demoSessions({
   required DateTime from,
   required DateTime until,
   int seed = 0,
 }) {
   final random = math.Random(seed);
-  final first = from.toLocal();
-  final last = until.toLocal();
+  final first = from.toUtc();
+  final last = until.toUtc();
   final sessions = <DemoSession>[];
   var awayUntil = first;
   for (
-    var day = DateTime(first.year, first.month, first.day + 1);
+    var day = DateTime.utc(first.year, first.month, first.day + 1);
     !day.isAfter(last);
-    day = DateTime(day.year, day.month, day.day + 1)
+    day = DateTime.utc(day.year, day.month, day.day + 1)
   ) {
     if (day.isBefore(awayUntil)) continue;
     if (random.nextDouble() < 0.025) {
-      awayUntil = DateTime(
-        day.year,
-        day.month,
-        day.day + 3 + random.nextInt(8),
-      );
+      awayUntil = day.add(Duration(days: 3 + random.nextInt(8)));
       continue;
     }
     final weekend = day.weekday >= DateTime.saturday;
     if (random.nextDouble() > (weekend ? 0.45 : 0.7)) continue;
-    final start = DateTime(
-      day.year,
-      day.month,
-      day.day,
-      weekend ? 10 + random.nextInt(6) : 18 + random.nextInt(4),
-      random.nextInt(60),
+    final start = day.add(
+      Duration(
+        hours: weekend ? 10 + random.nextInt(6) : 18 + random.nextInt(4),
+        minutes: random.nextInt(60),
+      ),
     );
     if (start.isAfter(last)) continue;
-    sessions.add((start: start.toUtc(), slots: 8 + random.nextInt(23)));
+    sessions.add((start: start, slots: 8 + random.nextInt(23)));
   }
   return sessions;
 }
@@ -60,7 +62,9 @@ List<DemoSession> demoSessions({
 /// Through a real [PracticeSession], so the scheduler chooses every exercise
 /// and every record is one the app could have written. Only the person at the
 /// instrument is synthetic. Attempts are spaced a minute or two apart, the
-/// time one actually takes. [onSession] reports each session as it closes.
+/// time one actually takes, and ids are numbered rather than random, so the
+/// same inputs write the same journal. [onSession] reports each session as it
+/// closes.
 Future<void> practiceDemoHistory({
   required PracticeStore store,
   required Profile profile,
@@ -73,6 +77,7 @@ Future<void> practiceDemoHistory({
   final playing = player.begin();
   final random = PythonCompatibleRandom(seed);
   final spacing = math.Random(seed);
+  var ids = 0;
 
   for (final (index, (:start, :slots)) in sessions.indexed) {
     playing.restUntil(start);
@@ -80,6 +85,8 @@ Future<void> practiceDemoHistory({
       store: store,
       profile: profile,
       materials: materials,
+      sessionId: 'demo-session-$index',
+      nextId: () => 'demo-${ids++}',
     );
     var at = start;
     for (var slot = 0; slot < slots; slot++) {
