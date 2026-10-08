@@ -118,7 +118,7 @@ class ProfileMutationNotifier extends Notifier<bool> {
 /// progressed by the same family-neutral rules as scales, so a scale-only mode
 /// would only preserve somewhere for single-family assumptions to hide.
 final practiceCatalogProvider = Provider<List<TechnicalMaterial>>(
-  (ref) => [...allScales, ...allRootPositionArpeggios],
+  (ref) => allPracticeMaterials,
 );
 
 /// Orders plan reads behind the plan writes already accepted for a profile.
