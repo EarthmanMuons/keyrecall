@@ -1025,6 +1025,36 @@ through the profile lifecycle and select it only once that succeeds. Publishing
 a whole history atomically is the part that needs design, alongside profile ids
 and erasure. Worth taking before demo provisioning becomes automatic.
 
+### Session opening grows with the journal
+
+Opening a session loads and validates the whole journal before replaying from
+the checkpoint, so it costs time in proportion to history. Measured with
+`keyrecall_simulation/bin/demo_scaling.dart` in a debug build, it grows from
+about 50 ms at 500 attempts to 540 ms at 5,000. It happens at a boundary the
+learner waits on, which puts it ahead of the per-decision cost below.
+
+Whether a validated checkpoint and a replay of only the journal's tail can cut
+the repeated work without weakening the integrity checks or changing what
+recovery does is the question. Measure in a profile or release build on a device
+before choosing an implementation.
+
+### Decision preparation grows with attempt history
+
+Each decision rebuilds attempt history from the journal and reassesses the
+scope's requirements against it, which adds about 3.5 ms per 1,000 attempts in
+the same debug measurement (3 ms to 20 ms by 5,000). Session-scoped derived
+facts, updated as attempts commit and invalidated when history, scope, or
+curriculum changes, could remove it, provided decisions and diagnostic ordering
+stay exactly as they are. Not worth taking ahead of evidence from a device.
+
+For context, scheduling itself no longer grows with history: it tracks how many
+execution contexts the learner has met, which saturates near 189 under the
+current catalog, and levels off around 135 to 155 ms there. That is bounded
+growth under this catalog, not constant-time scheduling. A larger catalog, a new
+execution dimension, or more candidate realizations would raise the ceiling, and
+the same tool characterizes it. Its memory figures are process RSS, not a heap
+profile.
+
 ## Domain expansion
 
 The long-term technical-practice domain may include:
