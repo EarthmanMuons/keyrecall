@@ -62,3 +62,32 @@ Future<void> publishDemoProfile(
   await root.create(recursive: true);
   await Directory('${staging.path}/${profile.id}').rename(target.path);
 }
+
+bool _staging = false;
+
+/// Runs [run] with [staging] cleared before it and removed after it, refusing
+/// to start while another run in this isolate holds it.
+///
+/// Every run shares the one directory, so a second clearing it would delete
+/// the first one's history partway through. The refusal comes before anything
+/// in [staging] is touched, and the hold is released only once it is removed.
+Future<T> withDemoStaging<T>(
+  Directory staging,
+  Future<T> Function() run,
+) async {
+  if (_staging) {
+    throw StateError('a demo profile is already being generated');
+  }
+  _staging = true;
+  try {
+    // Left by a run that never finished, and owned by nothing else.
+    if (staging.existsSync()) await staging.delete(recursive: true);
+    return await run();
+  } finally {
+    try {
+      if (staging.existsSync()) await staging.delete(recursive: true);
+    } finally {
+      _staging = false;
+    }
+  }
+}

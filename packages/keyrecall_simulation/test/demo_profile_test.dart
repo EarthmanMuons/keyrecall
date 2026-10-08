@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -66,5 +67,44 @@ void main() {
       publishDemoProfile(prepared, staging: staging, root: root),
       throwsStateError,
     );
+  });
+
+  group('staging', () {
+    test(
+      'is refused to a second run without touching the first one\'s',
+      () async {
+        final holding = Completer<void>();
+        final marker = File('${staging.path}/in-progress');
+        final first = withDemoStaging(staging, () async {
+          marker.createSync(recursive: true);
+          await holding.future;
+          return marker.existsSync();
+        });
+
+        await expectLater(
+          withDemoStaging(staging, () async => fail('the second run started')),
+          throwsStateError,
+        );
+        expect(marker.existsSync(), isTrue);
+
+        holding.complete();
+        expect(await first, isTrue);
+        expect(staging.existsSync(), isFalse);
+      },
+    );
+
+    test('is cleared before a run and released after one fails', () async {
+      File('${staging.path}/left-behind').createSync(recursive: true);
+
+      await expectLater(
+        withDemoStaging(staging, () async {
+          expect(staging.existsSync(), isFalse);
+          throw StateError('interrupted');
+        }),
+        throwsStateError,
+      );
+
+      expect(await withDemoStaging(staging, () async => 'next'), 'next');
+    });
   });
 }

@@ -33,23 +33,22 @@ Future<Profile> createDemoProfile(
     onSession?.call(completed, total);
   });
   try {
-    // Left by a run that never finished, and owned by nothing else.
-    if (staging.existsSync()) await staging.delete(recursive: true);
-    final profile = await Isolate.run(
-      _preparing(staging.path, sessions, hint, progress.sendPort),
-    );
-    await publishDemoProfile(profile, staging: staging, root: root);
-    final selection = await ref
-        .read(profileRosterProvider.notifier)
-        .select(profile.id);
-    return switch (selection) {
-      ProfileChanged() => profile,
-      ProfileMutationFailed(:final error) => throw error,
-      _ => throw StateError('the demo profile was created and not selected'),
-    };
+    return await withDemoStaging(staging, () async {
+      final profile = await Isolate.run(
+        _preparing(staging.path, sessions, hint, progress.sendPort),
+      );
+      await publishDemoProfile(profile, staging: staging, root: root);
+      final selection = await ref
+          .read(profileRosterProvider.notifier)
+          .select(profile.id);
+      return switch (selection) {
+        ProfileChanged() => profile,
+        ProfileMutationFailed(:final error) => throw error,
+        _ => throw StateError('the demo profile was created and not selected'),
+      };
+    });
   } finally {
     progress.close();
-    if (staging.existsSync()) await staging.delete(recursive: true);
   }
 }
 
