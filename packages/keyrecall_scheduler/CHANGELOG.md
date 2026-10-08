@@ -33,6 +33,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- A key's first meeting at the entry tempo a hand's own pace sets is held to the
+  band before its own, as one at the gentle tempo already was, in force from
+  scheduler model version `v1-13`. Introductions are admitted only at that
+  tempo, so once a hand's pace in a family passed the gentle tempo, that
+  family's later bands could not open.
 - Retention and information are compared on a grid of `rankTermResolution`
   (1e-9), in force from scheduler model version `v1-12`. A rank key holds the
   values `canonicalRankValue` rounded them to, so floating-point noise in the

@@ -39,7 +39,11 @@ state. Hands-together work is fully eligible once each hand has shown
 coordination readiness on that material at that span; otherwise it is
 provisionally eligible. The band and multi-octave floors read the predicted
 execution of a reference exercise rather than a competency mean, because the
-evidence identifies a prediction and not how it divides among competencies.
+evidence identifies a prediction and not how it divides among competencies. A
+key met at its gentlest conditions is held to the band before its own, since
+unfamiliar geography and a harder way of playing are separate asks, and so is
+the first meeting those conditions resolve to at the entry tempo a hand's own
+pace in that family sets.
 
 This is a soft pedagogical gate. A provisional candidate remains reachable, but
 cannot outrank a fully eligible candidate.
