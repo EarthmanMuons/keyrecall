@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../input/input.dart';
 import 'attempt_preview.dart';
+import 'demo_profile.dart';
 import 'loop_failure.dart';
 import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
@@ -266,6 +267,7 @@ class _Tools extends ConsumerWidget {
           }
         },
       ),
+      const _DemoProfileTool(),
       _Tool(
         icon: Icons.restart_alt,
         title: 'Reopen the session',
@@ -273,6 +275,55 @@ class _Tools extends ConsumerWidget {
         onTap: () => ref.read(practiceLoopProvider.notifier).reopen(),
       ),
     ],
+  );
+}
+
+/// Creates the demo profile, showing how far through its history it is.
+class _DemoProfileTool extends ConsumerStatefulWidget {
+  const _DemoProfileTool();
+
+  @override
+  ConsumerState<_DemoProfileTool> createState() => _DemoProfileToolState();
+}
+
+class _DemoProfileToolState extends ConsumerState<_DemoProfileTool> {
+  bool _running = false;
+  String? _progress;
+
+  Future<void> _create() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _running = true);
+    try {
+      final profile = await createDemoProfile(
+        ref,
+        onSession: (completed, total) {
+          if (mounted) setState(() => _progress = '$completed of $total days');
+        },
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('practicing as ${profile.displayName}')),
+      );
+    } on Object catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _running = false;
+          _progress = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _Tool(
+    icon: Icons.history,
+    title: 'Create demo profile',
+    subtitle: _running
+        ? 'Practicing ${_progress ?? 'the first day'}'
+        : '${demoHistorySpan.inDays} days of simulated practice, then switch '
+              'to it',
+    onTap: _running ? null : _create,
   );
 }
 
@@ -287,7 +338,7 @@ class _Tool extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   /// What the tool shows about its own state, for the ones that hold any.
 
