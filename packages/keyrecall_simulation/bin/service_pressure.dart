@@ -79,7 +79,7 @@ Future<void> main(List<String> arguments) async {
         : value.toStringAsFixed(3);
     final baseline = [for (final o in results['v1-14']!) of(o)];
     stdout.writeln(
-      '${name.padRight(34)} v1-14       ${baseline.map(show).join(' ')}',
+      '${name.padRight(34)} v1-14        ${baseline.map(show).join(' ')}',
     );
     for (final arm in arms.skip(1)) {
       final values = [for (final o in results[arm]!) of(o)];
@@ -89,7 +89,7 @@ Future<void> main(List<String> arguments) async {
       final better = diffs.where((d) => higherIsBetter ? d > 0 : d < 0).length;
       final worse = diffs.where((d) => higherIsBetter ? d < 0 : d > 0).length;
       stdout.writeln(
-        '${''.padRight(34)} ${arm.padRight(12)}${values.map(show).join(' ')}'
+        '${''.padRight(34)} ${arm.padRight(13)}${values.map(show).join(' ')}'
         '   diff ${diffs.map((d) => '${d >= 0 ? '+' : ''}${show(d)}').join(' ')}'
         '   better $better, worse $worse of ${diffs.length}',
       );

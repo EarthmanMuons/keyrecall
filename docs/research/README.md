@@ -43,6 +43,7 @@ citation key is not an argument.
 | [`fluency-tempo.md`](experiments/fluency-tempo.md)                 | Which rule a typical-tempo chart can read                   |
 | [`pulse-remediation.md`](experiments/pulse-remediation.md)         | What a timing-remediation rule would have to work with      |
 | [`service-census.md`](experiments/service-census.md)               | How due work is served, how long it waits, and what wins    |
+| [`service-pressure.md`](experiments/service-pressure.md)           | What explicit requirement service would change, and cost    |
 
 ## How to read a negative result here
 
