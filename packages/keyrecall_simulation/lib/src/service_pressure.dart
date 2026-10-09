@@ -22,12 +22,26 @@ class ServiceSubstitution {
   /// or `tie` where only candidate order separated them.
   final String behindOn;
 
+  /// The stage that chose the displaced winner.
+  final SelectionStage displacedStage;
+
+  /// What the substitution promised: the promoted candidate survived every
+  /// selection stage, was fully eligible, and realized the requirement's
+  /// structure.
+  final bool promotedSelectable;
+  final bool promotedFullyEligible;
+  final bool promotedServesRequirement;
+
   const ServiceSubstitution({
     required this.decision,
     required this.displacedMaterialId,
     required this.requirementId,
     required this.missed,
     required this.behindOn,
+    required this.displacedStage,
+    required this.promotedSelectable,
+    required this.promotedFullyEligible,
+    required this.promotedServesRequirement,
   });
 }
 
@@ -51,6 +65,7 @@ class ServicePressure {
 
   final Map<String, int> _missed = {};
   final Map<String, int> _unproductive = {};
+  final Map<String, int> _suspendedSince = {};
   final List<ServiceSubstitution> substitutions = [];
 
   /// How many times a requirement stopped building pressure.
@@ -70,11 +85,14 @@ class ServicePressure {
   /// attempts that did not manage their execution.
   bool isSuspended(String requirementId) => _suspended(requirementId);
 
+  /// The requirements suspended now, and the decision each was suspended at.
+  Map<String, int> get suspendedSince => Map.unmodifiable(_suspendedSince);
+
   bool _suspended(String requirementId) =>
       (_unproductive[requirementId] ?? 0) >= unproductiveLimit;
 
   /// Reads how the last promoted attempt went, once it is in [journal].
-  void settle(AttemptJournal journal, LearnerModel learner) {
+  void settle(AttemptJournal journal, LearnerModel learner, int decision) {
     final awaiting = _awaiting;
     if (awaiting == null || journal.length <= _awaitingAfter) return;
     _awaiting = null;
@@ -88,7 +106,10 @@ class ServicePressure {
     _unproductive[requirementId] = managed
         ? 0
         : (_unproductive[requirementId] ?? 0) + 1;
-    if (_unproductive[requirementId] == unproductiveLimit) suspensions++;
+    if (_unproductive[requirementId] == unproductiveLimit) {
+      suspensions++;
+      _suspendedSince[requirementId] = decision;
+    }
   }
 
   /// The result to use instead of [result], or null to leave it.
@@ -148,6 +169,12 @@ class ServicePressure {
           behindOn: tolerances.compare(best.rankKey!, candidate.rankKey!) < 0
               ? decidingRankTerm(best.rankKey!, candidate.rankKey!, tolerances)
               : 'tie',
+          displacedStage: result.stage,
+          promotedSelectable: result.selectable.contains(best),
+          promotedFullyEligible:
+              best.eligibility.tier == EligibilityTier.fullyEligible,
+          promotedServesRequirement: chosen.resolved.requirement.constraints
+              .matchesStructure(best.exercise),
         ),
       );
       _awaiting = (requirementId, best.exercise);
@@ -173,7 +200,10 @@ class ServicePressure {
       final id = observation.requirementId;
       if (observation.served) {
         _missed[id] = 0;
-        if (id != promoted) _unproductive[id] = 0;
+        if (id != promoted) {
+          _unproductive[id] = 0;
+          _suspendedSince.remove(id);
+        }
       } else if (observation.actionable && !_suspended(id)) {
         _missed[id] = (_missed[id] ?? 0) + 1;
       } else if (_suspended(id)) {
@@ -184,17 +214,27 @@ class ServicePressure {
 }
 
 /// What a run produced, in the terms a service rule is judged by.
+///
+/// Every map is keyed by family.
 class ServiceOutcomes {
-  /// Per family.
   final Map<String, int> covered;
   final Map<String, int> actionableNeverServed;
+
+  /// The longest run of missed actionable opportunities, worst and at the
+  /// 90th percentile across requirements.
   final Map<String, int> worstMissedRun;
+  final Map<String, int> p90MissedRun;
 
-  /// Requirement-decisions spent covered and due again, per family: retrieval
-  /// that was let fade.
-  final Map<String, int> fadingDecisions;
+  /// Of the decisions requirements spent covered, the share spent due again.
+  final Map<String, double> fading;
 
-  /// Of the requirements covered at the end, how many are not due.
+  /// Retrieval health averaged over every decision, across every in-scope
+  /// requirement, and across only those covered at that decision. The second
+  /// is descriptive: arms cover different requirements.
+  final Map<String, double> retrievalAll;
+  final Map<String, double> retrievalCovered;
+
+  /// Of the requirements covered at the last decision, the share not due.
   final double healthyAtEnd;
 
   final double incomplete;
@@ -210,55 +250,86 @@ class ServiceOutcomes {
   final int substitutions;
   final int suspensions;
 
+  /// Requirements suspended at the end, and those of them that were still
+  /// actionable after being suspended, which ordinary selection never served.
+  final int suspendedAtEnd;
+  final int suspendedYetActionable;
+
   const ServiceOutcomes({
     required this.covered,
     required this.actionableNeverServed,
     required this.worstMissedRun,
-    required this.fadingDecisions,
+    required this.p90MissedRun,
+    required this.fading,
+    required this.retrievalAll,
+    required this.retrievalCovered,
     required this.healthyAtEnd,
     required this.incomplete,
     required this.firstTimedFaltered,
     required this.switching,
     required this.substitutions,
     this.suspensions = 0,
+    this.suspendedAtEnd = 0,
+    this.suspendedYetActionable = 0,
   });
 
   factory ServiceOutcomes.of(
     ServiceCensus census, {
     ServicePressure? pressure,
   }) {
-    final covered = <String, int>{};
-    final neverServed = <String, int>{};
-    final worst = <String, int>{};
-    final fading = <String, int>{};
-    for (final observation in census.observations) {
-      if (observation.due && observation.covered) {
-        fading.update(observation.familyId, (n) => n + 1, ifAbsent: () => 1);
-      }
-    }
-    var coveredAtEnd = 0, healthyAtEnd = 0;
+    final families = {
+      for (final observation in census.observations) observation.familyId,
+    };
     final last = census.observations.isEmpty
         ? -1
         : census.observations.last.decision;
+
+    final covered = {for (final family in families) family: 0};
+    var healthyAtEnd = 0;
+    final coveredDecisions = <String, int>{};
+    final fadingDecisions = <String, int>{};
+    final retrievalSum = <String, double>{};
+    final retrievalCount = <String, int>{};
+    final coveredRetrievalSum = <String, double>{};
     for (final observation in census.observations) {
-      if (observation.decision != last || !observation.covered) continue;
-      coveredAtEnd++;
-      if (!observation.due) healthyAtEnd++;
+      final family = observation.familyId;
+      retrievalSum[family] =
+          (retrievalSum[family] ?? 0) + observation.retrieval;
+      retrievalCount[family] = (retrievalCount[family] ?? 0) + 1;
+      if (!observation.covered) continue;
+      coveredDecisions[family] = (coveredDecisions[family] ?? 0) + 1;
+      coveredRetrievalSum[family] =
+          (coveredRetrievalSum[family] ?? 0) + observation.retrieval;
+      if (observation.due) {
+        fadingDecisions[family] = (fadingDecisions[family] ?? 0) + 1;
+      }
+      if (observation.decision == last) {
+        covered[family] = covered[family]! + 1;
+        if (!observation.due) healthyAtEnd++;
+      }
     }
+
+    final neverServed = {for (final family in families) family: 0};
+    final runs = <String, List<int>>{};
     for (final service in census.requirements) {
-      final family = service.familyId;
-      covered.putIfAbsent(family, () => 0);
-      neverServed.putIfAbsent(family, () => 0);
       if (service.trajectory == 'actionable, never served') {
-        neverServed[family] = neverServed[family]! + 1;
+        neverServed[service.familyId] = neverServed[service.familyId]! + 1;
       }
-      if (service.longestMissedOpportunities > (worst[family] ?? 0)) {
-        worst[family] = service.longestMissedOpportunities;
-      }
+      runs
+          .putIfAbsent(service.familyId, () => [])
+          .add(service.longestMissedOpportunities);
     }
-    for (final observation in census.observations) {
-      if (observation.decision == last && observation.covered) {
-        covered[observation.familyId] = covered[observation.familyId]! + 1;
+    for (final list in runs.values) {
+      list.sort();
+    }
+
+    var suspendedYetActionable = 0;
+    final suspended = pressure?.suspendedSince ?? const {};
+    for (final MapEntry(key: id, value: since) in suspended.entries) {
+      if (census.observations.any(
+        (o) => o.requirementId == id && o.decision > since && o.actionable,
+      )) {
+        suspendedYetActionable++;
       }
     }
 
@@ -290,17 +361,46 @@ class ServiceOutcomes {
         .where((outcome) => !outcome.completed || outcome.pitchIntegrity < 0.9)
         .length;
 
+    double ratio(num part, num whole) => whole == 0 ? 0 : part / whole;
     return ServiceOutcomes(
       covered: covered,
       actionableNeverServed: neverServed,
-      worstMissedRun: worst,
-      fadingDecisions: fading,
-      healthyAtEnd: coveredAtEnd == 0 ? 0 : healthyAtEnd / coveredAtEnd,
-      incomplete: measured == 0 ? 0 : incomplete / measured,
-      firstTimedFaltered: firstTimed.isEmpty ? 0 : faltered / firstTimed.length,
-      switching: pairs == 0 ? 0 : switches / pairs,
+      worstMissedRun: {
+        for (final MapEntry(:key, :value) in runs.entries) key: value.last,
+      },
+      p90MissedRun: {
+        for (final MapEntry(:key, :value) in runs.entries)
+          key: value[((value.length - 1) * 0.9).round()],
+      },
+      fading: {
+        for (final family in families)
+          family: ratio(
+            fadingDecisions[family] ?? 0,
+            coveredDecisions[family] ?? 0,
+          ),
+      },
+      retrievalAll: {
+        for (final family in families)
+          family: ratio(retrievalSum[family]!, retrievalCount[family]!),
+      },
+      retrievalCovered: {
+        for (final family in families)
+          family: ratio(
+            coveredRetrievalSum[family] ?? 0,
+            coveredDecisions[family] ?? 0,
+          ),
+      },
+      healthyAtEnd: ratio(
+        healthyAtEnd,
+        covered.values.fold(0, (sum, n) => sum + n),
+      ),
+      incomplete: ratio(incomplete, measured),
+      firstTimedFaltered: ratio(faltered, firstTimed.length),
+      switching: ratio(switches, pairs),
       substitutions: census.substitutions.length,
       suspensions: pressure?.suspensions ?? 0,
+      suspendedAtEnd: suspended.length,
+      suspendedYetActionable: suspendedYetActionable,
     );
   }
 }

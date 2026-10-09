@@ -66,6 +66,11 @@ class RequirementObservation {
   /// Whether the winner was progression on this requirement's material.
   final bool progressionServed;
 
+  /// The material's retrieval health at the decision, as the practice layer
+  /// reads it: zero before anything about it is remembered. Left out of
+  /// [canonical], which pins classification.
+  final double retrieval;
+
   const RequirementObservation({
     required this.decision,
     required this.requirementId,
@@ -84,6 +89,7 @@ class RequirementObservation {
     this.hands,
     this.progression,
     this.progressionServed = false,
+    this.retrieval = 0,
   });
 
   /// Due and choosable, which is an opportunity whether or not it was taken.
@@ -417,7 +423,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       learner: learner,
       at: at,
     );
-    pressure?.settle(journal(), learner);
+    pressure?.settle(journal(), learner, _decision);
     final substituted = pressure?.intervene(
       decision: _decision,
       result: slot.result,
@@ -429,6 +435,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
     final observed = _observe(
       state,
       session,
+      at,
       history,
       evaluated,
       result,
@@ -447,6 +454,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
   List<RequirementObservation> _observe(
     LearnerState state,
     SessionState session,
+    DateTime at,
     AttemptHistory? history,
     EvaluatedPracticeScope evaluated,
     SelectionResult result, {
@@ -524,6 +532,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
           stages,
           state,
           facts,
+          at,
         ),
     ];
   }
@@ -537,6 +546,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
     List<(String, Set<CandidateTrace>)> stages,
     LearnerState state,
     DecisionFacts facts,
+    DateTime at,
   ) {
     final resolved = requirementState.resolved;
     final material = resolved.material;
@@ -612,6 +622,11 @@ class ServiceCensusPipeline extends SchedulerPipeline {
           progression != null &&
           servedMaterial &&
           _progressionOf(winner!) != null,
+      retrieval:
+          state.materialMemory[material.materialId]?.retrievabilityOrPrior(
+            at,
+          ) ??
+          0,
     );
   }
 
@@ -650,6 +665,7 @@ Future<ServiceCensus> runServiceCensus({
   PracticeGoal goal = PracticeGoal.generalFluency,
   List<TechnicalMaterial>? materials,
   ServicePressure? pressure,
+  int playerSeed = 0,
 }) async {
   final catalog = materials ?? allPracticeMaterials;
   final scope =
@@ -680,6 +696,7 @@ Future<ServiceCensus> runServiceCensus({
     player: player,
     materials: catalog,
     sessions: sessions,
+    seed: playerSeed,
     goal: goal,
     pipeline: pipeline,
     onOpen: (session, _) => current = session,
