@@ -122,25 +122,38 @@ held axes choose the exercise exactly as now.
 Allocation chooses among `(requirement, action)` pairs that resolution produced.
 It answers to four promises.
 
-**1. Bounded waiting, relative to breadth.** A requirement that is actionable
-should not miss more than `k` times its fair share of opportunities in a row,
-where its fair share is the number of requirements concurrently actionable. A
-learner with forty things to work on cannot see each one every slot, and one
-with four can; a fixed threshold would treat them alike. The waiting is counted
-in actionable opportunities, as the census counts it, so time away from the
-instrument costs nothing. `k` is the slack ordinary ranking keeps: large enough
-that the existing ordering decides almost everything, small enough that nothing
-waits indefinitely. This is a deficit rule from fair scheduling, not a quota:
-nothing is guaranteed a share, only a bounded wait.
+**1. Breadth-relative service priority.** A requirement that is actionable
+becomes owed once it has missed more than `k` times as many actionable
+opportunities in a row as there are requirements actionable now. A learner with
+forty things to work on cannot see each one every slot, and one with four can; a
+fixed threshold would treat them alike. Waiting is counted in actionable
+opportunities, as the census counts it, so time away from the instrument costs
+nothing. `k` is the slack ordinary ranking keeps.
 
-**2. Protected maintenance.** A covered requirement whose retrieval health has
-fallen far enough is protected from displacement by owed service. Due for
-maintenance already starts at 0.75; protection starts lower, where forgetting is
-close enough that losing the slot would cost a demonstration rather than delay a
-review. Above that, maintenance competes on the existing retention term like any
-other work. This is the reconciliation the pressure counterfactual lacked:
-there, service took slots from retention unconditionally, and retrieval among
-covered scales fell in every developing and advanced pair.
+It is a priority, not a guarantee, for three reasons the experiment has to
+measure rather than assume. Breadth changes, so a requirement's bound can grow
+while it waits; the bound in force at each decision is logged, and so is every
+decision on which growth alone postponed service. Obligations consume capacity:
+allocation only ever acts on a slot ordinary ranking decided, so service is
+promised only out of what recovery, probes, and acquisition leave, and misses
+are counted against allocatable opportunities as well as actionable ones. And a
+requirement with no feasible action is not owed an exercise that does not exist:
+its need stands, and it is reported as unservable rather than served.
+
+**2. Protected maintenance.** Protection belongs to a candidate, not to the
+scope. A candidate is protected when it is feasible, fully eligible, can observe
+retrieval, and serves a covered requirement whose retrieval health has fallen
+below a floor lower than the 0.75 that makes maintenance due. A protected
+candidate is never displaced by owed service, and among several the ordinary
+rank key chooses, not whichever is weakest. A fading material elsewhere in the
+scope protects nothing about an unrelated slot.
+
+A floor does not guarantee maintenance at v1-14's level: health can fall a long
+way before crossing it, and protected work may not win often enough to reverse
+the fall. That is why the maintenance outcomes, not the floor, are what the
+experiment reads. This is still the reconciliation the pressure counterfactual
+lacked: there, service took slots from retention unconditionally, and retrieval
+among covered scales fell in every developing and advanced pair.
 
 **3. Ordinary ranking decides the rest.** When nothing is owed or protected, the
 existing lexicographic key chooses, unchanged. When several requirements are
@@ -155,7 +168,8 @@ several compatible requirements serves all of them, and an owed requirement is
 served only by an exercise in its own structure.
 
 What this does not do: it sets no family quota, it does not demote retention
-globally, and it does not add a rank term. Arpeggios receive service because an
+globally, it does not add a rank term, and it does not promise any requirement a
+slot within a fixed number of decisions. Arpeggios receive service because an
 arpeggio requirement is owed, not because arpeggios are behind scales.
 
 ## Failure and recovery contract
@@ -203,13 +217,17 @@ derived too, at a stated approximation.
 
 Exact actionable-opportunity counts would need a persisted service ledger,
 versioned with the scheduler model and rebuilt by replaying decisions, which is
-costly and couples allocation to a second history. The proposed alternative
-counts **attempts since last service while the requirement was due**, which the
-journal reproduces exactly, and checks actionability only at the current
-decision. The difference is time spent blocked, which this counts as waiting;
-the census can measure how often that changes a decision before anything is
-persisted. No learner estimate is added: allocation reads the learner model and
-never infers ability of its own.
+costly and couples allocation to a second history. The journal can reproduce
+**decisions since last service while the requirement was due**, but that is a
+different quantity rather than a coarser one: a requirement blocked for a
+hundred decisions and then actionable for five has missed five opportunities and
+waited a hundred and five. Counting the block would hand long-blocked work
+priority the moment it becomes choosable, which could be a sound policy, but it
+should be chosen rather than inherited from a counter. The experiment uses exact
+counts as the reference and asks, at every decision, whether the journal counter
+would have chosen the same; no ledger is built unless the difference matters. No
+learner estimate is added: allocation reads the learner model and never infers
+ability of its own.
 
 ## Two ways to build it
 
@@ -243,12 +261,21 @@ is where it leads if they hold.
 | acquisition floor, supported acquisition | reused as steps of the support path           |
 | introduction breadth, fairness guard     | kept for the first test, candidates to retire |
 | live support                             | generalized to every scope                    |
-| service ledger                           | not built; journal-derived waiting instead    |
+| service ledger                           | not built; exact counts in simulation only    |
 
-The smallest counterfactual that tests the architecture: the allocator stage in
-the simulation package, beside the scheduler as service pressure was, with
-bounded waiting, protected maintenance, and the support path through existing
-recovery, floor, and acquisition mechanisms, and no suspension.
+The counterfactual runs in the simulation package, beside the scheduler as
+service pressure did, and in three stages so that each change can be credited on
+its own, each keeping the one before as a comparator:
+
+1. **Allocation only.** Breadth-relative priority and protected maintenance over
+   the existing selectable set, with ordinary ranking realizing the chosen
+   requirement. No new acquisition or recovery path.
+2. **Support-aware.** Bounded cooldowns and a change of action after an
+   unmanaged service, through the existing recovery, floor, and acquisition
+   mechanisms.
+3. **Prerequisite-aware.** Whether existing safe-entry mechanisms give the
+   requirements that are due and never actionable useful work on what they wait
+   for.
 
 ## How it is judged
 
@@ -256,19 +283,23 @@ The same five seed pairs and three archetypes, plus the scale-strong,
 arpeggio-weak and arpeggio-strong, scale-weak players, against v1-14 and service
 pressure at threshold 100 as comparators. Threshold 100 is the benchmark because
 it kept most of the deferral reduction at lower cost, not because it is a
-candidate.
+candidate. The first stage sweeps `k` over 2, 4, and 8 and the protection floor
+over 0.60 and 0.70: exploratory settings, not defaults, and every cell is
+reported rather than the best.
 
-It succeeds if it keeps pressure's reduction in worst and 90th-percentile waits,
-leaves no requirement actionable and never served, and holds retrieval among
-covered requirements at v1-14's level in most pairs where pressure lowered it in
-every pair. It also has to show its own contracts working: blocked requirements
-with reasons and exits taken, unmanaged services followed by a different action
-rather than the same one, and switching and difficulty no worse than pressure's.
-Time to first demonstration joins coverage, since an allocator can raise
-coverage late and still serve a learner slowly.
+What comes out is a frontier, not a verdict. KeyRecall may not be able to
+introduce, demonstrate, and maintain a growing catalog at once within the same
+practice time, and a configuration that modestly raises coverage, removes
+pathological waits, and costs a small, interpretable amount of maintenance could
+be better for a learner than v1-14 without matching its retention. The outcomes
+read are the ones the pressure comparison read: coverage and time to first
+demonstration, worst and 90th-percentile waits counted both ways, retrieval
+across all and across covered requirements, fading, faltering, incomplete
+attempts, and switching. Each stage also reports its own contract: decisions
+where breadth growth postponed service, owed requirements with nothing feasible
+to serve them, protected selections, and how often the journal counter would
+have decided differently.
 
-It fails, and the logical architecture should be revisited before any of it is
-built, if protected maintenance and bounded waiting cannot both hold: if keeping
-covered material as healthy as v1-14 means giving back the reduction in waits.
-That would say the two promises conflict at this catalog's breadth and the
-contract has to choose, which is a product decision rather than a tuning one.
+These are synthetic players. The policy that ships should follow from what
+KeyRecall wants a learner to experience, which the frontier informs and does not
+settle.
