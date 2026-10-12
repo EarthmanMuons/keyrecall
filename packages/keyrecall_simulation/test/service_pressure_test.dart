@@ -58,7 +58,7 @@ void main() {
           from: demoHistoryStart,
           until: demoHistoryStart.add(const Duration(days: 12)),
         ),
-        pressure: pressure,
+        intervention: pressure,
       );
     });
 
@@ -78,7 +78,7 @@ void main() {
       for (final observation in census.observations) {
         expect(observation.retrieval, inInclusiveRange(0, 1));
       }
-      final outcomes = ServiceOutcomes.of(census, pressure: pressure);
+      final outcomes = ServiceOutcomes.of(census, intervention: pressure);
       for (final share in [
         ...outcomes.fading.values,
         ...outcomes.retrievalAll.values,
@@ -109,14 +109,14 @@ void main() {
       for (final substitution in census.substitutions) {
         expect(substitution.missed, greaterThanOrEqualTo(threshold));
         final decision = byDecision[substitution.decision]!;
-        expect(decision.stage, 'servicePressure');
+        expect(decision.stage, 'intervened');
         expect(
           decision.materialId,
           requirementMaterial[substitution.requirementId],
         );
       }
       expect(
-        census.decisions.where((d) => d.stage == 'servicePressure'),
+        census.decisions.where((d) => d.stage == 'intervened'),
         hasLength(census.substitutions.length),
       );
     });

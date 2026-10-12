@@ -25,6 +25,10 @@ class ServiceSubstitution {
   /// The stage that chose the displaced winner.
   final SelectionStage displacedStage;
 
+  /// Why the slot changed hands: `pressure`, or an allocator's `owed` or
+  /// `protected`.
+  final String reason;
+
   /// What the substitution promised: the promoted candidate survived every
   /// selection stage, was fully eligible, and realized the requirement's
   /// structure.
@@ -39,6 +43,7 @@ class ServiceSubstitution {
     required this.missed,
     required this.behindOn,
     required this.displacedStage,
+    this.reason = 'pressure',
     required this.promotedSelectable,
     required this.promotedFullyEligible,
     required this.promotedServesRequirement,
@@ -59,14 +64,21 @@ class ServiceSubstitution {
 /// that does not manage its execution counts against the requirement, and
 /// after [unproductiveLimit] of them it builds no pressure until ordinary
 /// selection serves it again.
-class ServicePressure {
+class ServicePressure implements ServiceIntervention {
   final int threshold;
   final int unproductiveLimit;
 
   final Map<String, int> _missed = {};
   final Map<String, int> _unproductive = {};
   final Map<String, int> _suspendedSince = {};
+  @override
   final List<ServiceSubstitution> substitutions = [];
+
+  @override
+  Map<String, num> get diagnostics => {
+    'suspensions': suspensions,
+    'suspended at end': _suspendedSince.length,
+  };
 
   /// How many times a requirement stopped building pressure.
   int suspensions = 0;
@@ -92,6 +104,7 @@ class ServicePressure {
       (_unproductive[requirementId] ?? 0) >= unproductiveLimit;
 
   /// Reads how the last promoted attempt went, once it is in [journal].
+  @override
   void settle(AttemptJournal journal, LearnerModel learner, int decision) {
     final awaiting = _awaiting;
     if (awaiting == null || journal.length <= _awaitingAfter) return;
@@ -112,12 +125,14 @@ class ServicePressure {
     }
   }
 
-  /// The result to use instead of [result], or null to leave it.
+  @override
   CandidateSelected? intervene({
     required int decision,
     required SelectionResult result,
     required List<RequirementState> requirements,
     required SchedulerPipeline pipeline,
+    required LearnerState state,
+    required DateTime at,
     required int journalLength,
   }) {
     if (result case CandidateSelected(
@@ -194,6 +209,7 @@ class ServicePressure {
   }
 
   /// Updates pressure from what one decision did, after [intervene].
+  @override
   void record(List<RequirementObservation> observations) {
     final promoted = _awaiting?.$1;
     for (final observation in observations) {
@@ -255,6 +271,18 @@ class ServiceOutcomes {
   final int suspendedAtEnd;
   final int suspendedYetActionable;
 
+  /// The longest run of missed opportunities counted only over decisions an
+  /// intervention could have taken: those ordinary ranking decided.
+  final Map<String, int> worstMissedAllocatable;
+  final Map<String, int> p90MissedAllocatable;
+
+  /// The median decision at which a requirement was first covered, among
+  /// those covered, or null where none was.
+  final Map<String, int?> medianFirstCovered;
+
+  /// The intervention's own counts.
+  final Map<String, num> diagnostics;
+
   const ServiceOutcomes({
     required this.covered,
     required this.actionableNeverServed,
@@ -271,12 +299,37 @@ class ServiceOutcomes {
     this.suspensions = 0,
     this.suspendedAtEnd = 0,
     this.suspendedYetActionable = 0,
+    this.worstMissedAllocatable = const {},
+    this.p90MissedAllocatable = const {},
+    this.medianFirstCovered = const {},
+    this.diagnostics = const {},
   });
+
+  /// Every outcome, flat, for a report that reads runs back.
+  Map<String, Object?> toJson() => {
+    'covered': covered,
+    'actionable never served': actionableNeverServed,
+    'worst missed run': worstMissedRun,
+    'p90 missed run': p90MissedRun,
+    'worst missed allocatable': worstMissedAllocatable,
+    'p90 missed allocatable': p90MissedAllocatable,
+    'fading': fading,
+    'retrieval all': retrievalAll,
+    'retrieval covered': retrievalCovered,
+    'median first covered': medianFirstCovered,
+    'healthy at end': healthyAtEnd,
+    'incomplete': incomplete,
+    'first timed faltered': firstTimedFaltered,
+    'switching': switching,
+    'substitutions': substitutions,
+    'diagnostics': diagnostics,
+  };
 
   factory ServiceOutcomes.of(
     ServiceCensus census, {
-    ServicePressure? pressure,
+    ServiceIntervention? intervention,
   }) {
+    final pressure = intervention is ServicePressure ? intervention : null;
     final families = {
       for (final observation in census.observations) observation.familyId,
     };
@@ -320,6 +373,49 @@ class ServiceOutcomes {
           .add(service.longestMissedOpportunities);
     }
     for (final list in runs.values) {
+      list.sort();
+    }
+
+    final allocatable = {
+      for (final decision in census.decisions)
+        if (decision.stage == 'ranking' || decision.stage == 'intervened')
+          decision.decision,
+    };
+    final allocatableRun = <String, int>{};
+    final allocatableWorst = <String, int>{};
+    final firstCovered = <String, int>{};
+    for (final observation in census.observations) {
+      final id = observation.requirementId;
+      if (observation.covered) {
+        firstCovered.putIfAbsent(id, () => observation.decision);
+      }
+      if (observation.served) {
+        allocatableRun[id] = 0;
+      } else if (observation.actionable &&
+          allocatable.contains(observation.decision)) {
+        final run = (allocatableRun[id] ?? 0) + 1;
+        allocatableRun[id] = run;
+        if (run > (allocatableWorst[id] ?? 0)) allocatableWorst[id] = run;
+      }
+    }
+    final familyOf = {
+      for (final observation in census.observations)
+        observation.requirementId: observation.familyId,
+    };
+    final allocatableRuns = <String, List<int>>{};
+    final firstCoveredByFamily = <String, List<int>>{};
+    for (final MapEntry(key: id, value: family) in familyOf.entries) {
+      allocatableRuns
+          .putIfAbsent(family, () => [])
+          .add(allocatableWorst[id] ?? 0);
+      if (firstCovered[id] case final decision?) {
+        firstCoveredByFamily.putIfAbsent(family, () => []).add(decision);
+      }
+    }
+    for (final list in [
+      ...allocatableRuns.values,
+      ...firstCoveredByFamily.values,
+    ]) {
       list.sort();
     }
 
@@ -401,6 +497,22 @@ class ServiceOutcomes {
       suspensions: pressure?.suspensions ?? 0,
       suspendedAtEnd: suspended.length,
       suspendedYetActionable: suspendedYetActionable,
+      worstMissedAllocatable: {
+        for (final MapEntry(:key, :value) in allocatableRuns.entries)
+          key: value.last,
+      },
+      p90MissedAllocatable: {
+        for (final MapEntry(:key, :value) in allocatableRuns.entries)
+          key: value[((value.length - 1) * 0.9).round()],
+      },
+      medianFirstCovered: {
+        for (final family in families)
+          family: switch (firstCoveredByFamily[family]) {
+            final list? when list.isNotEmpty => list[list.length ~/ 2],
+            _ => null,
+          },
+      },
+      diagnostics: intervention?.diagnostics ?? const {},
     );
   }
 }

@@ -56,9 +56,9 @@ Future<void> main(List<String> arguments) async {
         player: player,
         sessions: sessions,
         playerSeed: playerSeed,
-        pressure: pressure,
+        intervention: pressure,
       );
-      results[arm]!.add(ServiceOutcomes.of(census, pressure: pressure));
+      results[arm]!.add(ServiceOutcomes.of(census, intervention: pressure));
     }
   }
 

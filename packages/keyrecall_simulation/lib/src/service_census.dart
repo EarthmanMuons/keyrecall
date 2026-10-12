@@ -11,6 +11,33 @@ import 'demo_history.dart';
 import 'service_pressure.dart';
 import 'synthetic_player.dart';
 
+/// An experimental rule run beside the scheduler, that may replace a slot
+/// ordinary ranking decided.
+///
+/// Each decision it reads how its last choice went, is offered the slot, and
+/// then sees what the decision did for every requirement.
+abstract interface class ServiceIntervention {
+  void settle(AttemptJournal journal, LearnerModel learner, int decision);
+
+  /// The result to use instead of [result], or null to leave it.
+  CandidateSelected? intervene({
+    required int decision,
+    required SelectionResult result,
+    required List<RequirementState> requirements,
+    required SchedulerPipeline pipeline,
+    required LearnerState state,
+    required DateTime at,
+    required int journalLength,
+  });
+
+  void record(List<RequirementObservation> observations);
+
+  List<ServiceSubstitution> get substitutions;
+
+  /// Counts that describe the rule's own contract, for reporting.
+  Map<String, num> get diagnostics;
+}
+
 /// What one scheduling decision did for one scope requirement.
 ///
 /// Facts rather than one state, because they overlap: a requirement can be
@@ -365,9 +392,9 @@ class ServiceCensusPipeline extends SchedulerPipeline {
   final ResolvedPracticeScope scope;
   final AttemptJournal Function() journal;
 
-  /// An experimental service rule to run beside the policy, or null to
-  /// observe the policy alone.
-  final ServicePressure? pressure;
+  /// An experimental rule to run beside the policy, or null to observe the
+  /// policy alone.
+  final ServiceIntervention? intervention;
 
   final List<RequirementObservation> observations = [];
   final List<DecisionRecord> decisions = [];
@@ -377,7 +404,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
     required super.learner,
     required this.scope,
     required this.journal,
-    this.pressure,
+    this.intervention,
   });
 
   @override
@@ -423,12 +450,14 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       learner: learner,
       at: at,
     );
-    pressure?.settle(journal(), learner, _decision);
-    final substituted = pressure?.intervene(
+    intervention?.settle(journal(), learner, _decision);
+    final substituted = intervention?.intervene(
       decision: _decision,
       result: slot.result,
       requirements: evaluated.requirements,
       pipeline: this,
+      state: state,
+      at: at,
       journalLength: journal().length,
     );
     final result = substituted ?? slot.result;
@@ -442,7 +471,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       substituted: substituted != null,
     );
     observations.addAll(observed);
-    pressure?.record(observed);
+    intervention?.record(observed);
     _decision++;
     return (
       result: result,
@@ -466,7 +495,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       _ => null,
     };
     final override = switch (result) {
-      CandidateSelected() when substituted => 'override:servicePressure',
+      CandidateSelected() when substituted => 'override:intervened',
       CandidateSelected(:final stage) when stage != SelectionStage.ranking =>
         'override:${stage.name}',
       AcquisitionOffered() => 'override:acquisition',
@@ -512,7 +541,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
         familyId: winner?.exercise.material.familyId,
         purpose: winner == null ? null : _purposeOf(winner, state, facts),
         stage: switch (result) {
-          CandidateSelected() when substituted => 'servicePressure',
+          CandidateSelected() when substituted => 'intervened',
           CandidateSelected(:final stage) => stage.name,
           AcquisitionOffered() => 'acquisition',
           SelectionBlocked() => 'blocked',
@@ -664,7 +693,7 @@ Future<ServiceCensus> runServiceCensus({
   required List<DemoSession> sessions,
   PracticeGoal goal = PracticeGoal.generalFluency,
   List<TechnicalMaterial>? materials,
-  ServicePressure? pressure,
+  ServiceIntervention? intervention,
   int playerSeed = 0,
 }) async {
   final catalog = materials ?? allPracticeMaterials;
@@ -682,7 +711,7 @@ Future<ServiceCensus> runServiceCensus({
     learner: const LearnerModel(),
     scope: scope,
     journal: () => current.journal,
-    pressure: pressure,
+    intervention: intervention,
   );
   final store = InMemoryPracticeStore(createdAt: demoHistoryStart);
   await practiceDemoHistory(
@@ -705,6 +734,6 @@ Future<ServiceCensus> runServiceCensus({
     pipeline.observations,
     pipeline.decisions,
     records: (await store.loadJournal('census')).records,
-    substitutions: pressure?.substitutions ?? const [],
+    substitutions: intervention?.substitutions ?? const [],
   );
 }
