@@ -12,7 +12,6 @@ void main() {
     AllocationChoice<String>? choose({
       String winner = 'w',
       bool winnerProtected = false,
-      List<String> protectedCandidates = const [],
       Map<String, int> waiting = const {},
       Map<String, String>? best,
       int breadth = 5,
@@ -20,7 +19,6 @@ void main() {
     }) => allocate<String>(
       winner: winner,
       winnerProtected: winnerProtected,
-      protectedCandidates: protectedCandidates,
       waiting: waiting,
       bestByRequirement: best ?? {for (final id in waiting.keys) id: id},
       breadth: breadth,
@@ -41,15 +39,6 @@ void main() {
     test('leaves a winner that already serves owed work, or is protected', () {
       expect(choose(winner: 'a', waiting: {'a': 20}), isNull);
       expect(choose(winnerProtected: true, waiting: {'a': 20}), isNull);
-    });
-
-    test('lets protected reviews go first, ranked among themselves', () {
-      final choice = choose(
-        protectedCandidates: ['p', 'q'],
-        waiting: {'a': 20},
-      );
-      expect(choice?.candidate, 'q');
-      expect(choice?.reason, 'protected');
     });
 
     test('serves the most overdue, rank breaking ties', () {

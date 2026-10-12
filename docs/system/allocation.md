@@ -144,9 +144,11 @@ its need stands, and it is reported as unservable rather than served.
 scope. A candidate is protected when it is feasible, fully eligible, can observe
 retrieval, and serves a covered requirement whose retrieval health has fallen
 below a floor lower than the 0.75 that makes maintenance due. A protected
-candidate is never displaced by owed service, and among several the ordinary
-rank key chooses, not whichever is weakest. A fading material elsewhere in the
-scope protects nothing about an unrelated slot.
+candidate that ordinary ranking chose is never displaced by owed service.
+Protection keeps a slot and never claims one: the rank key has already chosen
+among protected candidates, not whichever is weakest, and a fading material
+elsewhere in the scope neither blocks service in an unrelated slot nor takes it
+over.
 
 A floor does not guarantee maintenance at v1-14's level: health can fall a long
 way before crossing it, and protected work may not win often enough to reverse

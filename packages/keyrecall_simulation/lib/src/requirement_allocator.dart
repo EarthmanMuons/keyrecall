@@ -14,7 +14,7 @@ class AllocationChoice<T> {
   /// The requirement served, for an owed choice.
   final String? requirementId;
 
-  /// `owed` or `protected`.
+  /// Always `owed`: protection only ever keeps a slot, it never takes one.
   final String reason;
 
   const AllocationChoice(this.candidate, this.reason, [this.requirementId]);
@@ -26,13 +26,12 @@ class AllocationChoice<T> {
 /// A requirement is owed once its [waiting] exceeds [k] times [breadth], the
 /// number of requirements actionable now. Nothing changes while nothing owed
 /// has a candidate, while [winner] already serves an owed requirement, or
-/// while [winner] is protected. Otherwise a protected candidate goes first,
-/// the best of them by [compare], and failing that the owed requirement
-/// furthest past its bound, its best candidate breaking ties.
+/// while [winner] is protected: protection keeps its own slot and claims no
+/// other. Otherwise the owed requirement furthest past its bound takes the
+/// slot, its best candidate by [compare] breaking ties.
 AllocationChoice<T>? allocate<T>({
   required T winner,
   required bool winnerProtected,
-  required List<T> protectedCandidates,
   required Map<String, int> waiting,
   required Map<String, T> bestByRequirement,
   required int breadth,
@@ -48,13 +47,6 @@ AllocationChoice<T>? allocate<T>({
   if (owed.isEmpty) return null;
   if (owed.any((id) => serves(id, winner))) return null;
   if (winnerProtected) return null;
-  if (protectedCandidates.isNotEmpty) {
-    var best = protectedCandidates.first;
-    for (final candidate in protectedCandidates.skip(1)) {
-      if (compare(candidate, best) > 0) best = candidate;
-    }
-    return AllocationChoice(best, 'protected');
-  }
   String? chosen;
   for (final id in owed) {
     if (chosen == null) {
@@ -79,6 +71,11 @@ AllocationChoice<T>? allocate<T>({
 /// breadth-relative service priority and protected maintenance over the
 /// existing selectable set, with no new acquisition or recovery path.
 ///
+/// A slot is protected when ordinary ranking's own winner can observe
+/// retrieval of a covered requirement whose health has fallen below
+/// [protectionFloor]. Owed service never displaces it, and a fading material
+/// elsewhere in the scope protects nothing about this slot.
+///
 /// Waiting is counted exactly, in actionable opportunities missed in a row.
 /// The journal-reconstructible counter, decisions due without service, is kept
 /// beside it and decides a shadow choice, so the two can be compared without
@@ -97,6 +94,7 @@ class RequirementAllocator implements ServiceIntervention {
   final List<ServiceSubstitution> substitutions = [];
 
   int _postponedByBreadth = 0;
+  int _withheldForProtection = 0;
   int _owedUnservable = 0;
   int _choices = 0;
   int _journalChoices = 0;
@@ -114,10 +112,8 @@ class RequirementAllocator implements ServiceIntervention {
 
   @override
   Map<String, num> get diagnostics => {
-    'owed selections': substitutions.where((s) => s.reason == 'owed').length,
-    'protected selections': substitutions
-        .where((s) => s.reason == 'protected')
-        .length,
+    'owed selections': substitutions.length,
+    'service withheld for protection': _withheldForProtection,
     'postponed by breadth': _postponedByBreadth,
     'owed, nothing feasible': _owedUnservable,
     'exact counter acted': _choices,
@@ -197,10 +193,7 @@ class RequirementAllocator implements ServiceIntervention {
           trace.exercise.guidance.isRetrievalObserved &&
           trace.eligibility.tier == EligibilityTier.fullyEligible &&
           fading.any((id) => serves(id, trace));
-      final protectedCandidates = [
-        for (final trace in result.selectable)
-          if (isProtected(trace)) trace,
-      ];
+      final winnerProtected = isProtected(candidate);
       final order = pipeline.config.rankTolerances;
       int compare(CandidateTrace a, CandidateTrace b) =>
           order.compare(a.rankKey!, b.rankKey!);
@@ -208,8 +201,7 @@ class RequirementAllocator implements ServiceIntervention {
       AllocationChoice<CandidateTrace>? choose(Map<String, int> waiting) =>
           allocate(
             winner: candidate,
-            winnerProtected: isProtected(candidate),
-            protectedCandidates: protectedCandidates,
+            winnerProtected: winnerProtected,
             waiting: {
               for (final MapEntry(:key, :value) in waiting.entries)
                 if (byId.containsKey(key)) key: value,
@@ -235,12 +227,27 @@ class RequirementAllocator implements ServiceIntervention {
       if (choice != null) _choices++;
       if (shadow != null) _journalChoices++;
       if (choice?.candidate != shadow?.candidate) _disagreements++;
+      if (winnerProtected &&
+          allocate(
+                winner: candidate,
+                winnerProtected: false,
+                waiting: {
+                  for (final MapEntry(:key, :value) in _waiting.entries)
+                    if (byId.containsKey(key)) key: value,
+                },
+                bestByRequirement: best,
+                breadth: _breadth,
+                k: k,
+                compare: compare,
+                serves: serves,
+              ) !=
+              null) {
+        _withheldForProtection++;
+      }
       if (choice == null) return null;
 
       final promoted = choice.candidate;
-      final promotedFor =
-          choice.requirementId ??
-          fading.firstWhere((id) => serves(id, promoted));
+      final promotedFor = choice.requirementId!;
       substitutions.add(
         ServiceSubstitution(
           decision: decision,
