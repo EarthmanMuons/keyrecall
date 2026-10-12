@@ -4,7 +4,7 @@
 > seeds. Behavior is coherent with its parameters, ability dominates nearly
 > everything, and three of seven dimensions are close to inert over the demo
 > window. The weakest profiles are unstable from pair to pair, and recovery
-> holds about a third of decisions for every profile throughout the run. No
+> holds about a third of attempts for every profile throughout the run. No
 > policy has been compared on it yet.
 
 The archetypes were built to expose failures, and the asymmetric ones exaggerate
@@ -55,7 +55,7 @@ player, medians across pairs:
 | Managed share of timed     | 0.46 to 0.90      | ability (+0.78)                      |
 | Chosen tempo ratio         | 1.01 to 1.04      | tempo (+0.54), compliance (+0.51)    |
 | Guided attempts            | 0.40 to 0.53      | ability (-0.92)                      |
-| Decisions in recovery      | 0.29 to 0.38      | ability (-0.86)                      |
+| Attempts in recovery       | 0.29 to 0.39      | ability (-0.87)                      |
 | Scales covered, of 48      | 11 to 48          | ability (+0.90)                      |
 | Arpeggios covered, of 24   | 5 to 16           | ability (+0.68), asymmetry (-0.62)   |
 
@@ -78,12 +78,13 @@ Three things in it need care before any policy is compared:
   weak, balanced player ran from 8 to 35. Stronger players vary by a few scales.
   At the weak end, which trajectory a player falls into matters more than its
   parameters, so comparisons there need paired seeds and per-pair reporting.
-- **Recovery holds a third of decisions for everyone, and does not decline.**
-  From 29% for the strongest profile to 38% for the weakest, with the first and
+- **Recovery holds a third of attempts for everyone, and does not decline.**
+  From 29% for the strongest profile to 39% for the weakest, with the first and
   last thirds within a few points of each other, while a quarter to a third of
   attempts are never started. This may be the challenge band holding success
   near its target as the learner improves, which would be by design, or a
-  recovery loop. These runs do not tell the two apart.
+  recovery loop. The [recovery episode audit](recovery-episodes.md) found it is
+  neither: it follows from how the synthetic player retrieves.
 
 Arpeggio coverage under v1-14 stays at 16 of 24 or below even for players who
 cover all 48 scales, which matches the deferral the

@@ -19,11 +19,20 @@ enum FollowThroughTrigger {
 /// One prioritized follow-up, and how it went once played.
 class FollowThroughEvent {
   final int decision;
+
+  /// Where its attempt lands in the journal, which acquisition decisions keep
+  /// from matching [decision].
+  final int journalIndex;
   final ExecutionContext strand;
   final FollowThroughTrigger trigger;
   Outcome? outcome;
 
-  FollowThroughEvent(this.decision, this.strand, this.trigger);
+  FollowThroughEvent(
+    this.decision,
+    this.journalIndex,
+    this.strand,
+    this.trigger,
+  );
 }
 
 /// Allocation with one prioritized, timing-valid follow-up per introduced
@@ -173,6 +182,7 @@ class FollowThrough implements ServiceIntervention {
     final promoted = pipeline.selectBest(followUps[chosen]!)!;
     final event = FollowThroughEvent(
       decision,
+      journalLength,
       chosen,
       _timed.contains(chosen)
           ? FollowThroughTrigger.timedUnmanaged
@@ -247,7 +257,8 @@ class FollowThrough implements ServiceIntervention {
 /// How every strand of [familyId] went from introduction to managed
 /// execution, read from the journal a run wrote.
 ///
-/// Record order is decision order in a census run, so gaps are in decisions.
+/// Gaps are in attempts, which are decisions wherever no acquisition task was
+/// offered between them.
 Map<String, Object?> summarizeStrands(
   List<AttemptRecord> records,
   String familyId, {
@@ -292,8 +303,8 @@ Map<String, Object?> summarizeStrands(
       trigger.name: <String, int>{},
   };
   for (final event in events) {
-    if (records.length <= event.decision ||
-        records[event.decision].exercise.material.familyId != familyId) {
+    if (records.length <= event.journalIndex ||
+        records[event.journalIndex].exercise.material.familyId != familyId) {
       continue;
     }
     followThroughs[event.trigger.name]!.update(

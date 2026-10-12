@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart'
     hide AttemptRecord;
@@ -51,15 +52,9 @@ Future<void> main(List<String> arguments) async {
           'unit': profile.unit,
           'seeds': pair,
           'attempts': records.length,
-          'whole run': _behavior(records, census.decisions),
-          'first third': _behavior(
-            records.sublist(0, third),
-            census.decisions.sublist(0, third),
-          ),
-          'last third': _behavior(
-            records.sublist(records.length - third),
-            census.decisions.sublist(records.length - third),
-          ),
+          'whole run': _behavior(records),
+          'first third': _behavior(records.sublist(0, third)),
+          'last third': _behavior(records.sublist(records.length - third)),
           'first timed attempt': _firstIndex(
             records,
             (o) => o.motorScore != null,
@@ -89,10 +84,7 @@ int? _firstIndex(List<AttemptRecord> records, bool Function(Outcome) test) {
   return null;
 }
 
-Map<String, Object?> _behavior(
-  List<AttemptRecord> records,
-  List<DecisionRecord> decisions,
-) {
+Map<String, Object?> _behavior(List<AttemptRecord> records) {
   const learner = LearnerModel();
   final outcomes = [for (final r in records) ?_outcomeOf(r)];
   final completed = outcomes.where((o) => o.completed).toList();
@@ -121,8 +113,10 @@ Map<String, Object?> _behavior(
       records.length,
     ),
     'recovery': share(
-      decisions.where((d) => d.purpose == 'recovery').length,
-      decisions.length,
+      records
+          .where((r) => r.decision?.challengeBypass == ChallengeBypass.recovery)
+          .length,
+      records.length,
     ),
   };
 }

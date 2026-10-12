@@ -49,9 +49,8 @@ void main() {
     final events = followThrough.events;
     expect(events, isNotEmpty);
     expect({for (final e in events) e.strand}, hasLength(events.length));
-    expect(census.records, hasLength(census.decisions.length));
     for (final event in events) {
-      final played = census.records[event.decision].exercise;
+      final played = census.records[event.journalIndex].exercise;
       expect(executionContextOf(played), event.strand);
       expect(TimingCapacity.of(played).supportsMotorScore, isTrue);
       expect(event.outcome, isNotNull);
