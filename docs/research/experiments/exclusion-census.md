@@ -114,10 +114,24 @@ one-band discount for its gentlest realization: readiness was at most 0.014
 above the discounted floor of 0.528 and never reached the full floor of 0.625.
 Two to eight attempts preceded each span. None was ever managed (completed, at a
 motor score of at least 0.5), so no span had a demonstrated tempo, which would
-have made the band floor moot. In 66 of 68, the last attempt was played 10% or
-more above the asked tempo, and it was completed with pitch integrity of 0.8 to
-1.0 in most. In 23 spans the last three attempts carried no execution evidence
-at all; the most common last attempt was the introduction itself.
+have made the band floor moot.
+
+Of the 189 distinct attempts among the last three before each span, none could
+have been managed, for three reasons:
+
+- **Too short to time.** A one-octave ascending root arpeggio has three waits,
+  and a motor score needs five. Of 134 such attempts, 69 completed and carried
+  no motor score; the rest were not started or not completed.
+- **Below the motor threshold.** 45 spans had a timing-valid up-and-down
+  follow-up among their last three attempts, chosen early, near the
+  introduction. The 32 that completed scored a median of 0.42 and at most 0.498.
+- **Not started or not completed**, among the remainder.
+
+In 66 of 68 spans the last attempt was played 10% or more above the asked tempo.
+That is the player model's documented compliance: performed tempo is a geometric
+blend of the asked tempo and the player's natural one (112 and 120 for this
+player, compliance 0.7). It cannot explain the motor scores, since pace strain
+applies only above the natural tempo, and none of these attempts reached it.
 
 The step below the discounted floor came two ways:
 
@@ -144,15 +158,17 @@ learner's weak arpeggios are the exception and the only structural case.
 
 That case is introduction without a route onward, not failure of an eligible
 exercise. Each of those arpeggios was admitted only through the band discount,
-on a margin a hundredth wide, and then went hundreds of decisions without the
-follow-up that could have demonstrated it. Once a hair of failure or transfer
+on a margin a hundredth wide. Its introductions were too short to time, the
+timing-valid follow-ups that came early fell just short of managed, and then it
+went hundreds of decisions without another. Once a hair of failure or transfer
 took it under the discounted floor, nothing in v1-14 owned it: under v1-14 on
 one seed, that learner's run had no acquisition decision.
 
 ## What it does not establish
 
-Why the synthetic learner overshoots the asked tempo on these arpeggios is a
-property of the player model, not shown here; it is why the attempts that were
-made never counted as managed. Whether a follow-up during the eligible window
-would have been managed is not shown either. The recovery shares are from one
-seed under v1-14, and these are synthetic players.
+Whether a later follow-up would have been managed is not shown: the timing-valid
+attempts that were made scored just under the threshold, early, and nothing
+returned once the learner had practiced more. This player's arpeggio ability is
+its hand ability less 1.2, and it transfers nothing between families by design,
+so it is a stress case for asymmetry, not an estimate of how common this is. The
+recovery shares are from one seed under v1-14.
