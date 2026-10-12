@@ -45,6 +45,7 @@ citation key is not an argument.
 | [`service-census.md`](experiments/service-census.md)                       | How due work is served, how long it waits, and what wins    |
 | [`service-pressure.md`](experiments/service-pressure.md)                   | What explicit requirement service would change, and cost    |
 | [`allocation-counterfactual.md`](experiments/allocation-counterfactual.md) | What breadth-relative service priority changes, and costs   |
+| [`exclusion-census.md`](experiments/exclusion-census.md)                   | What keeps owed requirements from being served              |
 
 ## How to read a negative result here
 

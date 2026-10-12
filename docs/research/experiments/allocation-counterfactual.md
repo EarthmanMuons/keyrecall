@@ -80,13 +80,16 @@ no worse at `k` of 2 for any player in most pairs, and better in every pair for
 the advanced and arpeggio-strong players. At `k` of 4 and 8 it falls in most
 pairs for the developing and scale-strong players.
 
-The allocator's own contract, per run:
+The allocator's own contract, per run. The breadth count is from the
+[exclusion census](exclusion-census.md) rerun, after a defect that recomputed
+breadth only on ranking slots had inflated it; that run reproduced every
+allocation decision. Unserved decisions are mostly recovery episodes, as below.
 
 | Diagnostic, per run                         | Range across players and arms       |
 | ------------------------------------------- | ----------------------------------- |
 | owed selections                             | 9 to 191                            |
 | service withheld for a protected winner     | 0 to 124                            |
-| decisions where breadth growth postponed    | 11 to 4,086; usually over 1,000     |
+| decisions where breadth growth postponed    | 0 to 568, at `k` of 2 and 4         |
 | decisions with an owed requirement unserved | 46 to 67 advanced, 236 to 696 other |
 | journal counter acted, relative to exact    | 0.8 to 11.5 times as often          |
 
@@ -113,10 +116,11 @@ policy.
 ## What it does not establish
 
 Retrieval among covered material is descriptive: the asymmetric players' arms
-that look worse on it cover up to three times as many scales. Thousands of
+that look worse on it cover up to three times as many scales. Hundreds of
 breadth postponements per run say the bound drifts as the catalog opens, not
-that any requirement was harmed by it. And hundreds of decisions per run had an
-owed requirement with nothing in the selectable set to serve it: whatever kept
-it out, the allocation-only stage cannot reach it, which is the support-aware
-and prerequisite-aware stages' question. These are synthetic players, and the
-frontier informs the product policy rather than choosing it.
+that any requirement was harmed by it. The hundreds of decisions per run with an
+owed requirement and nothing selectable to serve it are mostly recovery
+episodes, which hold every other candidate; the
+[exclusion census](exclusion-census.md) separates those from readiness and
+filtering, and finds only one structural case. These are synthetic players, and
+the frontier informs the product policy rather than choosing it.
