@@ -48,6 +48,10 @@ when changing any of it.
 [`fluency-report.md`](fluency-report.md) is partly built: what the
 learner-facing progress report may claim, and how.
 
+[`allocation.md`](allocation.md) is proposed and not built: how the scheduler
+would own sustained service of a scope's requirements, beside the retention it
+already weighs.
+
 ## Why it is shaped this way
 
 Three ideas do most of the work. The rest of `system/` is the detail underneath
