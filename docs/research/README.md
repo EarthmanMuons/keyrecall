@@ -48,6 +48,7 @@ citation key is not an argument.
 | [`exclusion-census.md`](experiments/exclusion-census.md)                   | What keeps owed requirements from being served              |
 | [`follow-through.md`](experiments/follow-through.md)                       | Whether owning the introduction handoff converts it         |
 | [`plausibility-cohort.md`](experiments/plausibility-cohort.md)             | Whether moderately varied players behave coherently         |
+| [`recovery-episodes.md`](experiments/recovery-episodes.md)                 | Whether recovery's steady third is churn or instruction     |
 
 ## How to read a negative result here
 
