@@ -204,4 +204,40 @@ void main() {
       summary['owed decisions'],
     );
   });
+
+  group('an unservable run', () {
+    OwedExclusion at(int decision, String kind) => OwedExclusion(
+      decision: decision,
+      requirementId: 'r',
+      materialId: 'm',
+      familyId: 'f',
+      covered: false,
+      allocatable: true,
+      kind: kind,
+      detail: '',
+    );
+    int longestRun(List<OwedExclusion> exclusions) {
+      final summary = summarizeExclusions(
+        exclusions,
+        const ServiceCensus([], []),
+      );
+      final [requirement] = summary['requirements'] as List;
+      return (requirement as Map)['longest run'] as int;
+    }
+
+    test('continues through a recovery hold without counting it', () {
+      expect(
+        longestRun([
+          at(1, 'provisional'),
+          at(2, 'obligation'),
+          at(3, 'provisional'),
+        ]),
+        2,
+      );
+    });
+
+    test('restarts after a decision where it was not owed', () {
+      expect(longestRun([at(1, 'provisional'), at(3, 'provisional')]), 1);
+    });
+  });
 }

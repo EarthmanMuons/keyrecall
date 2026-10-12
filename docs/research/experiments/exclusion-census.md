@@ -5,8 +5,9 @@
 > almost always a recovery episode in progress. Outside recovery, the obstacle
 > is learner readiness, either a curriculum prerequisite or the band execution
 > floor, and not the selection pipeline. Only the scale-strong learner's weak
-> arpeggios are blocked structurally. Nothing is promoted; the scheduler stays
-> at v1-14.
+> arpeggios are blocked structurally. They were introduced through the band
+> discount with no route onward to managed practice. Nothing is promoted; the
+> scheduler stays at v1-14.
 
 The [allocation counterfactual](allocation-counterfactual.md) left hundreds of
 decisions per run with an owed requirement and nothing selectable to serve it.
@@ -88,6 +89,46 @@ one was last served within the first 274 decisions and never again. At `k` of 2
 they were last served that early in two pairs; in the other three, service came
 back only after decision 1,260, which is how six of them ended covered.
 
+A run here counts consecutive owed decisions, so a decision where the
+requirement is not owed restarts it; recovery holds do not. The lengths above
+understate how long these arpeggios went without a feasible candidate.
+
+## How the prolonged exclusions began
+
+```console
+dart run keyrecall_simulation:exclusion_transitions
+```
+
+The scale-strong runs again, at `k` of 2 and 4 on the same pairs, tracking every
+arpeggio's single-hand readiness at every decision and joining each attempt on
+it to its recorded outcome. Readiness is the scheduler's own reference
+prediction (one octave, ascending, at the gentle tempo), so it does not move
+with the realization attempted. An exclusion span runs from the first decision
+without a feasible candidate until the next service or feasible candidate,
+through recovery holds and decisions where it was not owed. There are 68 spans
+of 100 decisions or more, with a median of 704; 46 were still open when the run
+ended.
+
+Every one began the same way. The material was admitted only through the
+one-band discount for its gentlest realization: readiness was at most 0.014
+above the discounted floor of 0.528 and never reached the full floor of 0.625.
+Two to eight attempts preceded each span. None was ever managed (completed, at a
+motor score of at least 0.5), so no span had a demonstrated tempo, which would
+have made the band floor moot. In 66 of 68, the last attempt was played 10% or
+more above the asked tempo, and it was completed with pitch integrity of 0.8 to
+1.0 in most. In 23 spans the last three attempts carried no execution evidence
+at all; the most common last attempt was the introduction itself.
+
+The step below the discounted floor came two ways:
+
+- **At an attempt (18 spans).** A scored attempt lowered readiness by 0.002 to
+  0.015, from just above the floor to just below it.
+- **Afterward, with no attempt (50 spans).** The material stayed fully eligible
+  for a median of 305 decisions after its last attempt (at least 114), was not
+  chosen again, and then drifted below by a median of 0.012. Readiness has no
+  time decay, so the drift is transfer: shared competencies moved by other
+  practice.
+
 ## What this establishes
 
 The selection pipeline is not what keeps owed work out. Filtering removed a
@@ -99,16 +140,19 @@ exclusion.
 Outside recovery, the obstacle is readiness. Curriculum prerequisites hold most
 infeasible requirements for four of five players, and those clear within a few
 decisions: they are the ordinary order of the curriculum. The scale-strong
-learner's weak arpeggios are the exception and the only structural case. They
-were offered early, then fell below the band execution floor and stayed
-provisional for hundreds of decisions. Under v1-14 on one seed, that learner's
-run had no acquisition decision to reach them.
+learner's weak arpeggios are the exception and the only structural case.
+
+That case is introduction without a route onward, not failure of an eligible
+exercise. Each of those arpeggios was admitted only through the band discount,
+on a margin a hundredth wide, and then went hundreds of decisions without the
+follow-up that could have demonstrated it. Once a hair of failure or transfer
+took it under the discounted floor, nothing in v1-14 owned it: under v1-14 on
+one seed, that learner's run had no acquisition decision.
 
 ## What it does not establish
 
-Whether those arpeggios fell below the floor because they were attempted and
-failed is not shown here; the run records when each was last served, not how it
-went. If they were, this is a failed eligible exercise, and the support-aware
-stage applies: failure suspended the requirement instead of changing the action.
-If they never reached the floor, it is prerequisite work. The recovery shares
-are from one seed under v1-14, and these are synthetic players.
+Why the synthetic learner overshoots the asked tempo on these arpeggios is a
+property of the player model, not shown here; it is why the attempts that were
+made never counted as managed. Whether a follow-up during the eligible window
+would have been managed is not shown either. The recovery shares are from one
+seed under v1-14, and these are synthetic players.
