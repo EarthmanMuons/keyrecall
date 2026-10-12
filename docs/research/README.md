@@ -46,6 +46,7 @@ citation key is not an argument.
 | [`service-pressure.md`](experiments/service-pressure.md)                   | What explicit requirement service would change, and cost    |
 | [`allocation-counterfactual.md`](experiments/allocation-counterfactual.md) | What breadth-relative service priority changes, and costs   |
 | [`exclusion-census.md`](experiments/exclusion-census.md)                   | What keeps owed requirements from being served              |
+| [`follow-through.md`](experiments/follow-through.md)                       | Whether owning the introduction handoff converts it         |
 
 ## How to read a negative result here
 

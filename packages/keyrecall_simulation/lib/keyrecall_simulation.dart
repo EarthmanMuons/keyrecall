@@ -28,6 +28,7 @@ export 'src/player_archetypes.dart';
 export 'src/pulse_census.dart';
 export 'src/rank_tie_census.dart';
 export 'src/family_exposure.dart';
+export 'src/follow_through.dart';
 export 'src/goal_trajectory_experiment.dart';
 export 'src/guidance_ladder.dart';
 export 'src/held_out_assessment.dart';

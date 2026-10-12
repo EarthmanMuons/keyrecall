@@ -124,6 +124,7 @@ class RequirementAllocator implements ServiceIntervention {
   final Map<String, int> _journalWaiting = {};
   final Map<String, int> _breadthAtStart = {};
   bool _allocatable = false;
+  bool _winnerProtected = false;
   int _breadth = 0;
 
   @override
@@ -148,6 +149,9 @@ class RequirementAllocator implements ServiceIntervention {
   /// journal could reproduce.
   int journalWaitingFor(String requirementId) =>
       _journalWaiting[requirementId] ?? 0;
+
+  /// Whether the last decision's ranking winner was protected.
+  bool get winnerProtected => _winnerProtected;
 
   @override
   Map<String, num> get diagnostics => {
@@ -240,7 +244,8 @@ class RequirementAllocator implements ServiceIntervention {
       for (final id in byId.keys)
         if ((_waiting[id] ?? 0) > bound) id,
     ];
-    final winnerProtected = winner != null && isProtected(winner);
+    final winnerProtected = _winnerProtected =
+        winner != null && isProtected(winner);
 
     AllocationChoice<CandidateTrace>? choice;
     if (_allocatable) {

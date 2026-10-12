@@ -25,8 +25,8 @@ class ServiceSubstitution {
   /// The stage that chose the displaced winner.
   final SelectionStage displacedStage;
 
-  /// Why the slot changed hands: `pressure`, or an allocator's `owed` or
-  /// `protected`.
+  /// Why the slot changed hands: `pressure`, an allocator's `owed`, or
+  /// `follow-through`.
   final String reason;
 
   /// What the substitution promised: the promoted candidate survived every
