@@ -62,6 +62,8 @@ Future<void> main(List<String> arguments) async {
             census,
             intervention: intervention,
           ).toJson(),
+          if (intervention is RequirementAllocator)
+            'exclusions': summarizeExclusions(intervention.exclusions, census),
         }),
       );
     }

@@ -155,4 +155,53 @@ void main() {
       },
     );
   });
+
+  test('accounts for every owed decision once', () async {
+    final allocator = RequirementAllocator(k: 1, protectionFloor: 0.6);
+    final census = await runServiceCensus(
+      player: PlayerArchetypes.developing,
+      sessions: demoSessions(
+        from: demoHistoryStart,
+        until: demoHistoryStart.add(const Duration(days: 12)),
+      ),
+      intervention: allocator,
+    );
+    final exclusions = allocator.exclusions;
+    expect(exclusions, isNotEmpty);
+
+    final keys = {for (final e in exclusions) (e.decision, e.requirementId)};
+    expect(keys, hasLength(exclusions.length));
+    final served = {
+      for (final o in census.observations)
+        if (o.served) (o.decision, o.requirementId),
+    };
+    for (final exclusion in exclusions) {
+      expect(
+        exclusion.kind,
+        isIn([
+          'served',
+          'no slot',
+          'no candidate',
+          'admission',
+          'obligation',
+          'provisional',
+          'filtered',
+        ]),
+      );
+      expect(
+        exclusion.kind == 'served',
+        served.contains((exclusion.decision, exclusion.requirementId)),
+        reason: '${exclusion.decision} ${exclusion.requirementId}',
+      );
+    }
+
+    final summary = summarizeExclusions(exclusions, census);
+    expect(
+      (summary['no feasible candidate'] as int) +
+          (summary['held for recovery'] as int) +
+          (summary['feasible, no slot'] as int) +
+          (summary['served'] as int),
+      summary['owed decisions'],
+    );
+  });
 }

@@ -132,6 +132,7 @@ class ServicePressure implements ServiceIntervention {
     required List<RequirementState> requirements,
     required SchedulerPipeline pipeline,
     required LearnerState state,
+    required SessionState session,
     required DateTime at,
     required int journalLength,
   }) {

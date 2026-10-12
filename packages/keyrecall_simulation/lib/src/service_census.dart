@@ -26,6 +26,7 @@ abstract interface class ServiceIntervention {
     required List<RequirementState> requirements,
     required SchedulerPipeline pipeline,
     required LearnerState state,
+    required SessionState session,
     required DateTime at,
     required int journalLength,
   });
@@ -457,6 +458,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       requirements: evaluated.requirements,
       pipeline: this,
       state: state,
+      session: session,
       at: at,
       journalLength: journal().length,
     );
