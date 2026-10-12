@@ -72,6 +72,7 @@ Future<void> main(List<String> arguments) async {
                 family,
                 events: followThrough.events,
               ),
+            'follow-through displacement': _displacement(census),
             'band floor exclusions': bandFloor.length,
             'band floor requirements': {
               for (final e in bandFloor) e.requirementId,
@@ -84,4 +85,34 @@ Future<void> main(List<String> arguments) async {
       }
     }
   }
+}
+
+/// Follow-throughs by the strand's family, the displaced winner's family, and
+/// what the displaced winner's requirement needed at that decision.
+Map<String, int> _displacement(ServiceCensus census) {
+  final observed = {
+    for (final o in census.observations) (o.decision, o.materialId): o,
+  };
+  final familyOf = {
+    for (final o in census.observations) o.materialId: o.familyId,
+  };
+  final counts = <String, int>{};
+  for (final s in census.substitutions) {
+    if (s.reason != 'follow-through') continue;
+    final strandFamily = familyOf[s.requirementId.split('/').first];
+    final displaced = observed[(s.decision, s.displacedMaterialId)];
+    final need = displaced == null
+        ? 'out of scope'
+        : !displaced.covered
+        ? 'uncovered'
+        : displaced.due
+        ? 'covered, due'
+        : 'covered, healthy';
+    counts.update(
+      '$strandFamily over ${displaced?.familyId}, $need',
+      (n) => n + 1,
+      ifAbsent: () => 1,
+    );
+  }
+  return counts;
 }

@@ -105,6 +105,26 @@ What it cost, pairs better and worse with follow-through, at `k` of 2 then 4:
 Median scale retrieval across the scope fell by 0.004 to 0.044. Every scale was
 covered in every arm.
 
+### What the follow-throughs displaced
+
+The rule is family-neutral, so the cost above is the combined policy's. A rerun
+of the `k` of 2 follow-through arms attributes each follow-through by the
+strand's family and by what the displaced winner's requirement needed at that
+decision:
+
+| Offset | Follow-throughs | Scale strands | Displaced uncovered work | Displaced covered, healthy | Displaced covered, due |
+| -----: | --------------: | ------------: | -----------------------: | -------------------------: | ---------------------: |
+|   -1.2 |             233 |           10% |                      82% |                        13% |                     5% |
+|   -0.8 |             307 |           11% |                      68% |                        24% |                     7% |
+|   -0.4 |             337 |           10% |                      51% |                        38% |                    11% |
+|      0 |             323 |            7% |                      64% |                        24% |                    11% |
+
+Scale strands are about a tenth of follow-throughs, so an arpeggio-only rule
+would differ little. Maintenance that was due is rarely displaced directly. The
+scale retrieval cost more likely comes from practice of healthy covered scales
+that would have refreshed them, and from the extra owed service allocation does
+once uncovered work is pushed back; this attribution does not separate the two.
+
 ## What this establishes
 
 Selection continuity is a real gap for every offset, not just the stress case.
