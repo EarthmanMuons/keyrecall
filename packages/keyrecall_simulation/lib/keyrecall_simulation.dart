@@ -24,6 +24,7 @@ export 'src/demo_history.dart';
 export 'src/demo_profile.dart';
 export 'src/practice_simulation.dart';
 export 'src/placement_convergence.dart';
+export 'src/plausibility_cohort.dart';
 export 'src/player_archetypes.dart';
 export 'src/pulse_census.dart';
 export 'src/rank_tie_census.dart';
