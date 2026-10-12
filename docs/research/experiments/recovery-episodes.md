@@ -66,7 +66,9 @@ against 39 to 52% in the other pairs.
 
 Episodes end and rarely consume attempts without evidence, so this is not the
 scheduler looping. Nor does recovery visibly help: a strand's next test after an
-episode succeeds at the same rate as its next test after a success.
+episode succeeds at the same rate as its next test after a success. That is not
+a causal comparison, since one begins from a failure and the other from a
+success; the player model below is the stronger explanation.
 
 The cause is in the synthetic player. It retrieves a material's notes with
 probability equal to its familiarity with that material, drawn independently on

@@ -119,11 +119,13 @@ decision:
 |   -0.4 |             337 |           10% |                      51% |                        38% |                    11% |
 |      0 |             323 |            7% |                      64% |                        24% |                    11% |
 
-Scale strands are about a tenth of follow-throughs, so an arpeggio-only rule
-would differ little. Maintenance that was due is rarely displaced directly. The
-scale retrieval cost more likely comes from practice of healthy covered scales
-that would have refreshed them, and from the extra owed service allocation does
-once uncovered work is pushed back; this attribution does not separate the two.
+Scale strands are about a tenth of follow-throughs for this player, so an
+arpeggio-only rule would differ little here; on the
+[cohort](cohort-comparison.md) they are 60%. Maintenance that was due is rarely
+displaced directly. The scale retrieval cost more likely comes from practice of
+healthy covered scales that would have refreshed them, and from the extra owed
+service allocation does once uncovered work is pushed back; this attribution
+does not separate the two.
 
 ## What this establishes
 
