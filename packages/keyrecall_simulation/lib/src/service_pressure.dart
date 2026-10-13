@@ -234,6 +234,8 @@ class ServicePressure implements ServiceIntervention {
 ///
 /// Every map is keyed by family.
 class ServiceOutcomes {
+  /// Requirements covered where the run ended, or at its last decision for a
+  /// census that was not finished.
   final Map<String, int> covered;
   final Map<String, int> actionableNeverServed;
 
@@ -251,7 +253,7 @@ class ServiceOutcomes {
   final Map<String, double> retrievalAll;
   final Map<String, double> retrievalCovered;
 
-  /// Of the requirements covered at the last decision, the share not due.
+  /// Of the requirements in [covered], the share not due.
   final double healthyAtEnd;
 
   final double incomplete;
@@ -333,13 +335,20 @@ class ServiceOutcomes {
     final pressure = intervention is ServicePressure ? intervention : null;
     final families = {
       for (final observation in census.observations) observation.familyId,
+      for (final requirement in census.terminal) requirement.familyId,
     };
     final last = census.observations.isEmpty
         ? -1
         : census.observations.last.decision;
+    final finished = census.terminal.isNotEmpty;
 
     final covered = {for (final family in families) family: 0};
     var healthyAtEnd = 0;
+    for (final requirement in census.terminal) {
+      if (!requirement.covered) continue;
+      covered[requirement.familyId] = covered[requirement.familyId]! + 1;
+      if (!requirement.due) healthyAtEnd++;
+    }
     final coveredDecisions = <String, int>{};
     final fadingDecisions = <String, int>{};
     final retrievalSum = <String, double>{};
@@ -357,7 +366,7 @@ class ServiceOutcomes {
       if (observation.due) {
         fadingDecisions[family] = (fadingDecisions[family] ?? 0) + 1;
       }
-      if (observation.decision == last) {
+      if (!finished && observation.decision == last) {
         covered[family] = covered[family]! + 1;
         if (!observation.due) healthyAtEnd++;
       }
@@ -478,7 +487,7 @@ class ServiceOutcomes {
       },
       retrievalAll: {
         for (final family in families)
-          family: ratio(retrievalSum[family]!, retrievalCount[family]!),
+          family: ratio(retrievalSum[family] ?? 0, retrievalCount[family] ?? 0),
       },
       retrievalCovered: {
         for (final family in families)

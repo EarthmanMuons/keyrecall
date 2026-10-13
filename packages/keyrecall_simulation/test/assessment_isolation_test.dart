@@ -105,4 +105,47 @@ void main() {
       reason: 'execution noise is paired despite different retrieval branches',
     );
   });
+
+  test('a reading leaves the live player and its clock where they were', () {
+    final materials = allPracticeMaterials.take(6).toList();
+    final reading = standardAssessment(materials, repetitions: 2);
+    final forgetful = PlayerArchetypes.developing.copyWith(
+      familiarityHalfLifeDays: 30,
+      retentionHalfLifeDays: 60,
+    );
+    final practice = [
+      for (final material in materials)
+        Exercise.linear(material: material, hands: HandConfiguration.right),
+    ];
+    final start = DateTime.utc(2026, 6);
+
+    List<Object> run({required bool read}) {
+      final playing = forgetful.begin()..restUntil(start);
+      final rng = PythonCompatibleRandom(11);
+      final seen = <Object>[];
+      for (var day = 0; day < 6; day++) {
+        final at = start.add(Duration(days: 4 * day));
+        playing.restUntil(at);
+        for (final exercise in practice) {
+          seen.add(playing.play(exercise, rng));
+        }
+        if (read) {
+          assess(reading, playing, at: at.add(const Duration(days: 30)));
+        }
+        seen
+          ..add(playing.lastPerformedTempoBpm)
+          ..add(playing.pulseWeakness)
+          ..addAll([
+            for (final material in materials)
+              playing.familiarityOf(material.materialId),
+            for (final hands in HandConfiguration.values)
+              for (final family in TechnicalMaterial.familyIds)
+                playing.abilityOf(hands, family),
+          ]);
+      }
+      return seen;
+    }
+
+    expect(run(read: true), run(read: false));
+  });
 }

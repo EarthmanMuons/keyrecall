@@ -289,6 +289,14 @@ class RequirementService {
 }
 
 /// Every observation a run made, and its summary by requirement.
+/// One requirement where a run ended.
+typedef TerminalRequirement = ({
+  String requirementId,
+  String familyId,
+  bool covered,
+  bool due,
+});
+
 class ServiceCensus {
   final List<RequirementObservation> observations;
   final List<DecisionRecord> decisions;
@@ -299,11 +307,16 @@ class ServiceCensus {
   /// What an experimental service rule changed, empty without one.
   final List<ServiceSubstitution> substitutions;
 
+  /// Every requirement as the committed state after the last attempt left it,
+  /// empty for a census that was not finished.
+  final List<TerminalRequirement> terminal;
+
   const ServiceCensus(
     this.observations,
     this.decisions, {
     this.records = const [],
     this.substitutions = const [],
+    this.terminal = const [],
   });
 
   List<RequirementService> get requirements {
@@ -399,6 +412,7 @@ class ServiceCensusPipeline extends SchedulerPipeline {
 
   final List<RequirementObservation> observations = [];
   final List<DecisionRecord> decisions = [];
+  final List<TerminalRequirement> terminal = [];
   int _decision = 0;
 
   ServiceCensusPipeline({
@@ -480,6 +494,32 @@ class ServiceCensusPipeline extends SchedulerPipeline {
       guidanceProbeAvailable: slot.guidanceProbeAvailable,
       guidanceProbeSelected: slot.guidanceProbeSelected,
     );
+  }
+
+  /// Reads where the run ended at [at] without deciding anything.
+  ///
+  /// Settles [intervention] on the attempts no decision followed and replaces
+  /// [terminal] with every requirement as committed [state] leaves it.
+  void finish(LearnerState state, DateTime at) {
+    intervention?.settle(journal(), learner, _decision);
+    final evaluated = const PracticeScopeEvaluator().evaluate(
+      scope: scope,
+      state: state,
+      journal: journal(),
+      learner: learner,
+      at: at,
+    );
+    terminal
+      ..clear()
+      ..addAll([
+        for (final requirement in evaluated.requirements)
+          (
+            requirementId: requirement.resolved.requirement.id,
+            familyId: requirement.resolved.material.familyId,
+            covered: requirement.isCovered,
+            due: requirement.isDue,
+          ),
+      ]);
   }
 
   List<RequirementObservation> _observe(
@@ -691,7 +731,8 @@ class ServiceCensusPipeline extends SchedulerPipeline {
 
 /// Runs [player] through [sessions] under [goal] and records the census.
 ///
-/// [onArrival] and [onClose] pass through to [practiceDemoHistory].
+/// [onArrival] and [onClose] pass through to [practiceDemoHistory]. The census
+/// is finished where the last session closed.
 Future<ServiceCensus> runServiceCensus({
   required SyntheticPlayer player,
   required List<DemoSession> sessions,
@@ -714,11 +755,12 @@ Future<ServiceCensus> runServiceCensus({
               )
               as ValidPracticeScope)
           .scope;
-  late PracticeSession current;
+  PracticeSession? current;
+  DateTime? closedAt;
   final pipeline = ServiceCensusPipeline(
     learner: const LearnerModel(),
     scope: scope,
-    journal: () => current.journal,
+    journal: () => current!.journal,
     intervention: intervention,
   );
   final store = InMemoryPracticeStore(createdAt: demoHistoryStart);
@@ -738,12 +780,17 @@ Future<ServiceCensus> runServiceCensus({
     pipeline: pipeline,
     onOpen: (session, _) => current = session,
     onArrival: onArrival,
-    onClose: onClose,
+    onClose: (session, playing, at) {
+      closedAt = at;
+      onClose?.call(session, playing, at);
+    },
   );
+  if (current case final session?) pipeline.finish(session.state, closedAt!);
   return ServiceCensus(
     pipeline.observations,
     pipeline.decisions,
     records: (await store.loadJournal('census')).records,
     substitutions: intervention?.substitutions ?? const [],
+    terminal: pipeline.terminal,
   );
 }
