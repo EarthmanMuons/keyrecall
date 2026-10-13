@@ -4,10 +4,11 @@
 > [plausibility cohort](plausibility-cohort.md), 24 players on five paired
 > seeds, three calendars, two arms, 720 trajectories. Calendar gaps activate the
 > synthetic player's forgetting, but only of what practice had gained, which is
-> small against where it started. Allocation does not change how much the player
-> retains after time away; it moves retained gain from scales to arpeggios. The
-> scheduler's belief falls far faster across a gap than the player does. Nothing
-> is promoted; the scheduler stays at v1-14.
+> small against where it started. Allocation leaves the median player's retained
+> gain after time away nearly unchanged, moves it from scales to arpeggios, and
+> costs some players and seeds much more than the median. The scheduler's belief
+> falls far faster across a gap than the player does. Nothing is promoted; the
+> scheduler stays at v1-14.
 
 The [cohort comparison](cohort-comparison.md) found allocation lowers the
 scheduler's estimate of covered scales' retrieval in nearly every pair, on
@@ -76,12 +77,12 @@ where they began.
 ## Allocation against v1-14
 
 Pairs better and worse, then the median paired difference, over all 120 pairs
-per calendar:
+per calendar. Coverage is read from the committed state after the last session:
 
 | Outcome                         | Reference     | Interrupted   | Extended break |
 | ------------------------------- | ------------- | ------------- | -------------- |
 | Scales covered                  | 91/4, +2      | 84/15, +2     | 85/8, +2       |
-| Arpeggios covered               | 93/10, +2     | 93/10, +2     | 95/13, +3      |
+| Arpeggios covered               | 93/10, +2     | 94/10, +2     | 95/13, +3      |
 | Retained gain, all, after delay | 54/66, -0.012 | 65/55, +0.015 | 57/63, -0.003  |
 | Retained gain, scales           | 40/80, -0.098 | 42/78, -0.111 | 35/85, -0.082  |
 | Retained gain, arpeggios        | 79/41, +0.101 | 76/44, +0.074 | 81/39, +0.080  |
@@ -110,6 +111,33 @@ The cohort comparison's lower estimate of covered scales therefore corresponds
 to a real loss of retained scale gain in this player, about a tenth of a
 material at the median and up to a fifth for the middle third, offset by
 arpeggio gain of similar size.
+
+## The tails
+
+The medians hide pairs where allocation cost much more. Paired differences in
+total retained gain after the delay, allocation minus v1-14, in materials:
+
+| Calendar       | Lowest | 10th percentile | Median | 90th percentile | Highest |
+| -------------- | ------ | --------------- | ------ | --------------- | ------- |
+| Reference      | -1.26  | -0.21           | -0.012 | +0.22           | +0.67   |
+| Interrupted    | -0.74  | -0.22           | +0.015 | +0.29           | +0.80   |
+| Extended break | -1.11  | -0.20           | -0.003 | +0.21           | +0.67   |
+
+Most of the spread follows learning rate: a player who learns faster has more
+gain for a policy to move, and the gap between its best and worst pair rises
+with learning rate (rank correlation 0.72 to 0.81). The three worst pairs on the
+reference calendar, from `cohort_13`, `cohort_15`, and `cohort_19`, belong to
+three of the five fastest learners, and each of them also has a pair where
+allocation retained 0.2 to 0.7 materials more.
+
+One player is consistently worse. `cohort_19`, of middle ability, stronger at
+arpeggios, and a fast learner, retained less under allocation in all five pairs
+on both re-dated calendars (0.17 to 0.74 materials on the interrupted one),
+mostly in scales, and its held-out managed execution after the delay was lower
+in every interrupted pair, by up to 0.065. Allocation did not consistently raise
+its coverage in return: on those calendars it covered from 3 fewer to 12 more
+requirements per pair, and fewer in 3 of 10. No player retained more in all five
+pairs on any calendar.
 
 ## The scheduler's belief and the player diverge
 
@@ -153,11 +181,14 @@ what the player recalls; the held-out readings on arrival do not show it.
 
 ## What this establishes
 
-On this player model, allocation's broader coverage does not cost total
-retention after time away on any calendar, beyond a few hundredths of a
-material. It trades retained scale gain for arpeggio gain by similar amounts.
-The held-out assessment moved little under either policy, because the player's
-forgetting is bounded by its small gains.
+Allocation improves coverage across the cohort while leaving median total
+retained gain nearly unchanged in this player model. It redistributes retained
+gain between families, from scales to arpeggios, and some player and seed
+combinations lose much more than the median, one player in every pair. The
+held-out assessment moved little under either policy, because the player's
+forgetting is bounded by its small gains. Judging allocation needs the paired
+distribution, including its lower tail, not only medians of breadth and
+retention.
 
 ## What it does not establish
 
