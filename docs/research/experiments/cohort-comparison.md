@@ -7,7 +7,9 @@
 > scheduler's estimate of covered scales' retrieval. Follow-through adds faster
 > and broader managed execution and less recovery, at a further retrieval and
 > switching cost, and on this cohort most follow-throughs go to scale strands,
-> which convert least. Nothing is promoted; the scheduler stays at v1-14.
+> which convert least. Allocation is a production candidate pending its
+> retention trade-off, which [calendar retention](calendar-retention.md) tests;
+> family-neutral follow-through is deferred. The scheduler stays at v1-14.
 
 ## What was run
 

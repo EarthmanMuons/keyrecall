@@ -50,6 +50,7 @@ citation key is not an argument.
 | [`plausibility-cohort.md`](experiments/plausibility-cohort.md)             | Whether moderately varied players behave coherently         |
 | [`recovery-episodes.md`](experiments/recovery-episodes.md)                 | Whether recovery's steady third is churn or instruction     |
 | [`cohort-comparison.md`](experiments/cohort-comparison.md)                 | What allocation and follow-through do across the cohort     |
+| [`calendar-retention.md`](experiments/calendar-retention.md)               | Whether allocation costs retention across calendar gaps     |
 
 ## How to read a negative result here
 

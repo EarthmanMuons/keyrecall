@@ -66,7 +66,9 @@ List<DemoSession> demoSessions({
 /// time one actually takes, and ids are numbered rather than random, so the
 /// same inputs write the same journal. [onSession] reports each session as it
 /// closes; [onOpen] and [onDecision] time each opening and each decision, for
-/// a run that is measuring the app rather than populating it.
+/// a run that is measuring the app rather than populating it. [onArrival] and
+/// [onClose] see each session's player and session before its first slot and
+/// after its last, for readings that must not move either.
 Future<void> practiceDemoHistory({
   required PracticeStore store,
   required Profile profile,
@@ -79,6 +81,10 @@ Future<void> practiceDemoHistory({
   void Function(int completed, int total)? onSession,
   void Function(PracticeSession session, Duration elapsed)? onOpen,
   void Function(PracticeSession session, Duration elapsed)? onDecision,
+  void Function(PracticeSession session, PlayerState playing, DateTime at)?
+  onArrival,
+  void Function(PracticeSession session, PlayerState playing, DateTime at)?
+  onClose,
 }) async {
   final playing = player.begin();
   final random = PythonCompatibleRandom(seed);
@@ -98,6 +104,7 @@ Future<void> practiceDemoHistory({
       nextId: () => 'demo-${ids++}',
     );
     onOpen?.call(session, opening.elapsed);
+    onArrival?.call(session, playing, start);
     var at = start;
     for (var slot = 0; slot < slots; slot++) {
       at = at.add(Duration(seconds: 50 + spacing.nextInt(100)));
@@ -120,6 +127,7 @@ Future<void> practiceDemoHistory({
       }
     }
     await session.saveCheckpoint();
+    onClose?.call(session, playing, at);
     onSession?.call(index + 1, sessions.length);
   }
 }

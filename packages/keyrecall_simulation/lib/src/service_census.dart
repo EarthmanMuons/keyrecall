@@ -690,6 +690,8 @@ class ServiceCensusPipeline extends SchedulerPipeline {
 }
 
 /// Runs [player] through [sessions] under [goal] and records the census.
+///
+/// [onArrival] and [onClose] pass through to [practiceDemoHistory].
 Future<ServiceCensus> runServiceCensus({
   required SyntheticPlayer player,
   required List<DemoSession> sessions,
@@ -697,6 +699,10 @@ Future<ServiceCensus> runServiceCensus({
   List<TechnicalMaterial>? materials,
   ServiceIntervention? intervention,
   int playerSeed = 0,
+  void Function(PracticeSession session, PlayerState playing, DateTime at)?
+  onArrival,
+  void Function(PracticeSession session, PlayerState playing, DateTime at)?
+  onClose,
 }) async {
   final catalog = materials ?? allPracticeMaterials;
   final scope =
@@ -731,6 +737,8 @@ Future<ServiceCensus> runServiceCensus({
     goal: goal,
     pipeline: pipeline,
     onOpen: (session, _) => current = session,
+    onArrival: onArrival,
+    onClose: onClose,
   );
   return ServiceCensus(
     pipeline.observations,
