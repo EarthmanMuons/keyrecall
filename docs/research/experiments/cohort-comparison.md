@@ -16,11 +16,14 @@
 v1-14, allocation at `k` of 2 with protection floor 0.60, and the same
 allocation with [early follow-through](follow-through.md), on every cohort
 player and the five seed pairs (0:100 to 4:104). The v1-14 arm reproduces the
-frozen cohort baseline exactly. Three comparisons were declared before the runs:
-allocation against v1-14, follow-through added against allocation alone, and the
-combined policy against v1-14. Each is reported as paired differences per player
-and seed pair, summarized by ability band (the cohort's lower, middle, and upper
-thirds on its ability coordinate, 40 pairs each).
+frozen cohort baseline's journals and decisions. Coverage is read from the
+committed state after the last session, which counts the final attempt and adds
+one arpeggio to one baseline run (`cohort_24`, 4:104). Three comparisons were
+declared before the runs: allocation against v1-14, follow-through added against
+allocation alone, and the combined policy against v1-14. Each is reported as
+paired differences per player and seed pair, summarized by ability band (the
+cohort's lower, middle, and upper thirds on its ability coordinate, 40 pairs
+each).
 
 ```console
 dart run keyrecall_simulation:cohort_comparison
