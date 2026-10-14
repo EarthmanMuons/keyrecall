@@ -52,6 +52,7 @@ citation key is not an argument.
 | [`cohort-comparison.md`](experiments/cohort-comparison.md)                 | What allocation and follow-through do across the cohort                         |
 | [`calendar-retention.md`](experiments/calendar-retention.md)               | Whether allocation costs retention across calendar gaps                         |
 | [`retrieval-memory.md`](experiments/retrieval-memory.md)                   | A retrieval model that learns from retrieval and forgets below where it started |
+| [`memory-comparison.md`](experiments/memory-comparison.md)                 | Whether allocation's case survives a player who forgets                         |
 
 ## How to read a negative result here
 

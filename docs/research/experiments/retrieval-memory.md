@@ -2,9 +2,10 @@
 
 > **Status:** a separately versioned retrieval model for the synthetic player
 > (`retrieval-memory-2`), built and characterized on fixed practice schedules
-> with no scheduler. Its contracts are tested. No policy has been compared under
-> it yet. Every parameter is an uncalibrated hypothesis; the frozen cohort and
-> every earlier result are unchanged.
+> with no scheduler. Its contracts are tested. The policy comparison under it is
+> in [memory comparison](memory-comparison.md). Every parameter is an
+> uncalibrated hypothesis; the frozen cohort and every earlier result are
+> unchanged.
 
 The [calendar retention](calendar-retention.md) study found that the frozen
 player's familiarity starts at 0.4 to 0.6, gains a few hundredths per material
@@ -146,13 +147,14 @@ Three properties matter for any comparison under this model:
 
 ## What comes next
 
-A compact comparison of v1-14 against allocation at `k` of 2, across learning
-strength, initial half-life, and spacing responsiveness, before anything wider.
-It keeps two named regression cases from the frozen model: `cohort_19`, which
-retained less under allocation in every re-dated pair, and `cohort_13` on seed
-pair 0:100, the worst paired loss on the reference calendar (-1.26 materials). A
-better player model should not make either disappear without an explanation. The
-frozen model's 720 calendar trajectories stay the reference for it.
+The [memory comparison](memory-comparison.md) runs v1-14 against allocation at
+`k` of 2 across learning strength, initial half-life, and spacing
+responsiveness. It keeps two named regression cases from the frozen model:
+`cohort_19`, which retained less under allocation in every re-dated pair, and
+`cohort_13` on seed pair 0:100, the worst paired loss on the reference calendar
+(-1.26 materials). A better player model should not make either disappear
+without an explanation. The frozen model's 720 calendar trajectories stay the
+reference for it.
 
 ## What it does not establish
 
