@@ -233,7 +233,10 @@ AssessmentReading assess(
   for (var repetition = 0; repetition < set.repetitions; repetition++) {
     for (final (index, exercise) in set.exercises.indexed) {
       final rng = PythonCompatibleRandom(set.streamSeedFor(index, repetition));
-      outcomes.add((exercise, playing.play(exercise, rng, practising: false)));
+      outcomes.add((
+        exercise,
+        playing.play(exercise, rng, practising: false, at: at),
+      ));
     }
   }
 

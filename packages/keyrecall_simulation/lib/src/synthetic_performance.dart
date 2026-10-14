@@ -64,7 +64,10 @@ const double _repairInterval = 0.4;
 /// [SyntheticPlayer.tempoCompliance] never enters.
 ///
 /// With [practising], the attempt updates the same latent ability as ordinary
-/// work. The default observes the player without teaching them.
+/// work. The default observes the player without teaching them. Under
+/// [SyntheticPlayer.retrievalMemory], a task played at [at] encodes the
+/// material whether or not it practises execution, since the notes were in
+/// front of the player.
 ///
 /// Throws [ArgumentError] for a two-hand parent. Two onset streams and the
 /// distance between them are a coordination model, and acquisition has no
@@ -74,6 +77,7 @@ PerformanceTranscript performAcquisition({
   required AcquisitionTask task,
   required PythonCompatibleRandom rng,
   bool practising = false,
+  DateTime? at,
 }) {
   final conditions = task.parent.conditions;
   if (conditions.hands == HandConfiguration.together) {
@@ -92,11 +96,15 @@ PerformanceTranscript performAcquisition({
   final ordinaryIntervalMs = 60000 / state.naturalTempoFor(conditions.hands);
 
   var transcript = PerformanceTranscript.empty;
-  var at = 0.0;
+  var elapsedMs = 0.0;
   var weakestQuality = 1.0;
   var allExpectedPlayed = true;
 
   PerformanceTranscript finish({required bool completed}) {
+    if (state.player.retrievalMemory case final memory?
+        when at != null && transcript.isNotEmpty) {
+      state.encode(material.materialId, at, memory.acquisitionGain);
+    }
     if (practising && transcript.isNotEmpty) {
       state.practiseExecution(
         task.parent,
@@ -127,7 +135,7 @@ PerformanceTranscript performAcquisition({
       if (stopDraw < _worstStopRate * shortfall * shortfall) {
         return finish(completed: false);
       }
-      at +=
+      elapsedMs +=
           ordinaryIntervalMs *
           math.exp(
             _dwellPerShortfall * shortfall + state.player.noise * dwellZ,
@@ -140,20 +148,20 @@ PerformanceTranscript performAcquisition({
       final wrong = expected.midiNote + (neighborDraw < 0.5 ? -1 : 1);
       transcript = transcript.appending(
         pitch: spellObservedPitch(wrong, material: material),
-        timestampMs: at.round(),
-        performanceTimeUs: at.round() * 1000,
+        timestampMs: elapsedMs.round(),
+        performanceTimeUs: elapsedMs.round() * 1000,
       );
       if (repairDraw >= _repairFloor + (1 - _repairFloor) * quality) {
         allExpectedPlayed = false;
         continue;
       }
-      at += ordinaryIntervalMs * _repairInterval;
+      elapsedMs += ordinaryIntervalMs * _repairInterval;
     }
 
     transcript = transcript.appending(
       pitch: spellObservedPitch(expected.midiNote, material: material),
-      timestampMs: at.round(),
-      performanceTimeUs: at.round() * 1000,
+      timestampMs: elapsedMs.round(),
+      performanceTimeUs: elapsedMs.round() * 1000,
     );
   }
 

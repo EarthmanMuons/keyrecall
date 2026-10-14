@@ -4,6 +4,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'python_compatible_random.dart';
+import 'retrieval_memory.dart';
 
 /// A player, described by what they do rather than by the numbers an outcome
 /// happens to need.
@@ -171,6 +172,13 @@ class SyntheticPlayer {
   /// tell them apart would encode low skill as an inability to learn.
   final double learningRate;
 
+  /// How this player learns and forgets the notes, or null for the frozen
+  /// familiarity model, under which [familiarity] moves with execution and
+  /// slips back to where it started.
+  ///
+  /// When set, every attempt and reading must carry the instant it happens.
+  final RetrievalMemory? retrievalMemory;
+
   SyntheticPlayer({
     required this.id,
     required this.placement,
@@ -194,6 +202,7 @@ class SyntheticPlayer {
     this.learningRate = 0.01,
     this.retentionHalfLifeDays,
     this.familiarityHalfLifeDays,
+    this.retrievalMemory,
   });
 
   /// This player with one or two knobs turned, for asking what a single trait
@@ -221,6 +230,7 @@ class SyntheticPlayer {
     double? learningRate,
     double? retentionHalfLifeDays,
     double? familiarityHalfLifeDays,
+    RetrievalMemory? retrievalMemory,
   }) => SyntheticPlayer(
     id: id ?? this.id,
     placement: placement ?? this.placement,
@@ -246,6 +256,7 @@ class SyntheticPlayer {
     retentionHalfLifeDays: retentionHalfLifeDays ?? this.retentionHalfLifeDays,
     familiarityHalfLifeDays:
         familiarityHalfLifeDays ?? this.familiarityHalfLifeDays,
+    retrievalMemory: retrievalMemory ?? this.retrievalMemory,
   );
 
   /// A fresh mutable player of this kind, so one run never improves another.
@@ -262,7 +273,10 @@ class PlayerState {
 
   final Map<(HandConfiguration, String), double> _ability = {};
   final Map<String, double> _familiarity;
+  final Map<String, MemoryTrace> _traces = {};
   DateTime? _restedAt;
+  DateTime? _startedAt;
+  DateTime? _practisedAt;
 
   PlayerState(this.player)
     : _familiarity = {...player.materialFamiliarity},
@@ -300,6 +314,7 @@ class PlayerState {
   void restUntil(DateTime at) {
     final since = _restedAt;
     _restedAt = at;
+    _startedAt ??= at;
     if (since == null) return;
     final days =
         at.difference(since).inMicroseconds / Duration.microsecondsPerDay;
@@ -324,6 +339,7 @@ class PlayerState {
       player.pulseWeakness,
       player.retentionHalfLifeDays,
     );
+    if (player.retrievalMemory != null) return;
     for (final materialId in _familiarity.keys) {
       _familiarity[materialId] = slipped(
         _familiarity[materialId]!,
@@ -362,8 +378,65 @@ class PlayerState {
   }
 
   /// How well this player currently knows [materialId].
-  double familiarityOf(String materialId) =>
-      _familiarity[materialId] ?? player.familiarity;
+  ///
+  /// Under [SyntheticPlayer.retrievalMemory], at the latest instant the player
+  /// has been aged or has practised to.
+  double familiarityOf(String materialId) {
+    if (player.retrievalMemory == null) {
+      return _familiarity[materialId] ?? player.familiarity;
+    }
+    final now = _latest(_restedAt, _practisedAt);
+    return now == null
+        ? _startingFamiliarityOf(materialId)
+        : familiarityAt(materialId, now);
+  }
+
+  /// How likely the notes of [materialId] come unaided at [at], under
+  /// [SyntheticPlayer.retrievalMemory].
+  ///
+  /// Reads without aging anything, so a reading at any instant leaves the
+  /// player as it was. Throws [StateError] for an instant before the player's
+  /// last encoding, whose trace already contains what came after.
+  double familiarityAt(String materialId, DateTime at) {
+    final memory = player.retrievalMemory;
+    if (memory == null) {
+      throw StateError('${player.id} has no retrieval memory');
+    }
+    if (_practisedAt case final last? when at.isBefore(last)) {
+      throw StateError('$at is before ${player.id} last practised, at $last');
+    }
+    final start = _startedAt;
+    if (start == null) return _startingFamiliarityOf(materialId);
+    return _traceOf(memory, materialId, start).retrievabilityAt(at);
+  }
+
+  /// Encodes [materialId] at [at] with [gain], under
+  /// [SyntheticPlayer.retrievalMemory].
+  ///
+  /// Throws [StateError] for an instant before the last encoding, so the
+  /// practice clock only runs forward.
+  void encode(String materialId, DateTime at, double gain) {
+    final memory = player.retrievalMemory!;
+    familiarityAt(materialId, at);
+    _startedAt ??= at;
+    _practisedAt = at;
+    _traces[materialId] = memory.encoded(
+      _traceOf(memory, materialId, _startedAt!),
+      at,
+      gain,
+    );
+  }
+
+  MemoryTrace _traceOf(
+    RetrievalMemory memory,
+    String materialId,
+    DateTime start,
+  ) =>
+      _traces[materialId] ??
+      memory.startingTrace(_startingFamiliarityOf(materialId), start);
+
+  double _startingFamiliarityOf(String materialId) =>
+      player.materialFamiliarity[materialId] ?? player.familiarity;
 
   /// The tempo this player is comfortable at with [hands].
   double naturalTempoFor(HandConfiguration hands) => switch (hands) {
@@ -425,7 +498,11 @@ class PlayerState {
     PythonCompatibleRandom rng, {
     bool practising = true,
     PresentationDelivery? delivery,
+    DateTime? at,
   }) {
+    if (player.retrievalMemory != null && at == null) {
+      throw ArgumentError.notNull('at');
+    }
     final conditions = exercise.conditions;
     final materialId = exercise.material.materialId;
     // Every draw an attempt could need, taken before anything branches on
@@ -468,7 +545,9 @@ class PlayerState {
     // Whether the notes come. Cueing supplies them, so it separates knowing a
     // scale from being able to produce it, which is the distinction the whole
     // guidance ladder rests on.
-    final known = familiarityOf(materialId);
+    final known = at != null && player.retrievalMemory != null
+        ? familiarityAt(materialId, at)
+        : familiarityOf(materialId);
     final retrievalSucceeded = retrievalDraw < known;
     final retrieval = exercise.guidance.isRetrievalObserved
         ? (retrievalSucceeded
@@ -477,6 +556,20 @@ class PlayerState {
         : FactualRetrieval.notTested;
     final supplied = 1.0 - exercise.guidance.retrievalDemand;
     final started = retrievalSucceeded || startDraw < supplied;
+
+    if (practising && at != null) {
+      if (player.retrievalMemory case final memory?) {
+        encode(
+          materialId,
+          at,
+          memory.gainFor(
+            exercise.guidance,
+            started: started,
+            retrieved: retrievalSucceeded,
+          ),
+        );
+      }
+    }
 
     if (!started) {
       return Outcome(
@@ -597,9 +690,13 @@ class PlayerState {
     final gain = player.learningRate * atTheEdge * (completed ? 1.0 : 0.5);
     final key = (exercise.conditions.hands, exercise.material.familyId);
     _ability[key] = abilityOf(key.$1, key.$2) + gain;
+    if (player.retrievalMemory != null) return;
     final materialId = exercise.material.materialId;
     _familiarity[materialId] = math.min(0.99, familiarityOf(materialId) + gain);
   }
 }
+
+DateTime? _latest(DateTime? a, DateTime? b) =>
+    a == null || (b != null && b.isAfter(a)) ? b : a;
 
 double _sigmoid(double logit) => 1.0 / (1.0 + math.exp(-logit));

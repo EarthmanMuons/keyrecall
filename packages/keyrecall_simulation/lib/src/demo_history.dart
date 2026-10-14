@@ -114,12 +114,12 @@ Future<void> practiceDemoHistory({
       if (decision case PresentedAttempt(:final exercise, decision: final d)) {
         await session.acknowledgePresentation(d.attemptId);
         await session.closeWithOutcome(
-          playing.play(exercise, random),
+          playing.play(exercise, random, at: at),
           observedWallTime: at,
         );
       } else if (decision case PresentedAcquisition(:final task)) {
         await session.closeAcquisition(
-          performAcquisition(state: playing, task: task, rng: random),
+          performAcquisition(state: playing, task: task, rng: random, at: at),
           at: at,
         );
       } else {
