@@ -1,10 +1,10 @@
 # Retrieval memory
 
 > **Status:** a separately versioned retrieval model for the synthetic player
-> (`retrieval-memory-1`), built and characterized on fixed practice schedules
+> (`retrieval-memory-2`), built and characterized on fixed practice schedules
 > with no scheduler. Its contracts are tested. No policy has been compared under
-> it. Every parameter is an uncalibrated hypothesis; the frozen cohort and every
-> earlier result are unchanged.
+> it yet. Every parameter is an uncalibrated hypothesis; the frozen cohort and
+> every earlier result are unchanged.
 
 The [calendar retention](calendar-retention.md) study found that the frozen
 player's familiarity starts at 0.4 to 0.6, gains a few hundredths per material
@@ -43,6 +43,21 @@ apart teach the plain gain, so the knob moves massed and spaced practice apart
 without changing what daily practice teaches. Half-lives stop growing at ten
 years.
 
+A material's first encoding teaches the plain gain at any spacing. The starting
+trace's instant is placed only to reproduce a familiarity, so a gap measured
+from it would turn an initialization convention into a spacing bonus. In
+`retrieval-memory-1` it did: the first successful retrieval at a starting
+familiarity of 0.3 or 0.6 was scaled by 1.42 to 1.50 at spacing 0.5 and 1.85 to
+2.00 at spacing 1, across initial half-lives of 15 to 240 days, lengthening a
+60-day half-life to 113 or 130 days instead of 96. `retrieval-memory-2` removes
+that, and its numbers are the ones below.
+
+**Any encoding makes the material fully retrievable at that instant,** even a
+cued attempt with a small gain. A material seen with cues minutes ago is
+therefore nearly certain to be retrieved unaided now, and less so as the short
+half-life runs out. This inflates success just after supported practice and
+recovery, and any result about either should be read with that in mind.
+
 Execution is learned and forgotten exactly as in the frozen player. The model
 replaces only how familiarity moves.
 
@@ -59,6 +74,7 @@ model:
 - repeated successful retrieval strengthens later recall;
 - forgetting takes a material below where it started, toward zero;
 - materials left alone keep their own histories;
+- a first encoding teaches the plain gain at any spacing;
 - with spacing at zero, massed and spaced encodings leave identical traces, and
   with spacing on, daily encodings leave the same trace as without it while
   massed ones teach less and weekly ones more;
@@ -69,8 +85,8 @@ model:
 - a held-out reading teaches nothing and moves no clock, so later outcomes are
   identical with or without it.
 
-The tests for failed retrieval, the clock, and the reading were each checked by
-breaking the model and watching them fail.
+The tests for failed retrieval, the first encoding, the clock, and the reading
+were each checked by breaking the model and watching them fail.
 
 ## Characterization
 
@@ -86,42 +102,43 @@ Forgetting, by initial half-life, unguided daily practice against none:
 | Initial half-life | Schedule        | At the end | 30 days | 90 days | A year |
 | ----------------- | --------------- | ---------- | ------- | ------- | ------ |
 | 15 days           | none            | 0.08       | 0.02    | 0.00    | 0.00   |
-| 15 days           | unguided, daily | 0.48       | 0.36    | 0.24    | 0.08   |
+| 15 days           | unguided, daily | 0.48       | 0.34    | 0.22    | 0.06   |
 | 60 days           | none            | 0.37       | 0.26    | 0.13    | 0.01   |
-| 60 days           | unguided, daily | 0.96       | 0.92    | 0.84    | 0.62   |
+| 60 days           | unguided, daily | 0.96       | 0.91    | 0.83    | 0.59   |
 | 240 days          | none            | 0.53       | 0.49    | 0.41    | 0.18   |
-| 240 days          | unguided, daily | 1.00       | 0.99    | 0.97    | 0.90   |
+| 240 days          | unguided, daily | 1.00       | 0.99    | 0.97    | 0.89   |
 
 Spacing, retrievability a year after unguided practice:
 
 | Schedule | Spacing 0 | Spacing 0.5 | Spacing 1 |
 | -------- | --------- | ----------- | --------- |
-| Massed   | 0.57      | 0.41        | 0.14      |
-| Daily    | 0.58      | 0.62        | 0.65      |
-| Weekly   | 0.65      | 0.78        | 0.85      |
+| Massed   | 0.57      | 0.35        | 0.07      |
+| Daily    | 0.58      | 0.59        | 0.59      |
+| Weekly   | 0.65      | 0.76        | 0.82      |
 
 With spacing at zero the schedules differ only through how many retrievals
-succeeded: weekly practice starts earlier, when more is remembered.
+succeeded: weekly practice starts earlier, when more is remembered. Daily
+practice is the same at every setting, as the pivot intends.
 
 Learning strength, which scales every gain, a year after daily practice:
 
 | Schedule  | Strength 0.5 | Strength 1 | Strength 2 |
 | --------- | ------------ | ---------- | ---------- |
 | None      | 0.01         | 0.01       | 0.01       |
-| Unguided  | 0.33         | 0.62       | 0.80       |
-| Previewed | 0.16         | 0.40       | 0.74       |
-| Cued      | 0.05         | 0.10       | 0.27       |
+| Unguided  | 0.29         | 0.59       | 0.79       |
+| Previewed | 0.14         | 0.36       | 0.70       |
+| Cued      | 0.04         | 0.09       | 0.24       |
 
 Three properties matter for any comparison under this model:
 
 - **Support performs better and teaches less.** Previewed practice ends at 1.00
-  where unguided ends at 0.96, and retains 0.40 against 0.62 a year later. A
+  where unguided ends at 0.96, and retains 0.36 against 0.59 a year later. A
   policy judged by success during practice would prefer support that this model
   says costs retention.
 - **Failed retrieval teaches nothing, so support matters more to a player who
   knows less.** Starting at 0.3, unguided daily practice succeeds 2.8 times in
-  six and retains 0.39 a year later, about what previewed practice retains
-  (0.37). Starting at 0.6, unguided retains 0.62 against 0.40.
+  six and retains 0.36 a year later, about what previewed practice retains
+  (0.33). Starting at 0.6, unguided retains 0.59 against 0.36.
 - **What the player came with is forgotten.** Left alone, a material known at
   0.6 falls to 0.37 by the end of the schedule and to nearly nothing within a
   year at a 60-day half-life. That is a strong assumption about adults who

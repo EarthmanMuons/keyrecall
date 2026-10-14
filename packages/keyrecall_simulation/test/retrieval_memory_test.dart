@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
@@ -108,6 +110,22 @@ void main() {
     expect(recalledLater(1, daily), closeTo(recalledLater(0, daily), 1e-12));
     expect(recalledLater(1, spaced), greaterThan(recalledLater(0, spaced)));
     expect(recalledLater(1, massed), lessThan(recalledLater(0, massed)));
+  });
+
+  test('a first encoding teaches the plain gain at any spacing', () {
+    double recalledAfterFirst(double spacing) {
+      final playing = begun(
+        remembering(spacing: spacing, familiarity: {scale.materialId: 0.6}),
+      );
+      playing.encode(scale.materialId, day(1), 0.6);
+      return playing.familiarityAt(scale.materialId, day(31));
+    }
+
+    // Thirty days on a half-life of 30 lengthened by the gain alone.
+    final plain = math.pow(0.5, 30 / (30 * 1.6));
+    for (final spacing in [0.0, 0.5, 1.0]) {
+      expect(recalledAfterFirst(spacing), closeTo(plain, 1e-12));
+    }
   });
 
   test('retrieval encodes most, previewed notes less, cued notes least', () {

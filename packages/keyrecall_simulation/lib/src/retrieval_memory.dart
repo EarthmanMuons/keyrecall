@@ -23,13 +23,15 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// since the material was last encoded, so zero is the control in which massed
 /// and spaced encodings teach the same. Encodings [spacingPivot] apart teach
 /// the gain at any responsiveness, so the knob moves massed and spaced practice
-/// apart without changing what practice at the pivot teaches.
+/// apart without changing what practice at the pivot teaches. A material's
+/// first encoding has no observed interval and teaches the plain gain, since
+/// the starting trace's instant only places its starting familiarity.
 ///
 /// Uncalibrated: no device observation has measured any of these.
 class RetrievalMemory {
   /// Names this model in reports, so runs under it are never read as runs of
   /// the frozen familiarity model.
-  static const version = 'retrieval-memory-1';
+  static const version = 'retrieval-memory-2';
 
   /// How long the player's starting familiarity with every material takes to
   /// halve, in days.
@@ -76,10 +78,11 @@ class RetrievalMemory {
     if (gain <= 0) return trace;
     final gap = at.difference(trace.encodedAt).inMicroseconds.toDouble();
     final pivot = spacingPivot.inMicroseconds;
-    final spacing =
-        1 -
-        spacingResponsiveness +
-        spacingResponsiveness * 2 * gap / (gap + pivot);
+    final spacing = trace.isStarting
+        ? 1.0
+        : 1 -
+              spacingResponsiveness +
+              spacingResponsiveness * 2 * gap / (gap + pivot);
     return MemoryTrace(
       halfLifeDays: math.min(
         ceilingHalfLifeDays,
@@ -96,6 +99,7 @@ class RetrievalMemory {
     final age = initialHalfLifeDays * -math.log(known) / math.ln2;
     return MemoryTrace(
       halfLifeDays: initialHalfLifeDays,
+      isStarting: true,
       encodedAt: at.subtract(
         Duration(microseconds: (age * Duration.microsecondsPerDay).round()),
       ),
@@ -109,7 +113,15 @@ class MemoryTrace {
   final double halfLifeDays;
   final DateTime encodedAt;
 
-  const MemoryTrace({required this.halfLifeDays, required this.encodedAt});
+  /// Whether this is the trace the player came with, whose [encodedAt] was
+  /// placed to match a familiarity rather than observed.
+  final bool isStarting;
+
+  const MemoryTrace({
+    required this.halfLifeDays,
+    required this.encodedAt,
+    this.isStarting = false,
+  });
 
   /// The probability the notes come unaided at [at].
   double retrievabilityAt(DateTime at) {
