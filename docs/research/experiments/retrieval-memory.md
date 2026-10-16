@@ -1,11 +1,11 @@
 # Retrieval memory
 
 > **Status:** a separately versioned retrieval model for the synthetic player
-> (`retrieval-memory-2`), built and characterized on fixed practice schedules
-> with no scheduler. Its contracts are tested. The policy comparison under it is
-> in [memory comparison](memory-comparison.md). Every parameter is an
-> uncalibrated hypothesis; the frozen cohort and every earlier result are
-> unchanged.
+> (`retrieval-memory-2`, and `retrieval-memory-3` with partial restoration),
+> built and characterized on fixed practice schedules with no scheduler. Its
+> contracts are tested. The policy comparison under it is in
+> [memory comparison](memory-comparison.md). Every parameter is an uncalibrated
+> hypothesis; the frozen cohort and every earlier result are unchanged.
 
 The [calendar retention](calendar-retention.md) study found that the frozen
 player's familiarity starts at 0.4 to 0.6, gains a few hundredths per material
@@ -61,6 +61,18 @@ recovery, and through it lowers recovery workload, frees ordinary slots for
 other work, makes supported introductions strong memory interventions, and holds
 well-practiced retrieval near its ceiling. Every configuration of a comparison
 under this model shares the rule, so its results are robust only within it.
+
+`retrieval-memory-3` changes only that rule. An encoding closes the gap to full
+retrievability by its gain as a share of a successful unguided retrieval's: a
+retrieval still restores fully, since the notes just came, a previewed attempt
+restores half of what was missing, and a cued attempt or acquisition work a
+sixth. Half-lives grow exactly as in `retrieval-memory-2`, and spacing is still
+measured from the encoding itself rather than from where the shortfall places
+the forgetting curve, so it adds no free parameter. With full restoration the
+model is `retrieval-memory-2`, and its characterization reproduces byte for
+byte. Tests pin the restored share, the unchanged half-life, and spacing
+measured from the encoding; the share and the spacing instant were each checked
+by breaking them.
 
 Execution is learned and forgotten exactly as in the frozen player. The model
 replaces only how familiarity moves.
@@ -147,6 +159,14 @@ Three properties matter for any comparison under this model:
   0.6 falls to 0.37 by the end of the schedule and to nearly nothing within a
   year at a 60-day half-life. That is a strong assumption about adults who
   learned scales long ago, and it is the opposite of the frozen player's.
+
+Under `retrieval-memory-3`, at the same settings, only supported practice moves.
+Unguided practice is identical, since a failed retrieval encodes nothing and a
+successful one still restores fully. Cued daily practice ends at 0.71 from a
+start of 0.3 and 0.77 from 0.6, rather than 1.00, and keeps 0.06 to 0.07 a year
+later rather than 0.09; previewed practice ends at 0.92 to 0.97 rather than 0.98
+to 1.00 and keeps 0.28 to 0.32 rather than 0.33 to 0.36. Its retrievals during
+the schedule fall from 4.4 to 3.6 in six from 0.3 and from 5.0 to 4.4 from 0.6.
 
 ## What comes next
 

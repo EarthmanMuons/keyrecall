@@ -29,7 +29,9 @@ Future<void> main(List<String> arguments) async {
     ..addOption('seeds', defaultsTo: '4:104')
     ..addOption(
       'configs',
-      help: 'learning:half-life:spacing, or frozen, comma separated',
+      help:
+          'learning:half-life:spacing[:restoration], or frozen, comma '
+          'separated',
       defaultsTo: '1:60:0.5',
     )
     ..addOption(
@@ -101,7 +103,7 @@ Future<void> main(List<String> arguments) async {
               'tool': 'scale_execution',
               'player model': player.retrievalMemory == null
                   ? 'frozen familiarity'
-                  : RetrievalMemory.version,
+                  : player.retrievalMemory!.version,
               if (player.retrievalMemory case final memory?)
                 'memory': {
                   'initial half-life days': memory.initialHalfLifeDays,
@@ -112,6 +114,7 @@ Future<void> main(List<String> arguments) async {
                   'spacing responsiveness': memory.spacingResponsiveness,
                   'spacing pivot days': memory.spacingPivot.inMinutes / 1440,
                   'ceiling half-life days': memory.ceilingHalfLifeDays,
+                  'restoration': memory.restoration.name,
                 },
               'intervention': switch (allocator) {
                 null => 'none',
@@ -322,19 +325,10 @@ RequirementAllocator? _allocatorFor(String arm) {
 }
 
 SyntheticPlayer _withMemory(SyntheticPlayer player, String config) {
-  final [learning, halfLife, spacing] = [
-    for (final part in config.split(':')) double.parse(part),
-  ];
+  final memory = RetrievalMemory.scenario(config);
   return player.copyWith(
-    id: '${player.id}+${RetrievalMemory.version}',
-    retrievalMemory: RetrievalMemory(
-      initialHalfLifeDays: halfLife,
-      retrievalGain: 0.6 * learning,
-      previewGain: 0.3 * learning,
-      cuedGain: 0.1 * learning,
-      acquisitionGain: 0.1 * learning,
-      spacingResponsiveness: spacing,
-    ),
+    id: '${player.id}+${memory.version}',
+    retrievalMemory: memory,
   );
 }
 

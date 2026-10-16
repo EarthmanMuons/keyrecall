@@ -292,9 +292,10 @@ void main() {
   });
 
   test('a longer calendar continues the shorter run unchanged', () async {
+    const memory = RetrievalMemory(initialHalfLifeDays: 60);
     final player = PlayerArchetypes.developing.copyWith(
-      id: 'developing+${RetrievalMemory.version}',
-      retrievalMemory: const RetrievalMemory(initialHalfLifeDays: 60),
+      id: 'developing+${memory.version}',
+      retrievalMemory: memory,
     );
     Future<ServiceCensus> run(int days) => runServiceCensus(
       player: player,

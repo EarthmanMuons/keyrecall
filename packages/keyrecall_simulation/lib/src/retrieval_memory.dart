@@ -27,11 +27,17 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// first encoding has no observed interval and teaches the plain gain, since
 /// the starting trace's instant only places its starting familiarity.
 ///
+/// [restoration] decides how retrievable an encoding leaves the material at
+/// that instant, while its half-life grows the same either way.
+///
 /// Uncalibrated: no device observation has measured any of these.
 class RetrievalMemory {
   /// Names this model in reports, so runs under it are never read as runs of
-  /// the frozen familiarity model.
-  static const version = 'retrieval-memory-2';
+  /// the frozen familiarity model or of the other restoration.
+  String get version => switch (restoration) {
+    MemoryRestoration.full => 'retrieval-memory-2',
+    MemoryRestoration.byGain => 'retrieval-memory-3',
+  };
 
   /// How long the player's starting familiarity with every material takes to
   /// halve, in days.
@@ -51,6 +57,8 @@ class RetrievalMemory {
   /// The longest a half-life can grow, in days.
   final double ceilingHalfLifeDays;
 
+  final MemoryRestoration restoration;
+
   const RetrievalMemory({
     required this.initialHalfLifeDays,
     this.retrievalGain = 0.6,
@@ -60,7 +68,28 @@ class RetrievalMemory {
     this.spacingResponsiveness = 0.5,
     this.spacingPivot = const Duration(days: 1),
     this.ceilingHalfLifeDays = 3650,
+    this.restoration = MemoryRestoration.full,
   });
+
+  /// The scenario `learning:half-life:spacing`, optionally followed by a
+  /// [MemoryRestoration] name, with every default gain scaled by learning.
+  factory RetrievalMemory.scenario(String config) {
+    final parts = config.split(':');
+    final [learning, halfLife, spacing] = [
+      for (final part in parts.take(3)) double.parse(part),
+    ];
+    return RetrievalMemory(
+      initialHalfLifeDays: halfLife,
+      retrievalGain: 0.6 * learning,
+      previewGain: 0.3 * learning,
+      cuedGain: 0.1 * learning,
+      acquisitionGain: 0.1 * learning,
+      spacingResponsiveness: spacing,
+      restoration: parts.length > 3
+          ? MemoryRestoration.values.byName(parts[3])
+          : MemoryRestoration.full,
+    );
+  }
 
   /// What a started or unstarted attempt under [guidance] encodes.
   double gainFor(
@@ -83,12 +112,27 @@ class RetrievalMemory {
         : 1 -
               spacingResponsiveness +
               spacingResponsiveness * 2 * gap / (gap + pivot);
+    final halfLife = math.min(
+      ceilingHalfLifeDays,
+      trace.halfLifeDays * (1 + gain * spacing),
+    );
+    final restored = switch (restoration) {
+      MemoryRestoration.full => 1.0,
+      MemoryRestoration.byGain => () {
+        final before = trace.retrievabilityAt(at);
+        final share = retrievalGain <= 0
+            ? 1.0
+            : math.min(1.0, gain / retrievalGain);
+        return before + share * (1 - before);
+      }(),
+    };
+    final age = halfLife * -math.log(restored) / math.ln2;
     return MemoryTrace(
-      halfLifeDays: math.min(
-        ceilingHalfLifeDays,
-        trace.halfLifeDays * (1 + gain * spacing),
-      ),
+      halfLifeDays: halfLife,
       encodedAt: at,
+      anchoredAt: at.subtract(
+        Duration(microseconds: (age * Duration.microsecondsPerDay).round()),
+      ),
     );
   }
 
@@ -107,11 +151,28 @@ class RetrievalMemory {
   }
 }
 
+/// How retrievable an encoding leaves a material at the instant it happens.
+enum MemoryRestoration {
+  /// Fully, whatever the encoding.
+  full,
+
+  /// Closing the gap to full by the encoding's gain as a share of a
+  /// successful unguided retrieval's, so a retrieval restores fully and
+  /// supported work in proportion to what it teaches.
+  byGain,
+}
+
 /// One material's memory: how long it takes to halve and when it was last
 /// encoded.
 class MemoryTrace {
   final double halfLifeDays;
+
+  /// When the material was last encoded, which spacing measures from.
   final DateTime encodedAt;
+
+  /// The instant from which retrievability halves, earlier than [encodedAt]
+  /// when the encoding left it short of full.
+  final DateTime anchoredAt;
 
   /// Whether this is the trace the player came with, whose [encodedAt] was
   /// placed to match a familiarity rather than observed.
@@ -120,13 +181,14 @@ class MemoryTrace {
   const MemoryTrace({
     required this.halfLifeDays,
     required this.encodedAt,
+    DateTime? anchoredAt,
     this.isStarting = false,
-  });
+  }) : anchoredAt = anchoredAt ?? encodedAt;
 
   /// The probability the notes come unaided at [at].
   double retrievabilityAt(DateTime at) {
     final days =
-        at.difference(encodedAt).inMicroseconds / Duration.microsecondsPerDay;
+        at.difference(anchoredAt).inMicroseconds / Duration.microsecondsPerDay;
     return math.pow(0.5, math.max(0.0, days) / halfLifeDays).toDouble();
   }
 }

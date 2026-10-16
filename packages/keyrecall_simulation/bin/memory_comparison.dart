@@ -27,7 +27,7 @@ Future<void> main(List<String> arguments) async {
     ..addOption('seeds', defaultsTo: '0:100,1:101,2:102,3:103,4:104')
     ..addOption(
       'configs',
-      help: 'learning:half-life:spacing, comma separated',
+      help: 'learning:half-life:spacing[:restoration], comma separated',
       defaultsTo:
           '1:60:0.5,0.5:15:0,0.5:15:1,0.5:240:0.5,2:15:0.5,2:240:0,2:240:1',
     )
@@ -37,19 +37,10 @@ Future<void> main(List<String> arguments) async {
   for (final index in options.option('profiles')!.split(',')) {
     final profile = PlausibilityCohort.profiles[int.parse(index)];
     for (final config in options.option('configs')!.split(',')) {
-      final [learning, halfLife, spacing] = [
-        for (final part in config.split(':')) double.parse(part),
-      ];
+      final memory = RetrievalMemory.scenario(config);
       final player = profile.player.copyWith(
-        id: '${profile.player.id}+${RetrievalMemory.version}',
-        retrievalMemory: RetrievalMemory(
-          initialHalfLifeDays: halfLife,
-          retrievalGain: 0.6 * learning,
-          previewGain: 0.3 * learning,
-          cuedGain: 0.1 * learning,
-          acquisitionGain: 0.1 * learning,
-          spacingResponsiveness: spacing,
-        ),
+        id: '${profile.player.id}+${memory.version}',
+        retrievalMemory: memory,
       );
       for (final pair in options.option('seeds')!.split(',')) {
         final [schedule, playerSeed] = [

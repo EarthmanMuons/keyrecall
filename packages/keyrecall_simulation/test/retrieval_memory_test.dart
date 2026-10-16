@@ -274,4 +274,49 @@ void main() {
       throwsStateError,
     );
   });
+
+  group('restoring by gain', () {
+    const full = RetrievalMemory(initialHalfLifeDays: 30);
+    const byGain = RetrievalMemory(
+      initialHalfLifeDays: 30,
+      restoration: MemoryRestoration.byGain,
+    );
+    final faded = MemoryTrace(halfLifeDays: 30, encodedAt: day(-30));
+    double now(MemoryTrace trace) => trace.retrievabilityAt(start);
+
+    test('is versioned apart from full restoration', () {
+      expect(full.version, 'retrieval-memory-2');
+      expect(byGain.version, 'retrieval-memory-3');
+    });
+
+    test('closes the gap to full by the share of a retrieval it teaches', () {
+      expect(now(faded), closeTo(0.5, 1e-9));
+      expect(now(byGain.encoded(faded, start, 0.6)), closeTo(1, 1e-9));
+      expect(now(byGain.encoded(faded, start, 0.3)), closeTo(0.75, 1e-6));
+      expect(now(byGain.encoded(faded, start, 0.1)), closeTo(0.5833, 1e-4));
+      expect(now(full.encoded(faded, start, 0.1)), 1);
+    });
+
+    test('grows the half-life as full restoration does', () {
+      for (final gain in [0.1, 0.3, 0.6]) {
+        expect(
+          byGain.encoded(faded, start, gain).halfLifeDays,
+          full.encoded(faded, start, gain).halfLifeDays,
+        );
+      }
+    });
+
+    test('measures spacing from the encoding, not from where recall sits', () {
+      final once = byGain.encoded(faded, start, 0.1);
+      final twice = byGain.encoded(once, day(1), 0.1);
+      final fullTwice = full.encoded(
+        full.encoded(faded, start, 0.1),
+        day(1),
+        0.1,
+      );
+
+      expect(once.encodedAt, start);
+      expect(twice.halfLifeDays, closeTo(fullTwice.halfLifeDays, 1e-9));
+    });
+  });
 }

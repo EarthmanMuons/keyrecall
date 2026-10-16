@@ -21,7 +21,8 @@ void main(List<String> arguments) {
     ..addOption('half-lives', defaultsTo: '15,60,240')
     ..addOption('learning', defaultsTo: '0.5,1,2')
     ..addOption('spacing', defaultsTo: '0,0.5,1')
-    ..addOption('familiarity', defaultsTo: '0.3,0.6');
+    ..addOption('familiarity', defaultsTo: '0.3,0.6')
+    ..addOption('restoration', defaultsTo: 'full');
   final options = parser.parse(arguments);
   List<double> numbers(String name) => [
     for (final part in options.option(name)!.split(',')) double.parse(part),
@@ -30,19 +31,14 @@ void main(List<String> arguments) {
   for (final halfLife in numbers('half-lives')) {
     for (final learning in numbers('learning')) {
       for (final spacing in numbers('spacing')) {
-        final memory = RetrievalMemory(
-          initialHalfLifeDays: halfLife,
-          retrievalGain: 0.6 * learning,
-          previewGain: 0.3 * learning,
-          cuedGain: 0.1 * learning,
-          acquisitionGain: 0.1 * learning,
-          spacingResponsiveness: spacing,
+        final memory = RetrievalMemory.scenario(
+          '$learning:$halfLife:$spacing:${options.option('restoration')}',
         );
         for (final familiarity in numbers('familiarity')) {
           for (final schedule in _schedules) {
             stdout.writeln(
               jsonEncode({
-                'model': RetrievalMemory.version,
+                'model': memory.version,
                 'initial half-life': halfLife,
                 'learning': learning,
                 'spacing': spacing,
@@ -100,7 +96,7 @@ Map<String, Object?> _run(
   _Schedule schedule,
 ) {
   final player = PlayerArchetypes.developing.copyWith(
-    id: 'developing+${RetrievalMemory.version}',
+    id: 'developing+${memory.version}',
     materialFamiliarity: {_material.materialId: familiarity},
     retrievalMemory: memory,
   );
