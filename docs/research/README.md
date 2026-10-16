@@ -53,6 +53,7 @@ citation key is not an argument.
 | [`calendar-retention.md`](experiments/calendar-retention.md)               | Whether allocation costs retention across calendar gaps                         |
 | [`retrieval-memory.md`](experiments/retrieval-memory.md)                   | A retrieval model that learns from retrieval and forgets below where it started |
 | [`memory-comparison.md`](experiments/memory-comparison.md)                 | Whether allocation's case survives a player who forgets                         |
+| [`context-relief.md`](experiments/context-relief.md)                       | Whether bounding unproductive allocation gives the scale frontier back          |
 
 ## How to read a negative result here
 

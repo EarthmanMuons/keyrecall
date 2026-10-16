@@ -5,17 +5,22 @@ import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart'
     hide AttemptRecord;
 
-/// Where v1-14 and allocation at `k` of 2 spend a run's slots, and what
-/// execution each leaves, for one cohort player under [RetrievalMemory].
+/// Where v1-14 and allocation at `k` of 2, with or without [ContextRelief],
+/// spend a run's slots and what execution each leaves, for one cohort player
+/// under [RetrievalMemory] or the frozen familiarity model.
 ///
 /// Counts decisions by family, selection stage, and purpose; attempts by
 /// family, hands, and guidance; strands introduced and managed by hands and
-/// by which third of the run first reached them; and held-out managed play by
-/// family and hands, read 21 days after the day following the last session.
+/// by which third of the run first reached them; allocation's interventions by
+/// strand; and what dose held back. Reads coverage and missed runs, and
+/// held-out managed play by family and hands and retrieval by family, 21 days
+/// after the day following the last session.
 ///
 /// Writes one JSON line per configuration, seed pair, and arm.
 Future<void> main(List<String> arguments) async {
@@ -27,7 +32,11 @@ Future<void> main(List<String> arguments) async {
       help: 'learning:half-life:spacing, or frozen, comma separated',
       defaultsTo: '1:60:0.5',
     )
-    ..addOption('arms', defaultsTo: 'v1-14,alloc-2');
+    ..addOption(
+      'arms',
+      help: 'v1-14, alloc-2, or relief:trigger:budget:window, comma separated',
+      defaultsTo: 'v1-14,alloc-2',
+    );
   final options = parser.parse(arguments);
   final profile =
       PlausibilityCohort.profiles[int.parse(options.option('profile')!)];
@@ -48,13 +57,13 @@ Future<void> main(List<String> arguments) async {
       for (final arm in options.option('arms')!.split(',')) {
         stderr.writeln('${player.id} $config $pair $arm');
         late PlayerState playing;
+        final allocator = _allocatorFor(arm);
+        final probe = _DoseProbe(allocator);
         final census = await runServiceCensus(
           player: player,
           sessions: sessions,
           playerSeed: playerSeed,
-          intervention: arm == 'v1-14'
-              ? null
-              : RequirementAllocator(k: 2, protectionFloor: 0.6),
+          intervention: probe,
           onClose: (_, state, _) => playing = state,
         );
         stdout.writeln(
@@ -76,12 +85,42 @@ Future<void> main(List<String> arguments) async {
             'strands': _strands(census.records),
             'busiest strands': _busiest(census.records),
             'interventions': _interventions(census),
+            'dose': probe.summary,
+            'outcomes': ServiceOutcomes.of(
+              census,
+              intervention: allocator,
+            ).toJson(),
+            'allocation': ?allocator?.diagnostics,
+            'held-out retrieval': {
+              for (final MapEntry(:key, :value) in assess(
+                standardAssessment(allPracticeMaterials),
+                playing,
+                at: delayed,
+              ).families.entries)
+                key: value.retrieval,
+            },
             'held-out managed': _heldOut(playing, delayed),
           }),
         );
       }
     }
   }
+}
+
+RequirementAllocator? _allocatorFor(String arm) {
+  if (arm == 'v1-14') return null;
+  if (arm == 'alloc-2') return RequirementAllocator(k: 2, protectionFloor: 0.6);
+  final [name, trigger, budget, window] = arm.split(':');
+  if (name != 'relief') throw ArgumentError.value(arm, 'arm');
+  return RequirementAllocator(
+    k: 2,
+    protectionFloor: 0.6,
+    relief: ContextRelief(
+      trigger: int.parse(trigger),
+      budget: int.parse(budget),
+      window: int.parse(window),
+    ),
+  );
 }
 
 SyntheticPlayer _withMemory(SyntheticPlayer player, String config) {
@@ -99,6 +138,75 @@ SyntheticPlayer _withMemory(SyntheticPlayer player, String config) {
       spacingResponsiveness: spacing,
     ),
   );
+}
+
+/// Passes [inner]'s choices through unchanged, or ranking's when there is
+/// none, and records what dose did at every decision.
+class _DoseProbe implements ServiceIntervention {
+  final ServiceIntervention? inner;
+  final _contracted = <String, int>{};
+  final _held = <String, int>{};
+  var _decisions = 0;
+
+  _DoseProbe(this.inner);
+
+  Map<String, Object?> get summary => {
+    'decisions': _decisions,
+    'contracted': _contracted,
+    'held from a ranked, fully eligible candidate': _held,
+  };
+
+  @override
+  List<ServiceSubstitution> get substitutions => inner?.substitutions ?? [];
+
+  @override
+  Map<String, num> get diagnostics => inner?.diagnostics ?? {};
+
+  @override
+  void settle(AttemptJournal journal, LearnerModel learner, int decision) =>
+      inner?.settle(journal, learner, decision);
+
+  @override
+  void record(List<RequirementObservation> observations) =>
+      inner?.record(observations);
+
+  @override
+  CandidateSelected? intervene({
+    required int decision,
+    required SelectionResult result,
+    required List<RequirementState> requirements,
+    required SchedulerPipeline pipeline,
+    required LearnerState state,
+    required SessionState session,
+    required DateTime at,
+    required int journalLength,
+  }) {
+    _decisions++;
+    for (final family in result.dose.contracted.keys) {
+      _contracted[family] = (_contracted[family] ?? 0) + 1;
+    }
+    final kept = result.dose.selectable.toSet();
+    final held = {
+      for (final trace in result.pacing.selectable)
+        if (!kept.contains(trace) &&
+            trace.eligibility.tier == EligibilityTier.fullyEligible)
+          '${trace.exercise.material.familyId} '
+              '${_contextName(executionContextOf(trace.exercise))}',
+    };
+    for (final key in held) {
+      _held[key] = (_held[key] ?? 0) + 1;
+    }
+    return inner?.intervene(
+      decision: decision,
+      result: result,
+      requirements: requirements,
+      pipeline: pipeline,
+      state: state,
+      session: session,
+      at: at,
+      journalLength: journalLength,
+    );
+  }
 }
 
 Map<String, int> _tally(Iterable<String> keys) {

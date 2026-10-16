@@ -4,6 +4,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'context_relief.dart';
 import 'service_census.dart';
 import 'service_pressure.dart';
 
@@ -120,6 +121,10 @@ class RequirementAllocator implements ServiceIntervention {
   final int k;
   final double protectionFloor;
 
+  /// Bounds service to execution groups that allocation has served repeatedly
+  /// without managed execution, or null for none.
+  final ContextRelief? relief;
+
   final Map<String, int> _waiting = {};
   final Map<String, int> _journalWaiting = {};
   final Map<String, int> _breadthAtStart = {};
@@ -140,7 +145,11 @@ class RequirementAllocator implements ServiceIntervention {
   int _journalChoices = 0;
   int _disagreements = 0;
 
-  RequirementAllocator({required this.k, required this.protectionFloor});
+  RequirementAllocator({
+    required this.k,
+    required this.protectionFloor,
+    this.relief,
+  });
 
   /// Actionable opportunities [requirementId] has missed in a row.
   int waitingFor(String requirementId) => _waiting[requirementId] ?? 0;
@@ -162,10 +171,12 @@ class RequirementAllocator implements ServiceIntervention {
     'exact counter acted': _choices,
     'journal counter acted': _journalChoices,
     'counters chose differently': _disagreements,
+    ...?relief?.diagnostics,
   };
 
   @override
-  void settle(AttemptJournal journal, LearnerModel learner, int decision) {}
+  void settle(AttemptJournal journal, LearnerModel learner, int decision) =>
+      relief?.settle(journal, learner);
 
   @override
   CandidateSelected? intervene({
@@ -248,10 +259,12 @@ class RequirementAllocator implements ServiceIntervention {
         winner != null && isProtected(winner);
 
     AllocationChoice<CandidateTrace>? choice;
+    final withheld = <String>{};
     if (_allocatable) {
       AllocationChoice<CandidateTrace>? choose(
         Map<String, int> waiting, {
         bool protectedWinner = true,
+        Map<String, CandidateTrace>? among,
       }) => allocate(
         winner: winner!,
         winnerProtected: protectedWinner && winnerProtected,
@@ -259,7 +272,7 @@ class RequirementAllocator implements ServiceIntervention {
           for (final MapEntry(:key, :value) in waiting.entries)
             if (byId.containsKey(key)) key: value,
         },
-        bestByRequirement: best,
+        bestByRequirement: among ?? best,
         breadth: _breadth,
         k: k,
         compare: compare,
@@ -273,6 +286,31 @@ class RequirementAllocator implements ServiceIntervention {
       if (choice?.candidate != shadow?.candidate) _disagreements++;
       if (winnerProtected && choose(_waiting, protectedWinner: false) != null) {
         _withheldForProtection++;
+      }
+      if (relief case final relief?) {
+        while (choice != null &&
+            !relief.admit(ContextRelief.groupOf(choice.candidate.exercise))) {
+          withheld.add(ContextRelief.groupOf(choice.candidate.exercise));
+          final among = {
+            for (final requirement in requirements)
+              requirement.resolved.requirement.id: ?pipeline.selectBest([
+                for (final trace
+                    in selectable[requirement.resolved.material] ??
+                        const <CandidateTrace>[])
+                  if (serves(requirement.resolved.requirement.id, trace) &&
+                      !withheld.contains(ContextRelief.groupOf(trace.exercise)))
+                    trace,
+              ]),
+          };
+          choice = choose(_waiting, among: among);
+          if (choice != null &&
+              best[choice.requirementId] != choice.candidate &&
+              withheld.contains(
+                ContextRelief.groupOf(best[choice.requirementId]!.exercise),
+              )) {
+            relief.usedAlternative();
+          }
+        }
       }
     }
 
@@ -303,6 +341,8 @@ class RequirementAllocator implements ServiceIntervention {
                 ? ('no slot', stage)
                 : winnerProtected
                 ? ('no slot', 'protected winner')
+                : withheld.contains(ContextRelief.groupOf(best[id]!.exercise))
+                ? ('no slot', 'relief')
                 : ('no slot', 'another owed requirement')
           : _unservable(
               [
@@ -332,6 +372,7 @@ class RequirementAllocator implements ServiceIntervention {
     final promoted = choice.candidate;
     final promotedFor = choice.requirementId!;
     final displaced = winner!;
+    relief?.serve(journalLength);
     substitutions.add(
       ServiceSubstitution(
         decision: decision,

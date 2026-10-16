@@ -245,7 +245,11 @@ readiness plateau allocation crosses more often than v1-14, not a retention cost
 of allocation itself. Motor execution reads as a consistent loss for one kind of
 profile: for `cohort_20` on calendars where allocation's arpeggio progression
 stalls, the scales never reach hands together. That is the policy limitation
-row, and the case to resolve before promotion.
+row, and the case to resolve before promotion. It recurs at smaller size or
+without a scale cost in `cohort_10`, `cohort_11`, and `cohort_12`, so
+`cohort_20` is its extreme rather than an isolated case. Bounding the
+unproductive service, in [context relief](context-relief.md), did not give the
+scale frontier back.
 
 ## What it does not establish
 
