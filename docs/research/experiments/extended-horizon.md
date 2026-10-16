@@ -76,8 +76,10 @@ allocation in four pairs as v1-14's own hands-together scales slip to 0.94 to
 arpeggios, and those it has fade: its arpeggios retrievable 21 days after a
 checkpoint fall from 9.1 to 11.8 at the original end to 4.1 to 8.4 at three
 times. Allocation holds 23.8 to 23.9 of 24 by three times in every pair, and
-right-hand arpeggios at 1.00 against 0.04 to 0.33. Neither arm demonstrates
-hands-together arpeggios: at most three such strands are ever managed.
+right-hand arpeggios at 1.00 against 0.04 to 0.33. Its arpeggios sit at about 14
+until the other ten open together, for `cohort_10` only at 2.5 to 3 times, the
+last pair at the final checkpoint. Neither arm demonstrates hands-together
+arpeggios: at most three such strands are ever managed.
 
 **Allocation's own service is front-loaded.** Almost all its interventions fall
 within the original run: `cohort_10`'s hands-together arpeggio interventions
@@ -111,6 +113,8 @@ and these runs can price it in practice but not decide it.
 
 Two players, one memory configuration, and one calendar per seed pair. The
 readings assume nothing is practiced in the 21 days after a checkpoint, and the
-memory model's reset to full recall after any encoding holds throughout. A
+memory model's reset to full recall after any encoding holds throughout;
+[partial restoration](partial-restoration.md) relaxes it and keeps the delay,
+but two `cohort_10` pairs then open fewer than 24 arpeggios by three times. A
 learner's time is not interchangeable across a year as the calendar's slots are,
 and real learners stop, change goals, or plateau in ways this player does not.

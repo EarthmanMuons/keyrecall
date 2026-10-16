@@ -55,6 +55,7 @@ citation key is not an argument.
 | [`memory-comparison.md`](experiments/memory-comparison.md)                 | Whether allocation's case survives a player who forgets                            |
 | [`context-relief.md`](experiments/context-relief.md)                       | Whether bounding service without demonstrated execution restores scale progression |
 | [`extended-horizon.md`](experiments/extended-horizon.md)                   | Whether allocation's scale cost is a delay or a lasting divergence                 |
+| [`partial-restoration.md`](experiments/partial-restoration.md)             | Whether allocation's advantage depends on resetting recall after every encoding    |
 
 ## How to read a negative result here
 
