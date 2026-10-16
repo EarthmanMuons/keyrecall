@@ -84,6 +84,13 @@ Future<void> main(List<String> arguments) async {
             closed++;
           },
         );
+        final planned = sessions.fold(0, (sum, s) => sum + s.slots);
+        if (probe.decisions != planned) {
+          throw StateError(
+            'run made ${probe.decisions} decisions, not the $planned its '
+            'sessions plan',
+          );
+        }
         stdout.writeln(
           jsonEncode({
             'player': player.id,
@@ -123,7 +130,7 @@ Future<void> main(List<String> arguments) async {
               'calendar seed': schedule,
               'player seed': playerSeed,
               'sessions': sessions.length,
-              'slots': sessions.fold(0, (sum, s) => sum + s.slots),
+              'slots': planned,
               'first session': sessions.first.start.toIso8601String(),
               'last session': sessions.last.start.toIso8601String(),
               'decisions': probe.decisions,

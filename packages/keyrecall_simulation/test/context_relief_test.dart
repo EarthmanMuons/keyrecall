@@ -3,7 +3,8 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
 
-import 'package:keyrecall_simulation/keyrecall_simulation.dart';
+import 'package:keyrecall_simulation/keyrecall_simulation.dart'
+    hide AttemptRecord;
 
 void main() {
   Exercise arpeggio(String tonic, HandConfiguration hands) => Exercise.linear(
@@ -68,6 +69,87 @@ void main() {
         ServiceEvidence.of(outcome(started: false, completed: false)),
         ServiceEvidence.notStarted,
       );
+    });
+  });
+
+  group('settled from a journal', () {
+    const learner = LearnerModel();
+    final at = DateTime.utc(2026);
+    final state = learner.placementState(PlacementTier.beginner, at: at);
+    final journal = AttemptJournal(
+      JournalHeader(profileId: 'relief', createdAt: at),
+    );
+    void play(
+      Exercise exercise, {
+      required bool completed,
+      required double continuity,
+    }) {
+      final outcome = Outcome(
+        started: true,
+        retrieval: FactualRetrieval.succeeded,
+        completed: completed,
+        materialRetrieval: 1,
+        pitchIntegrity: 1,
+        continuity: continuity,
+        temporalStability: null,
+        achievedTempoRatio: 1,
+        topologyAccuracy: 1,
+      );
+      final weights = evidenceWeightsFor(exercise, outcome);
+      final index = journal.records.length;
+      journal.append(
+        AttemptRecord(
+          journalSequence: journal.nextSequence,
+          identity: AttemptIdentity(
+            profileId: 'relief',
+            attemptId: 'attempt-$index',
+            sessionId: 'session',
+            indexInSession: index,
+            occurredAt: at,
+          ),
+          provenance: const ModelProvenance(
+            learnerModelVersion: 'test',
+            schedulerModelVersion: 'test',
+          ),
+          exercise: exercise,
+          closure: AttemptClosure.measured(
+            termination: AttemptTermination.learnerStopped,
+            outcome: outcome,
+            weights: weights,
+            memoryUpdate: learner.applyOutcome(
+              state: state,
+              exercise: exercise,
+              outcome: outcome,
+              weights: weights,
+              prediction: learner.predict(state, exercise, at: at),
+              at: at,
+            ),
+          ),
+        ),
+      );
+    }
+
+    test('ignores incomplete service, timed or not, and service it did not '
+        'choose', () {
+      final r = relief();
+      for (var i = 0; i < 3; i++) {
+        r.serve(journal.records.length);
+        play(eTogether, completed: false, continuity: 0.8);
+      }
+      for (var i = 0; i < 3; i++) {
+        play(eTogether, completed: true, continuity: 0.1);
+      }
+      r.settle(journal, learner);
+      expect(r.isRelieved(together), isFalse);
+      expect(r.diagnostics['relief evidence incomplete'], 3);
+
+      for (var i = 0; i < 3; i++) {
+        r.serve(journal.records.length);
+        play(aTogether, completed: true, continuity: 0.1);
+      }
+      r.settle(journal, learner);
+      expect(r.isRelieved(together), isTrue);
+      expect(r.diagnostics['relief evidence unmanaged'], 3);
     });
   });
 
