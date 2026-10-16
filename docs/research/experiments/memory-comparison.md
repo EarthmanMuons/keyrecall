@@ -7,8 +7,10 @@
 > loss larger than 0.03 is `cohort_19` with a 15-day initial half-life, and each
 > comes from a readiness plateau that v1-14 crossed and allocation did not,
 > while allocation crosses it more often overall. The effect shrinks with slower
-> forgetting and never reverses. Nothing is promoted; the scheduler stays at
-> v1-14.
+> forgetting and never reverses. The larger cost is in execution: for
+> `cohort_20`, allocation's service of hands-together arpeggios it cannot manage
+> halves the frontier steps that take its scales hands together. Nothing is
+> promoted; the scheduler stays at v1-14.
 
 The frozen player's familiarity returns to where it started however it is
 practised, which bounds what breadth can buy in retention. This comparison asks
@@ -139,6 +141,62 @@ player who forgets an unpractised arpeggio is paid for being shown it.
   This does not separate the policies, but neither scheduler's belief tracks
   this memory.
 
+## Scale execution for `cohort_20`
+
+`cohort_20` is the weakest of the six, favors scales by 0.24 logits, with
+arpeggios weaker by the same. Under memory it manages a median of 58 fewer scale
+strands with allocation, on every seed pair, where under the frozen player
+allocation managed more on four of five. A strand is a material in one hand
+configuration and motion, counted once managed, so the loss is in contexts never
+reached rather than execution demonstrated and then lost.
+
+```console
+dart run keyrecall_simulation:scale_execution --profile 19 \
+  --configs 1:60:0.5,frozen --seeds 4:104,1:101,3:103
+```
+
+The diagnostic tallies each arm's decisions by stage and purpose, its attempts
+and strands by hands, its busiest strands, and held-out managed play by family
+and hands 21 days after the end. At 1:60:0.5:
+
+| Seed pair | Arm        | Scale frontier steps | Arpeggio progression by allocation | Scale strands managed together | Held-out scales together | Held-out arpeggios, right hand |
+| --------- | ---------- | -------------------: | ---------------------------------: | -----------------------------: | -----------------------: | -----------------------------: |
+| 4:104     | v1-14      |                  362 |                                    |                             73 |                     0.95 |                           0.15 |
+| 4:104     | allocation |                  191 |                                165 |                              8 |                     0.26 |                           0.60 |
+| 1:101     | v1-14      |                  338 |                                    |                             75 |                     0.96 |                           0.25 |
+| 1:101     | allocation |                  162 |                                121 |                              0 |                     0.07 |                           0.61 |
+| 3:103     | v1-14      |                  471 |                                    |                             84 |                     1.00 |                           0.19 |
+| 3:103     | allocation |                  443 |                                 38 |                             76 |                     1.00 |                           0.61 |
+
+**Allocation keeps serving arpeggio progression the player cannot reach.** On
+4:104 its busiest strand is the E minor arpeggio hands together, 88 attempts and
+4 managed, followed by A minor and F major hands together, 29 and 25 attempts
+and none managed. On 1:101 its two busiest are C major and A minor hands
+together, 47 and 36 attempts, none managed. Allocation records each of these
+services as execution progression for the arpeggio's requirement.
+
+**What it displaces is the scale frontier.** Frontier steps are the stage that
+carries a scale into the left hand and hands together, and on the losing seed
+pairs they fall by about half, so allocation never takes the scales hands
+together. At 1:60:0.5 held-out right- and left-hand scales stay at 0.93 to 1.00.
+On 3:103 allocation's progression service is 38 decisions, mostly right-hand
+arpeggios that converge, the frontier keeps its steps, and allocation gains the
+same right-hand arpeggios at no scale cost. The worst grid pair, 4:104 at
+2:60:0, shows the same: 457 frontier steps against 175, and hands-together
+scales 1.00 against 0.13.
+
+**The frozen player hides it.** Without memory, neither arm takes `cohort_20`'s
+scales hands together (held-out 0.01 to 0.15 on 4:104 and 1:101), v1-14 makes
+110 to 160 frontier steps, and allocation serves arpeggio progression 16 to 29
+times. The cost appears once the player retrieves well enough for v1-14's
+frontier to move, which is the player this model asks about.
+
+This is the exclusion census's arpeggio shape, a strand introduced with no route
+onward to managed practice, meeting a player whose scale frontier now competes
+for the same slots. It is a policy limitation for this kind of player, not a
+retention effect, and these runs do not say whether other profiles show it at
+smaller size.
+
 ## Reading
 
 Against the implication table declared before the runs, retention reads as
@@ -146,8 +204,10 @@ breadth improving without harming delayed retrieval: no reversal across the
 grid, no collapse, and in 22 of 27 configurations no loss beyond 0.03 for any
 profile. The exception is one profile at the fastest forgetting, through a
 readiness plateau allocation crosses more often than v1-14, not a retention cost
-of allocation itself. Motor execution is the weaker side: a scale-management
-cost that is small at the median and large in some pairs for `cohort_20`.
+of allocation itself. Motor execution reads as a consistent loss for one kind of
+profile: for `cohort_20` on calendars where allocation's arpeggio progression
+stalls, the scales never reach hands together. That is the policy limitation
+row, and the case to resolve before promotion.
 
 ## What it does not establish
 

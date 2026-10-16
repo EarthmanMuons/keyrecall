@@ -1,0 +1,204 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:args/args.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
+
+import 'package:keyrecall_simulation/keyrecall_simulation.dart'
+    hide AttemptRecord;
+
+/// Where v1-14 and allocation at `k` of 2 spend a run's slots, and what
+/// execution each leaves, for one cohort player under [RetrievalMemory].
+///
+/// Counts decisions by family, selection stage, and purpose; attempts by
+/// family, hands, and guidance; strands introduced and managed by hands and
+/// by which third of the run first reached them; and held-out managed play by
+/// family and hands, read 21 days after the day following the last session.
+///
+/// Writes one JSON line per configuration, seed pair, and arm.
+Future<void> main(List<String> arguments) async {
+  final parser = ArgParser()
+    ..addOption('profile', defaultsTo: '19')
+    ..addOption('seeds', defaultsTo: '4:104')
+    ..addOption(
+      'configs',
+      help: 'learning:half-life:spacing, or frozen, comma separated',
+      defaultsTo: '1:60:0.5',
+    )
+    ..addOption('arms', defaultsTo: 'v1-14,alloc-2');
+  final options = parser.parse(arguments);
+  final profile =
+      PlausibilityCohort.profiles[int.parse(options.option('profile')!)];
+  for (final config in options.option('configs')!.split(',')) {
+    final player = config == 'frozen'
+        ? profile.player
+        : _withMemory(profile.player, config);
+    for (final pair in options.option('seeds')!.split(',')) {
+      final [schedule, playerSeed] = [
+        for (final part in pair.split(':')) int.parse(part),
+      ];
+      final sessions = demoSessions(
+        from: demoHistoryStart,
+        until: demoHistoryEnd,
+        seed: schedule,
+      );
+      final delayed = sessions.last.start.add(const Duration(days: 22));
+      for (final arm in options.option('arms')!.split(',')) {
+        stderr.writeln('${player.id} $config $pair $arm');
+        late PlayerState playing;
+        final census = await runServiceCensus(
+          player: player,
+          sessions: sessions,
+          playerSeed: playerSeed,
+          intervention: arm == 'v1-14'
+              ? null
+              : RequirementAllocator(k: 2, protectionFloor: 0.6),
+          onClose: (_, state, _) => playing = state,
+        );
+        stdout.writeln(
+          jsonEncode({
+            'player': player.id,
+            'config': config,
+            'seeds': pair,
+            'arm': arm,
+            'decisions': _tally([
+              for (final d in census.decisions)
+                '${d.familyId} ${d.stage} ${d.purpose}',
+            ]),
+            'attempts': _tally([
+              for (final r in census.records)
+                '${r.exercise.material.familyId} '
+                    '${_contextName(executionContextOf(r.exercise))} '
+                    'independence ${r.exercise.guidance.independence}',
+            ]),
+            'strands': _strands(census.records),
+            'busiest strands': _busiest(census.records),
+            'held-out managed': _heldOut(playing, delayed),
+          }),
+        );
+      }
+    }
+  }
+}
+
+SyntheticPlayer _withMemory(SyntheticPlayer player, String config) {
+  final [learning, halfLife, spacing] = [
+    for (final part in config.split(':')) double.parse(part),
+  ];
+  return player.copyWith(
+    id: '${player.id}+${RetrievalMemory.version}',
+    retrievalMemory: RetrievalMemory(
+      initialHalfLifeDays: halfLife,
+      retrievalGain: 0.6 * learning,
+      previewGain: 0.3 * learning,
+      cuedGain: 0.1 * learning,
+      acquisitionGain: 0.1 * learning,
+      spacingResponsiveness: spacing,
+    ),
+  );
+}
+
+Map<String, int> _tally(Iterable<String> keys) {
+  final counts = <String, int>{};
+  for (final key in keys) {
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return Map.fromEntries(
+    counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value)),
+  );
+}
+
+String _contextName(ExecutionContext context) {
+  final (_, hands, motion) = context;
+  return hands == HandConfiguration.together
+      ? '${hands.id} ${motion.id}'
+      : hands.id;
+}
+
+Map<String, Object?> _strands(List<AttemptRecord> records) {
+  const learner = LearnerModel();
+  final introduced = <ExecutionContext, int>{};
+  final managed = <ExecutionContext, int>{};
+  for (final (index, record) in records.indexed) {
+    final strand = executionContextOf(record.exercise);
+    introduced.putIfAbsent(strand, () => index);
+    if (record.closure.measurement case Measured(
+      :final outcome,
+    ) when learner.executionWasManaged(outcome)) {
+      managed.putIfAbsent(strand, () => index);
+    }
+  }
+  List<String> keys(Map<ExecutionContext, int> first) => [
+    for (final MapEntry(key: strand, value: index) in first.entries)
+      '${_familyOf[strand.$1]} ${_contextName(strand)} '
+          'third ${1 + 3 * index ~/ records.length}',
+  ];
+  return {
+    'introduced': _tally(keys(introduced)),
+    'managed': _tally(keys(managed)),
+  };
+}
+
+/// The ten strands with the most attempts: how many, how many were managed,
+/// and the mean motor score of those that carried one.
+List<Map<String, Object?>> _busiest(List<AttemptRecord> records) {
+  const learner = LearnerModel();
+  final attempts = <ExecutionContext, int>{};
+  final managed = <ExecutionContext, int>{};
+  final motor = <ExecutionContext, List<double>>{};
+  for (final record in records) {
+    final strand = executionContextOf(record.exercise);
+    attempts[strand] = (attempts[strand] ?? 0) + 1;
+    if (record.closure.measurement case Measured(:final outcome)) {
+      if (learner.executionWasManaged(outcome)) {
+        managed[strand] = (managed[strand] ?? 0) + 1;
+      }
+      if (outcome.motorScore case final score?) {
+        (motor[strand] ??= []).add(score);
+      }
+    }
+  }
+  final ranked = attempts.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return [
+    for (final MapEntry(key: strand, value: count) in ranked.take(10))
+      {
+        'strand': '${strand.$1} ${_contextName(strand)}',
+        'attempts': count,
+        'managed': managed[strand] ?? 0,
+        'mean motor': switch (motor[strand]) {
+          final scores? => scores.reduce((a, b) => a + b) / scores.length,
+          null => null,
+        },
+      },
+  ];
+}
+
+final _familyOf = {
+  for (final m in allPracticeMaterials) m.materialId: m.familyId,
+};
+
+Map<String, double> _heldOut(PlayerState playing, DateTime at) {
+  final standard = standardAssessment(allPracticeMaterials);
+  return {
+    for (final family in TechnicalMaterial.familyIds)
+      for (final hands in HandConfiguration.values)
+        '$family ${hands.id}': assess(
+          AssessmentSet(
+            id: '${standard.id} $family ${hands.id}',
+            seed: standard.seed,
+            repetitions: standard.repetitions,
+            exercises: [
+              for (final e in standard.exercises)
+                if (e.material.familyId == family &&
+                    e.conditions.hands == hands)
+                  e,
+            ],
+          ),
+          playing,
+          at: at,
+        ).managed,
+  };
+}
