@@ -27,33 +27,33 @@ citation key is not an argument.
 
 ## experiments
 
-| Document                                                                   | Question it answered                                                            |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [`learner-model.md`](experiments/learner-model.md)                         | Do the state layers stay separate, and what broke them                          |
-| [`scheduler.md`](experiments/scheduler.md)                                 | Seventeen passes; most promoted nothing                                         |
-| [`trajectories.md`](experiments/trajectories.md)                           | What goes wrong over a trajectory rather than a decision                        |
-| [`introduction-breadth.md`](experiments/introduction-breadth.md)           | How much new material may be open at once                                       |
-| [`arpeggio-policy.md`](experiments/arpeggio-policy.md)                     | Is the arpeggio policy viable, and is a competency missing                      |
-| [`altered-forms.md`](experiments/altered-forms.md)                         | What each part of the altered-form gate does, by scope                          |
-| [`goal-trajectories.md`](experiments/goal-trajectories.md)                 | What the production goals do to practice                                        |
-| [`placement-convergence.md`](experiments/placement-convergence.md)         | Whether identical evidence washes out the starting level                        |
-| [`beginner-guidance.md`](experiments/beginner-guidance.md)                 | Why a true beginner stays on supported rungs                                    |
-| [`family-transfer.md`](experiments/family-transfer.md)                     | How far one family's evidence moves the other's predictions                     |
-| [`player-calibration.md`](experiments/player-calibration.md)               | Can a synthetic player be fitted to a real session                              |
-| [`fluency-tempo.md`](experiments/fluency-tempo.md)                         | Which rule a typical-tempo chart can read                                       |
-| [`pulse-remediation.md`](experiments/pulse-remediation.md)                 | What a timing-remediation rule would have to work with                          |
-| [`service-census.md`](experiments/service-census.md)                       | How due work is served, how long it waits, and what wins                        |
-| [`service-pressure.md`](experiments/service-pressure.md)                   | What explicit requirement service would change, and cost                        |
-| [`allocation-counterfactual.md`](experiments/allocation-counterfactual.md) | What breadth-relative service priority changes, and costs                       |
-| [`exclusion-census.md`](experiments/exclusion-census.md)                   | What keeps owed requirements from being served                                  |
-| [`follow-through.md`](experiments/follow-through.md)                       | Whether owning the introduction handoff converts it                             |
-| [`plausibility-cohort.md`](experiments/plausibility-cohort.md)             | Whether moderately varied players behave coherently                             |
-| [`recovery-episodes.md`](experiments/recovery-episodes.md)                 | Whether recovery's steady third is churn or instruction                         |
-| [`cohort-comparison.md`](experiments/cohort-comparison.md)                 | What allocation and follow-through do across the cohort                         |
-| [`calendar-retention.md`](experiments/calendar-retention.md)               | Whether allocation costs retention across calendar gaps                         |
-| [`retrieval-memory.md`](experiments/retrieval-memory.md)                   | A retrieval model that learns from retrieval and forgets below where it started |
-| [`memory-comparison.md`](experiments/memory-comparison.md)                 | Whether allocation's case survives a player who forgets                         |
-| [`context-relief.md`](experiments/context-relief.md)                       | Whether bounding unproductive allocation gives the scale frontier back          |
+| Document                                                                   | Question it answered                                                               |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`learner-model.md`](experiments/learner-model.md)                         | Do the state layers stay separate, and what broke them                             |
+| [`scheduler.md`](experiments/scheduler.md)                                 | Seventeen passes; most promoted nothing                                            |
+| [`trajectories.md`](experiments/trajectories.md)                           | What goes wrong over a trajectory rather than a decision                           |
+| [`introduction-breadth.md`](experiments/introduction-breadth.md)           | How much new material may be open at once                                          |
+| [`arpeggio-policy.md`](experiments/arpeggio-policy.md)                     | Is the arpeggio policy viable, and is a competency missing                         |
+| [`altered-forms.md`](experiments/altered-forms.md)                         | What each part of the altered-form gate does, by scope                             |
+| [`goal-trajectories.md`](experiments/goal-trajectories.md)                 | What the production goals do to practice                                           |
+| [`placement-convergence.md`](experiments/placement-convergence.md)         | Whether identical evidence washes out the starting level                           |
+| [`beginner-guidance.md`](experiments/beginner-guidance.md)                 | Why a true beginner stays on supported rungs                                       |
+| [`family-transfer.md`](experiments/family-transfer.md)                     | How far one family's evidence moves the other's predictions                        |
+| [`player-calibration.md`](experiments/player-calibration.md)               | Can a synthetic player be fitted to a real session                                 |
+| [`fluency-tempo.md`](experiments/fluency-tempo.md)                         | Which rule a typical-tempo chart can read                                          |
+| [`pulse-remediation.md`](experiments/pulse-remediation.md)                 | What a timing-remediation rule would have to work with                             |
+| [`service-census.md`](experiments/service-census.md)                       | How due work is served, how long it waits, and what wins                           |
+| [`service-pressure.md`](experiments/service-pressure.md)                   | What explicit requirement service would change, and cost                           |
+| [`allocation-counterfactual.md`](experiments/allocation-counterfactual.md) | What breadth-relative service priority changes, and costs                          |
+| [`exclusion-census.md`](experiments/exclusion-census.md)                   | What keeps owed requirements from being served                                     |
+| [`follow-through.md`](experiments/follow-through.md)                       | Whether owning the introduction handoff converts it                                |
+| [`plausibility-cohort.md`](experiments/plausibility-cohort.md)             | Whether moderately varied players behave coherently                                |
+| [`recovery-episodes.md`](experiments/recovery-episodes.md)                 | Whether recovery's steady third is churn or instruction                            |
+| [`cohort-comparison.md`](experiments/cohort-comparison.md)                 | What allocation and follow-through do across the cohort                            |
+| [`calendar-retention.md`](experiments/calendar-retention.md)               | Whether allocation costs retention across calendar gaps                            |
+| [`retrieval-memory.md`](experiments/retrieval-memory.md)                   | A retrieval model that learns from retrieval and forgets below where it started    |
+| [`memory-comparison.md`](experiments/memory-comparison.md)                 | Whether allocation's case survives a player who forgets                            |
+| [`context-relief.md`](experiments/context-relief.md)                       | Whether bounding service without demonstrated execution restores scale progression |
 
 ## How to read a negative result here
 

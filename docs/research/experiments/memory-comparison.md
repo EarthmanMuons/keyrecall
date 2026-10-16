@@ -3,14 +3,13 @@
 > **Status:** complete, all 27 configurations, 1,620 trajectories. Under
 > [`retrieval-memory-2`](retrieval-memory.md), allocation at `k` of 2 left more
 > materials retrievable 21 days after the last session than v1-14 in 779 of 810
-> paired runs and fewer in 9, all of the difference through arpeggios. Every
-> loss larger than 0.03 is `cohort_19` with a 15-day initial half-life, and each
-> comes from a readiness plateau that v1-14 crossed and allocation did not,
-> while allocation crosses it more often overall. The effect shrinks with slower
-> forgetting and never reverses. The larger cost is in execution: for
-> `cohort_20`, allocation's service of hands-together arpeggios it cannot manage
-> halves the frontier steps that take its scales hands together. Nothing is
-> promoted; the scheduler stays at v1-14.
+> paired runs and fewer in 9, all of the difference through arpeggios. The
+> configuration-level median never reverses, but individual pairs do: every loss
+> larger than 0.03 is `cohort_19` with a 15-day initial half-life, the worst
+> -6.33 materials, where allocation's sequence left a readiness plateau
+> uncrossed that v1-14's crossed. The larger cost is in execution: for
+> `cohort_20`, allocation's sequence of practice leaves its scales short of
+> hands together. Nothing is promoted; the scheduler stays at v1-14.
 
 The frozen player's familiarity returns to where it started however it is
 practised, which bounds what breadth can buy in retention. This comparison asks
@@ -168,21 +167,26 @@ and hands 21 days after the end. At 1:60:0.5:
 | 3:103     | v1-14      |                  471 |                                    |                             84 |                     1.00 |                           0.19 |
 | 3:103     | allocation |                  443 |                                 38 |                             76 |                     1.00 |                           0.61 |
 
-**Allocation keeps serving arpeggio progression the player cannot reach.** On
-4:104 its busiest strand is the E minor arpeggio hands together, 88 attempts and
-4 managed, followed by A minor and F major hands together, 29 and 25 attempts
-and none managed. On 1:101 its two busiest are C major and A minor hands
-together, 47 and 36 attempts, none managed. Allocation records each of these
-services as execution progression for the arpeggio's requirement.
+**Allocation keeps serving arpeggio progression the player has not
+demonstrated.** On 4:104 its busiest strand is the E minor arpeggio hands
+together, 88 attempts and 4 managed, followed by A minor and F major hands
+together, 29 and 25 attempts and none managed. On 1:101 its two busiest are C
+major and A minor hands together, 47 and 36 attempts, none managed. Allocation
+records each of these services as execution progression for the arpeggio's
+requirement. Unmanaged attempts still teach this player's execution, so this is
+repeated service without demonstrated execution, not practice shown to teach
+nothing.
 
-**What it displaces is the scale frontier.** Frontier steps are the stage that
-carries a scale into the left hand and hands together, and on the losing seed
-pairs they fall by about half, so allocation never takes the scales hands
-together. At 1:60:0.5 held-out right- and left-hand scales stay at 0.93 to 1.00.
-On 3:103 allocation's progression service is 38 decisions, mostly right-hand
-arpeggios that converge, the frontier keeps its steps, and allocation gains the
-same right-hand arpeggios at no scale cost. The worst grid pair, 4:104 at
-2:60:0, shows the same: 457 frontier steps against 175, and hands-together
+**What falls is the scale frontier.** Allocation never takes a frontier step's
+slot: it replaces only ranking's winners, which changes what the player has
+practiced and so which frontier steps ranking later finds. Frontier steps are
+the stage that carries a scale into the left hand and hands together, and on the
+losing seed pairs they fall by about half, so allocation never takes the scales
+hands together. At 1:60:0.5 held-out right- and left-hand scales stay at 0.93 to
+1.00. On 3:103 allocation's progression service is 38 decisions, mostly
+right-hand arpeggios that converge, the frontier keeps its steps, and allocation
+gains the same right-hand arpeggios at no scale cost. The worst grid pair, 4:104
+at 2:60:0, shows the same: 457 frontier steps against 175, and hands-together
 scales 1.00 against 0.13.
 
 **The frozen player hides it.** Without memory, neither arm takes `cohort_20`'s
@@ -213,14 +217,17 @@ by the end.
 | `cohort_12` |                                      30 to 66 |                               3 |                                                  2.4 to 3.6 |                0.94 to 1.00 | none                             |
 | `cohort_20` |                                     13 to 136 |                               3 |                                                  5.1 to 8.3 |                0.95 to 1.00 | 3 of 5 (-0.89, -0.69, -0.29)     |
 
-**Hands-together arpeggio service rarely becomes execution.** Across the 20
-allocation runs, 1,548 hands-together arpeggio interventions newly managed 19
-strands, 81 each, while 1,111 single-hand arpeggio interventions newly managed
-221, 5.0 each. `cohort_10` has the starkest case: 109 to 204 a run, none ever
-managed, with two or three strands per run taking 20 or more, up to 140 on the E
-minor arpeggio hands together.
+**Hands-together arpeggio service rarely becomes demonstrated execution.**
+Across the 20 allocation runs, 1,548 hands-together arpeggio interventions newly
+managed 19 strands, 81 each, while 1,111 single-hand arpeggio interventions
+newly managed 221, 5.0 each. `cohort_10` has the starkest case: 109 to 204 a
+run, none ever managed, with two or three strands per run taking 20 or more, up
+to 140 on the E minor arpeggio hands together. These ratios describe how often
+service crosses the managed threshold, not what it taught: unmanaged attempts
+still move this player's execution, and a strand managed later may owe that to
+ordinary practice too.
 
-**The scale cost needs a frontier to displace.** `cohort_10`'s service is the
+**The scale cost needs a frontier to lose.** `cohort_10`'s service is the
 largest, but on three of its pairs v1-14 never takes its scales hands together
 either, and nothing is lost. On the two where v1-14 does, allocation loses
 nearly all of it. `cohort_11` and `cohort_12` see 19 to 66 such interventions a
@@ -238,24 +245,31 @@ frontier, not the busiest strand alone.
 ## Reading
 
 Against the implication table declared before the runs, retention reads as
-breadth improving without harming delayed retrieval: no reversal across the
-grid, no collapse, and in 22 of 27 configurations no loss beyond 0.03 for any
-profile. The exception is one profile at the fastest forgetting, through a
-readiness plateau allocation crosses more often than v1-14, not a retention cost
-of allocation itself. Motor execution reads as a consistent loss for one kind of
-profile: for `cohort_20` on calendars where allocation's arpeggio progression
-stalls, the scales never reach hands together. That is the policy limitation
-row, and the case to resolve before promotion. It recurs at smaller size or
-without a scale cost in `cohort_10`, `cohort_11`, and `cohort_12`, so
-`cohort_20` is its extreme rather than an isolated case. Bounding the
-unproductive service, in [context relief](context-relief.md), did not give the
-scale frontier back.
+breadth improving without harming delayed retrieval at the level of each
+configuration's median: no reversal across the grid, no collapse, and in 22 of
+27 configurations no loss beyond 0.03 for any profile. Individual pairs do
+reverse. `cohort_19` at the fastest forgetting loses up to 6.33 materials, and
+that is a cost of allocation even though its mechanism is a readiness plateau:
+allocation's sequence is what left the plateau uncrossed. Motor execution reads
+as a consistent loss for one kind of profile: for `cohort_20` on calendars where
+allocation's arpeggio progression stalls, the scales never reach hands together.
+That is the policy limitation row, and the case to resolve before promotion. It
+recurs at smaller size or without a scale cost in `cohort_10`, `cohort_11`, and
+`cohort_12`, so `cohort_20` is its extreme rather than an isolated case.
+Bounding repeated service without demonstrated execution, in
+[context relief](context-relief.md), did not restore hands-together scale
+progression at the setting tested.
 
 ## What it does not establish
 
-Any of the 27 configurations as the right one. Every encoding resets
-retrievability to 1.0, including cued practice and recovery, which inflates
-success right after supported work in both arms. Scales at the ceiling mean the
-outcome cannot show a scale retention cost smaller than about one material. Six
-profiles on one calendar is not the cohort. The memory model's own limits are in
+Any of the 27 configurations as the right one, or robustness beyond this model's
+structure. Every configuration keeps one rule: any encoding, including a started
+cued attempt or a recovery, makes the material fully retrievable at that
+instant. That lowers recovery workload, frees ordinary slots for allocation and
+progression, makes supported introductions strong memory interventions, and
+holds scale retrieval near its ceiling, where a scale maintenance cost has
+little room to show even though the outcome sums exact probabilities and could
+show a fraction of a material. The grid varies gains and forgetting, not how
+much supported exposure restores. Six profiles on one calendar is not the
+cohort. The memory model's own limits are in
 [retrieval memory](retrieval-memory.md).

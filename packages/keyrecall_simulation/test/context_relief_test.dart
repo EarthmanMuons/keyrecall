@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -20,6 +21,55 @@ void main() {
 
   ContextRelief relief({int trigger = 3, int budget = 1, int window = 3}) =>
       ContextRelief(trigger: trigger, budget: budget, window: window);
+
+  group('evidence from an outcome', () {
+    Outcome outcome({
+      bool started = true,
+      bool completed = true,
+      double? continuity,
+    }) => Outcome(
+      started: started,
+      retrieval: FactualRetrieval.succeeded,
+      completed: completed,
+      materialRetrieval: 1,
+      pitchIntegrity: 1,
+      continuity: continuity,
+      temporalStability: null,
+      achievedTempoRatio: 1,
+      topologyAccuracy: 1,
+    );
+
+    test('is incomplete whenever the attempt stopped, timed or not', () {
+      expect(
+        ServiceEvidence.of(outcome(completed: false, continuity: 0.8)),
+        ServiceEvidence.incomplete,
+      );
+      expect(
+        ServiceEvidence.of(outcome(completed: false, continuity: 0.1)),
+        ServiceEvidence.incomplete,
+      );
+      expect(
+        ServiceEvidence.of(outcome(completed: false)),
+        ServiceEvidence.incomplete,
+      );
+    });
+
+    test('tells managed, unmanaged, untimed, and unstarted apart', () {
+      expect(
+        ServiceEvidence.of(outcome(continuity: 0.95)),
+        ServiceEvidence.managed,
+      );
+      expect(
+        ServiceEvidence.of(outcome(continuity: 0.1)),
+        ServiceEvidence.unmanaged,
+      );
+      expect(ServiceEvidence.of(outcome()), ServiceEvidence.untimed);
+      expect(
+        ServiceEvidence.of(outcome(started: false, completed: false)),
+        ServiceEvidence.notStarted,
+      );
+    });
+  });
 
   test('counts only timed, unmanaged attempts allocation served', () {
     final r = relief();

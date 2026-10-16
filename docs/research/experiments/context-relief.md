@@ -1,12 +1,13 @@
 # Context relief
 
-> **Status:** simulation-only counterfactual, 60 trajectories. A shared bound on
-> allocation's service to an execution group after repeated unsuccessful service
-> cut hands-together arpeggio interventions from up to 204 a run to 11 to 41
-> without losing allocation's breadth, and did not restore the scale frontier:
-> the hands-together scales allocation cost `cohort_10` and `cohort_20` stay
-> lost or come back only in part. The limit is not the unproductive service
-> relief removes. Nothing is promoted; the scheduler stays at v1-14, and
+> **Status:** simulation-only counterfactual, 60 trajectories, run with a
+> classifier that counted incomplete attempts carrying a motor score as
+> unmanaged evidence, against the rule below; a rerun with the corrected
+> classifier is pending. At the tested setting, bounding repeated allocation
+> service without demonstrated execution cut hands-together arpeggio
+> interventions from up to 204 a run to 11 to 41 while preserving breadth, but
+> did not restore hands-together scale progression for `cohort_10` and
+> `cohort_20`. Nothing is promoted; the scheduler stays at v1-14, and
 > allocation's default has no relief.
 
 The [memory comparison](memory-comparison.md) found allocation at `k` of 2
@@ -17,15 +18,15 @@ players. This asks whether bounding that service gives the scale frontier back.
 ## The rule
 
 A group is a family and a hand configuration, so hands-together arpeggios share
-one budget whatever the material. An allocation-served attempt that was timed
-and not managed counts against its strand until that strand is managed by any
-route. Never-started, incomplete, and untimed attempts are recorded and count
-for nothing. Once a group's strands hold the trigger between them, the group is
-relieved: it may be served at no more than the budget of its last window of
-opportunities, an opportunity being an allocatable decision at which allocation
-would otherwise have served it. A withheld requirement may still be served by a
-realization outside the group, and otherwise allocation moves to the next owed
-requirement or leaves ranking's winner.
+one budget whatever the material. An allocation-served attempt that was
+completed, timed, and not managed counts against its strand until that strand is
+managed by any route. Never-started, incomplete, and untimed attempts are
+recorded and count for nothing. Once a group's strands hold the trigger between
+them, the group is relieved: it may be served at no more than the budget of its
+last window of opportunities, an opportunity being an allocatable decision at
+which allocation would otherwise have served it. A withheld requirement may
+still be served by a realization outside the group, and otherwise allocation
+moves to the next owed requirement or leaves ranking's winner.
 
 Relief changes only allocation's priority. Coverage, eligibility, waiting,
 ranking, recovery, and the learner's estimates are untouched, and the window
@@ -95,11 +96,15 @@ relief too.
 
 Of the three outcomes declared before the runs, this is the second:
 hands-together arpeggio interventions fall and the scale frontier does not
-recover, so the displaced capacity was not the limiting factor. The unproductive
-service was real, 37 to 56% of allocation's interventions on the losing pairs,
-and relief removes it at no cost to breadth. What remains is breadth's own cost:
-a player who opens 14 arpeggios instead of one or two spends a fifth of a fixed
-run on them, and the stage it forgoes is the last one in the scale sequence.
+recover. That shows this reduction was not enough, not that capacity is
+irrelevant: scale attempts stay 17 to 20% below v1-14 while other arpeggio work
+keeps drawing ordinary ranking, so relief never returned the scale practice
+whose loss it was meant to test, and progression may depend on which
+opportunities return and when. The service relief bounds was 37 to 56% of
+allocation's interventions on the losing pairs, and bounding it cost no breadth
+in these runs. Whether it cost preparatory learning is open: unmanaged attempts
+still teach this player's execution, so service without demonstrated execution
+is not practice that taught nothing.
 
 ## What it does not establish
 

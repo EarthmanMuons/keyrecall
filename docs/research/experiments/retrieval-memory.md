@@ -57,7 +57,10 @@ that, and its numbers are the ones below.
 cued attempt with a small gain. A material seen with cues minutes ago is
 therefore nearly certain to be retrieved unaided now, and less so as the short
 half-life runs out. This inflates success just after supported practice and
-recovery, and any result about either should be read with that in mind.
+recovery, and through it lowers recovery workload, frees ordinary slots for
+other work, makes supported introductions strong memory interventions, and holds
+well-practiced retrieval near its ceiling. Every configuration of a comparison
+under this model shares the rule, so its results are robust only within it.
 
 Execution is learned and forgotten exactly as in the frozen player. The model
 replaces only how familiarity moves.

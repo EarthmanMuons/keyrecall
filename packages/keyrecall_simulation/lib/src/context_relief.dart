@@ -5,12 +5,15 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 /// What one allocation-served attempt showed about its execution context.
 enum ServiceEvidence {
   notStarted,
+
+  /// Started and not completed, whether or not it carried a motor score.
   incomplete,
 
   /// Completed without a motor score, so execution is unresolved.
   untimed,
 
-  /// Timed and not managed: the only evidence that counts toward relief.
+  /// Completed, timed, and not managed: the only evidence that counts toward
+  /// relief.
   unmanaged,
   managed;
 
@@ -19,9 +22,9 @@ enum ServiceEvidence {
     LearnerModel learner = const LearnerModel(),
   }) {
     if (!outcome.started) return notStarted;
+    if (!outcome.completed) return incomplete;
     if (learner.executionWasManaged(outcome)) return managed;
     if (outcome.motorScore != null) return unmanaged;
-    if (!outcome.completed) return incomplete;
     return untimed;
   }
 }
