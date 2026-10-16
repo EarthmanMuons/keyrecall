@@ -290,4 +290,41 @@ void main() {
     }
     expect(materialOnly, greaterThan(0));
   });
+
+  test('a longer calendar continues the shorter run unchanged', () async {
+    final player = PlayerArchetypes.developing.copyWith(
+      id: 'developing+${RetrievalMemory.version}',
+      retrievalMemory: const RetrievalMemory(initialHalfLifeDays: 60),
+    );
+    Future<ServiceCensus> run(int days) => runServiceCensus(
+      player: player,
+      sessions: demoSessions(
+        from: demoHistoryStart,
+        until: demoHistoryStart.add(Duration(days: days)),
+      ),
+      intervention: RequirementAllocator(
+        k: 1,
+        protectionFloor: 0.6,
+        relief: ContextRelief(trigger: 2, budget: 1, window: 3),
+      ),
+    );
+    final shorter = await run(12);
+    final longer = await run(20);
+    String lines(ServiceCensus census, int attempts) => (AttemptJournal(
+      JournalHeader(profileId: 'census', createdAt: demoHistoryStart),
+    )..appendAll(census.records.take(attempts))).toJsonLines();
+
+    expect(longer.records.length, greaterThan(shorter.records.length));
+    expect(
+      lines(longer, shorter.records.length),
+      lines(shorter, shorter.records.length),
+    );
+    expect(
+      [
+        for (final d in longer.decisions.take(shorter.decisions.length))
+          d.canonical,
+      ],
+      [for (final d in shorter.decisions) d.canonical],
+    );
+  });
 }

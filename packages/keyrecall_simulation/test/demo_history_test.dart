@@ -22,6 +22,24 @@ void main() {
     expect(days, orderedEquals([...days]..sort()));
   });
 
+  test('a later end keeps the earlier calendar as its prefix', () {
+    for (var seed = 0; seed < 5; seed++) {
+      final original = demoSessions(
+        from: from,
+        until: demoHistoryEnd,
+        seed: seed,
+      );
+      final longer = demoSessions(
+        from: from,
+        until: demoHistoryEnd.add(const Duration(days: 365)),
+        seed: seed,
+      );
+
+      expect(longer.take(original.length), orderedEquals(original));
+      expect(longer.length, greaterThan(original.length));
+    }
+  });
+
   Future<InMemoryPracticeStore> practiced(
     Profile profile,
     List<DemoSession> sessions, {

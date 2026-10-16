@@ -36,8 +36,14 @@ Future<void> main(List<String> arguments) async {
       'arms',
       help: 'v1-14, alloc-2, or relief:trigger:budget:window, comma separated',
       defaultsTo: 'v1-14,alloc-2',
+    )
+    ..addOption(
+      'horizon',
+      help: 'how many times the original calendar\'s slots to practice',
+      defaultsTo: '1',
     );
   final options = parser.parse(arguments);
+  final horizon = int.parse(options.option('horizon')!);
   final profile =
       PlausibilityCohort.profiles[int.parse(options.option('profile')!)];
   for (final config in options.option('configs')!.split(',')) {
@@ -48,23 +54,35 @@ Future<void> main(List<String> arguments) async {
       final [schedule, playerSeed] = [
         for (final part in pair.split(':')) int.parse(part),
       ];
-      final sessions = demoSessions(
-        from: demoHistoryStart,
-        until: demoHistoryEnd,
-        seed: schedule,
-      );
+      final (:sessions, :checkpoints) = _extended(schedule, horizon);
       final delayed = sessions.last.start.add(const Duration(days: 22));
       for (final arm in options.option('arms')!.split(',')) {
         stderr.writeln('${player.id} $config $pair $arm');
         late PlayerState playing;
         final allocator = _allocatorFor(arm);
         final probe = _DoseProbe(allocator);
+        final readings = <Map<String, Object?>>[];
+        var closed = 0;
         final census = await runServiceCensus(
           player: player,
           sessions: sessions,
           playerSeed: playerSeed,
           intervention: probe,
-          onClose: (_, state, _) => playing = state,
+          onClose: (_, state, _) {
+            playing = state;
+            if (checkpoints[closed] case final slots? when horizon > 1) {
+              if (probe.decisions != slots) {
+                throw StateError(
+                  'session $closed closed after ${probe.decisions} decisions, '
+                  'not the $slots its slots plan',
+                );
+              }
+              readings.add(
+                _reading(state, sessions[closed].start, slots: slots),
+              );
+            }
+            closed++;
+          },
         );
         stdout.writeln(
           jsonEncode({
@@ -72,6 +90,44 @@ Future<void> main(List<String> arguments) async {
             'config': config,
             'seeds': pair,
             'arm': arm,
+            'manifest': {
+              'tool': 'scale_execution',
+              'player model': player.retrievalMemory == null
+                  ? 'frozen familiarity'
+                  : RetrievalMemory.version,
+              if (player.retrievalMemory case final memory?)
+                'memory': {
+                  'initial half-life days': memory.initialHalfLifeDays,
+                  'retrieval gain': memory.retrievalGain,
+                  'preview gain': memory.previewGain,
+                  'cued gain': memory.cuedGain,
+                  'acquisition gain': memory.acquisitionGain,
+                  'spacing responsiveness': memory.spacingResponsiveness,
+                  'spacing pivot days': memory.spacingPivot.inMinutes / 1440,
+                  'ceiling half-life days': memory.ceilingHalfLifeDays,
+                },
+              'intervention': switch (allocator) {
+                null => 'none',
+                final a => {
+                  'k': a.k,
+                  'protection floor': a.protectionFloor,
+                  if (a.relief case final r?)
+                    'relief': {
+                      'trigger': r.trigger,
+                      'budget': r.budget,
+                      'window': r.window,
+                    },
+                },
+              },
+              'horizon': horizon,
+              'calendar seed': schedule,
+              'player seed': playerSeed,
+              'sessions': sessions.length,
+              'slots': sessions.fold(0, (sum, s) => sum + s.slots),
+              'first session': sessions.first.start.toIso8601String(),
+              'last session': sessions.last.start.toIso8601String(),
+              'decisions': probe.decisions,
+            },
             'decisions': _tally([
               for (final d in census.decisions)
                 '${d.familyId} ${d.stage} ${d.purpose}',
@@ -100,11 +156,146 @@ Future<void> main(List<String> arguments) async {
                 key: value.retrieval,
             },
             'held-out managed': _heldOut(playing, delayed),
+            if (horizon > 1) ...{
+              'checkpoints': [
+                for (final reading in readings)
+                  {...reading, ..._sofar(census, reading['slots']! as int)},
+              ],
+              'first managed scales together': _firstManaged(census),
+            },
           }),
         );
       }
     }
   }
+}
+
+/// The seed's calendar extended until [horizon] times its original slots,
+/// and the session indices closing each quarter of the original, by the
+/// slots practiced through them.
+///
+/// The extension must keep the original sessions as its prefix, so the
+/// original run is the start of this one.
+({List<DemoSession> sessions, Map<int, int> checkpoints}) _extended(
+  int seed,
+  int horizon,
+) {
+  final original = demoSessions(
+    from: demoHistoryStart,
+    until: demoHistoryEnd,
+    seed: seed,
+  );
+  final span = demoHistoryEnd.difference(demoHistoryStart);
+  final longer = demoSessions(
+    from: demoHistoryStart,
+    until: demoHistoryStart.add(span * (horizon + 1)),
+    seed: seed,
+  );
+  for (final (i, session) in original.indexed) {
+    if (longer[i] != session) {
+      throw StateError('extension changed session $i of seed $seed');
+    }
+  }
+  final quarter = original.fold(0, (sum, s) => sum + s.slots) / 4;
+  final sessions = <DemoSession>[];
+  final checkpoints = <int, int>{};
+  var slots = 0;
+  var next = 1;
+  for (final session in longer) {
+    sessions.add(session);
+    slots += session.slots;
+    if (slots >= next * quarter) {
+      checkpoints[sessions.length - 1] = slots;
+      while (slots >= next * quarter) {
+        next++;
+      }
+    }
+    if (next > 4 * horizon) break;
+  }
+  if (next <= 4 * horizon) throw StateError('seed $seed ran out of calendar');
+  return (sessions: sessions, checkpoints: checkpoints);
+}
+
+/// What the player can do a day after the session starting at [start], and
+/// what it would retrieve 21 days after that.
+Map<String, Object?> _reading(
+  PlayerState playing,
+  DateTime start, {
+  required int slots,
+}) {
+  final now = start.add(const Duration(days: 1));
+  final later = now.add(const Duration(days: 21));
+  Map<String, double> retrievable(DateTime at) => {
+    for (final family in TechnicalMaterial.familyIds)
+      family: [
+        for (final m in allPracticeMaterials)
+          if (m.familyId == family) playing.familiarityAt(m.materialId, at),
+      ].fold(0.0, (a, b) => a + b),
+  };
+  return {
+    'slots': slots,
+    'session': start.toIso8601String(),
+    'held-out managed': _heldOut(playing, now),
+    'held-out retrieval': {
+      for (final MapEntry(:key, :value) in assess(
+        standardAssessment(allPracticeMaterials),
+        playing,
+        at: now,
+      ).families.entries)
+        key: value.retrieval,
+    },
+    'retrievable': retrievable(now),
+    'retrievable 21 days on': retrievable(later),
+  };
+}
+
+/// The census through its first [slots] decisions: stages, interventions, and
+/// strands managed.
+Map<String, Object?> _sofar(ServiceCensus census, int slots) {
+  final decisions = census.decisions.take(slots).toList();
+  final attempts = decisions
+      .where((d) => d.stage != 'acquisition' && d.stage != 'blocked')
+      .length;
+  final records = census.records.take(attempts).toList();
+  return {
+    'attempts': attempts,
+    'decisions': _tally([
+      for (final d in decisions) '${d.familyId} ${d.stage}',
+    ]),
+    'interventions': _tally([
+      for (final (i, d)
+          in decisions
+              .where((d) => d.stage != 'acquisition' && d.stage != 'blocked')
+              .indexed)
+        if (d.stage == 'intervened')
+          '${d.familyId} '
+              '${records[i].exercise.conditions.hands == HandConfiguration.together ? 'together' : 'single'}',
+    ]),
+    'managed': _strands(records)['managed'],
+  };
+}
+
+/// The decision at which each hands-together scale strand was first managed,
+/// in order.
+List<int> _firstManaged(ServiceCensus census) {
+  const learner = LearnerModel();
+  final selected = [
+    for (final d in census.decisions)
+      if (d.stage != 'acquisition' && d.stage != 'blocked') d.decision,
+  ];
+  final first = <ExecutionContext, int>{};
+  for (final (i, record) in census.records.indexed) {
+    if (record.exercise.material.familyId != TechnicalMaterial.scaleFamilyId ||
+        record.exercise.conditions.hands != HandConfiguration.together) {
+      continue;
+    }
+    if (record.closure.measurement case Measured(
+      :final outcome,
+    ) when learner.executionWasManaged(outcome)) {
+      first.putIfAbsent(executionContextOf(record.exercise), () => selected[i]);
+    }
+  }
+  return first.values.toList()..sort();
 }
 
 RequirementAllocator? _allocatorFor(String arm) {
@@ -149,6 +340,8 @@ class _DoseProbe implements ServiceIntervention {
   var _decisions = 0;
 
   _DoseProbe(this.inner);
+
+  int get decisions => _decisions;
 
   Map<String, Object?> get summary => {
     'decisions': _decisions,
