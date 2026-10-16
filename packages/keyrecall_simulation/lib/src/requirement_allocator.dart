@@ -8,6 +8,24 @@ import 'context_relief.dart';
 import 'service_census.dart';
 import 'service_pressure.dart';
 
+/// Which decisions advance allocation's waiting.
+enum OpportunityClock {
+  /// Every decision, whatever it produced.
+  everySlot,
+
+  /// Decisions that chose an ordinary exercise.
+  ordinaryAttempts,
+
+  /// Decisions that chose an ordinary exercise or offered acquisition.
+  attemptsAndAcquisition;
+
+  bool counts(SelectionResult result) => switch (result) {
+    CandidateSelected() => true,
+    AcquisitionOffered() => this != ordinaryAttempts,
+    SelectionBlocked() => this == everySlot,
+  };
+}
+
 /// What allocation chose for a slot, and why.
 class AllocationChoice<T> {
   final T candidate;
@@ -125,10 +143,13 @@ class RequirementAllocator implements ServiceIntervention {
   /// without managed execution, or null for none.
   final ContextRelief? relief;
 
+  final OpportunityClock clock;
+
   final Map<String, int> _waiting = {};
   final Map<String, int> _journalWaiting = {};
   final Map<String, int> _breadthAtStart = {};
   bool _allocatable = false;
+  bool _counted = true;
   bool _winnerProtected = false;
   int _breadth = 0;
 
@@ -149,6 +170,7 @@ class RequirementAllocator implements ServiceIntervention {
     required this.k,
     required this.protectionFloor,
     this.relief,
+    this.clock = OpportunityClock.everySlot,
   });
 
   /// Actionable opportunities [requirementId] has missed in a row.
@@ -195,6 +217,7 @@ class RequirementAllocator implements ServiceIntervention {
     };
     _allocatable =
         result is CandidateSelected && result.stage == SelectionStage.ranking;
+    _counted = clock.counts(result);
 
     final byMaterial = <TechnicalMaterial, List<CandidateTrace>>{};
     for (final trace in result.traces) {
@@ -462,6 +485,7 @@ class RequirementAllocator implements ServiceIntervention {
 
   @override
   void record(List<RequirementObservation> observations) {
+    if (!_counted) return;
     final present = {for (final o in observations) o.requirementId};
     for (final map in [_waiting, _journalWaiting, _breadthAtStart]) {
       map.removeWhere((id, _) => !present.contains(id));

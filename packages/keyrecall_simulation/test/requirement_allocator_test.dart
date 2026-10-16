@@ -86,6 +86,20 @@ void main() {
       expect(allocator.journalWaitingFor('r'), 3);
     });
 
+    test('a clock that does not count a slot leaves waiting alone', () {
+      final blocked = SelectionBlocked(
+        traces: const [],
+        selectable: const [],
+        pacing: const PacingDecision.inactive([]),
+        introductions: IntroductionDecision.inactive(const []),
+        reason: BlockedReason.admissionExhausted,
+      );
+      expect(
+        [for (final clock in OpportunityClock.values) clock.counts(blocked)],
+        [true, false, false],
+      );
+    });
+
     test('clears on service, and leaves with the scope', () {
       final allocator = RequirementAllocator(k: 2, protectionFloor: 0.6)
         ..record([observed('r'), observed('s')])
@@ -96,6 +110,29 @@ void main() {
       expect(allocator.waitingFor('s'), 0);
       expect(allocator.journalWaitingFor('s'), 0);
     });
+  });
+
+  test('an acquisition offer is an opportunity, under the clocks that count '
+      'it', () async {
+    final sessions = demoSessions(
+      from: demoHistoryStart,
+      until: demoHistoryStart.add(const Duration(days: 14)),
+    );
+    Future<String> digest(OpportunityClock clock) async =>
+        (await runServiceCensus(
+          player: PlausibilityCohort.profiles[9].player,
+          sessions: sessions,
+          playerSeed: 100,
+          intervention: RequirementAllocator(
+            k: 2,
+            protectionFloor: 0.6,
+            clock: clock,
+          ),
+        )).digest;
+
+    final everySlot = await digest(OpportunityClock.everySlot);
+    expect(await digest(OpportunityClock.attemptsAndAcquisition), everySlot);
+    expect(await digest(OpportunityClock.ordinaryAttempts), isNot(everySlot));
   });
 
   group('a seeded run', () {
