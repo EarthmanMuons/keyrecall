@@ -75,6 +75,7 @@ Future<void> main(List<String> arguments) async {
             ]),
             'strands': _strands(census.records),
             'busiest strands': _busiest(census.records),
+            'interventions': _interventions(census),
             'held-out managed': _heldOut(playing, delayed),
           }),
         );
@@ -174,6 +175,98 @@ List<Map<String, Object?>> _busiest(List<AttemptRecord> records) {
         },
       },
   ];
+}
+
+/// Allocation's interventions by strand, family, and whether the hands play
+/// together.
+///
+/// A strand is newly managed when it had no managed attempt before its first
+/// intervention and has one by the end, so interventions per newly managed
+/// strand counts every intervention in a group against the strands it moved.
+Map<String, Object?> _interventions(ServiceCensus census) {
+  const learner = LearnerModel();
+  final selected = [
+    for (final d in census.decisions)
+      if (d.stage != 'acquisition' && d.stage != 'blocked') d,
+  ];
+  if (selected.length != census.records.length) {
+    throw StateError(
+      '${selected.length} selections for ${census.records.length} attempts',
+    );
+  }
+  final interventions = <ExecutionContext, int>{};
+  final whileUnmanaged = <ExecutionContext, int>{};
+  final managedBefore = <ExecutionContext>{};
+  final managed = <ExecutionContext>{};
+  for (final (index, record) in census.records.indexed) {
+    final decision = selected[index];
+    if (decision.materialId != record.exercise.material.materialId) {
+      throw StateError('decision ${decision.decision} is not its attempt');
+    }
+    final strand = executionContextOf(record.exercise);
+    if (decision.stage == 'intervened') {
+      if (!interventions.containsKey(strand) && managed.contains(strand)) {
+        managedBefore.add(strand);
+      }
+      interventions[strand] = (interventions[strand] ?? 0) + 1;
+      if (!managed.contains(strand)) {
+        whileUnmanaged[strand] = (whileUnmanaged[strand] ?? 0) + 1;
+      }
+    }
+    if (record.closure.measurement case Measured(
+      :final outcome,
+    ) when learner.executionWasManaged(outcome)) {
+      managed.add(strand);
+    }
+  }
+  String group(ExecutionContext strand) =>
+      '${_familyOf[strand.$1]} '
+      '${strand.$2 == HandConfiguration.together ? 'together' : 'single'}';
+  final groups = <String, List<ExecutionContext>>{};
+  for (final strand in interventions.keys) {
+    (groups[group(strand)] ??= []).add(strand);
+  }
+  final total = interventions.values.fold(0, (a, b) => a + b);
+  final ranked = interventions.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return {
+    'total': total,
+    'top three share': total == 0
+        ? null
+        : ranked.take(3).fold(0, (a, e) => a + e.value) / total,
+    'strands with 20 or more and never managed': [
+      for (final MapEntry(key: strand, value: count) in ranked)
+        if (count >= 20 && !managed.contains(strand)) strand,
+    ].length,
+    'groups': {
+      for (final MapEntry(key: name, value: strands) in groups.entries)
+        name: () {
+          final count = strands.fold(0, (a, s) => a + interventions[s]!);
+          final newly = strands
+              .where((s) => !managedBefore.contains(s) && managed.contains(s))
+              .length;
+          return {
+            'interventions': count,
+            'while unmanaged': strands.fold(
+              0,
+              (a, s) => a + (whileUnmanaged[s] ?? 0),
+            ),
+            'strands': strands.length,
+            'newly managed': newly,
+            'per newly managed': newly == 0 ? null : count / newly,
+          };
+        }(),
+    },
+    'busiest': [
+      for (final MapEntry(key: strand, value: count) in ranked.take(5))
+        {
+          'strand': '${strand.$1} ${_contextName(strand)}',
+          'interventions': count,
+          'while unmanaged': whileUnmanaged[strand] ?? 0,
+          'managed': managed.contains(strand),
+        },
+    ],
+  };
 }
 
 final _familyOf = {

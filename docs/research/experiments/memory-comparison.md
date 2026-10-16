@@ -197,6 +197,44 @@ for the same slots. It is a policy limitation for this kind of player, not a
 retention effect, and these runs do not say whether other profiles show it at
 smaller size.
 
+### Across profiles
+
+The same diagnostic at 1:60:0.5 on all five seed pairs for `cohort_10`,
+`cohort_11`, and `cohort_12` as well as `cohort_20`, 40 trajectories. It pairs
+every selecting decision with the attempt it wrote, checking their materials
+agree, and counts allocation's interventions per strand. A strand is newly
+managed when it had no managed attempt before its first intervention and has one
+by the end.
+
+| Player      | Hands-together arpeggio interventions per run | Newly managed by them, all runs | Single-hand arpeggio interventions per newly managed strand | v1-14 hands-together scales | Pairs losing more than 0.1 of it |
+| ----------- | --------------------------------------------: | ------------------------------: | ----------------------------------------------------------: | --------------------------: | -------------------------------- |
+| `cohort_10` |                                    109 to 204 |                               0 |                                                 6.0 to 10.6 |                0.01 to 0.51 | 2 of 5 (-0.49, -0.26)            |
+| `cohort_11` |                                      19 to 43 |                              13 |                                                  1.8 to 3.5 |                0.82 to 0.93 | none (worst -0.06)               |
+| `cohort_12` |                                      30 to 66 |                               3 |                                                  2.4 to 3.6 |                0.94 to 1.00 | none                             |
+| `cohort_20` |                                     13 to 136 |                               3 |                                                  5.1 to 8.3 |                0.95 to 1.00 | 3 of 5 (-0.89, -0.69, -0.29)     |
+
+**Hands-together arpeggio service rarely becomes execution.** Across the 20
+allocation runs, 1,548 hands-together arpeggio interventions newly managed 19
+strands, 81 each, while 1,111 single-hand arpeggio interventions newly managed
+221, 5.0 each. `cohort_10` has the starkest case: 109 to 204 a run, none ever
+managed, with two or three strands per run taking 20 or more, up to 140 on the E
+minor arpeggio hands together.
+
+**The scale cost needs a frontier to displace.** `cohort_10`'s service is the
+largest, but on three of its pairs v1-14 never takes its scales hands together
+either, and nothing is lost. On the two where v1-14 does, allocation loses
+nearly all of it. `cohort_11` and `cohort_12` see 19 to 66 such interventions a
+run and lose at most 0.06. The cost appears where heavy hands-together arpeggio
+service meets a player whose scales could go hands together.
+
+**Concentration on a few strands does not predict it.** The share of
+interventions on the three busiest strands is 0.47 to 0.66 for `cohort_10`
+whether or not scales lose, and 0.38 on `cohort_20`'s largest loss, on 1:101,
+where the service spreads over several hands-together arpeggios. A relief scoped
+to one strand could therefore move the same service to a sibling strand; the
+measure of a relief has to be the family's hands-together service and the scale
+frontier, not the busiest strand alone.
+
 ## Reading
 
 Against the implication table declared before the runs, retention reads as
