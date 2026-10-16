@@ -258,7 +258,9 @@ recurs at smaller size or without a scale cost in `cohort_10`, `cohort_11`, and
 `cohort_12`, so `cohort_20` is its extreme rather than an isolated case.
 Bounding repeated service without demonstrated execution, in
 [context relief](context-relief.md), did not restore hands-together scale
-progression at the setting tested.
+progression at the setting tested. Practiced on, in
+[extended horizon](extended-horizon.md), allocation reaches hands-together
+scales later rather than not at all.
 
 ## What it does not establish
 
