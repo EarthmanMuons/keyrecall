@@ -40,6 +40,14 @@ dart run keyrecall_simulation:calendar_retention --profiles 0,1,2
 
 Without `--profiles`, the tool runs six players spanning ability and durability.
 
+All 720 trajectories are kept as the frozen player's reference in
+[`calendar-retention.csv`](data/calendar-retention.csv), one row per run,
+projected from the tool's JSON lines (24 profiles, `--profiles 0,...,23`). It
+holds coverage, health, and the closing and delayed readings by family, the
+lowest true retrieval at any arrival, and return-session tests. A rerun of the
+reference calendar on every profile, and of `cohort_19` interrupted and
+`cohort_13` extended break, matched its source in every value.
+
 A held-out reading closes the session before each absence, opens the session
 after it, and closes that session; two more close the run and follow it after 21
 days away. Each reading asks every material with each hand and hands together,
