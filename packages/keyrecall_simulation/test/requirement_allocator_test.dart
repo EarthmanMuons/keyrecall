@@ -6,55 +6,6 @@ import 'package:test/test.dart';
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 void main() {
-  group('the allocation choice', () {
-    // Candidates are named for the requirement they serve, and rank in the
-    // order of their names.
-    AllocationChoice<String>? choose({
-      String winner = 'w',
-      bool winnerProtected = false,
-      Map<String, int> waiting = const {},
-      Map<String, String>? best,
-      int breadth = 5,
-      int k = 2,
-    }) => allocate<String>(
-      winner: winner,
-      winnerProtected: winnerProtected,
-      waiting: waiting,
-      bestByRequirement: best ?? {for (final id in waiting.keys) id: id},
-      breadth: breadth,
-      k: k,
-      compare: (a, b) => a.compareTo(b),
-      serves: (id, candidate) => candidate == id,
-    );
-
-    test('leaves the slot while nothing is owed', () {
-      expect(choose(waiting: {'a': 10}), isNull);
-    });
-
-    test('owes relative to how much is actionable', () {
-      expect(choose(waiting: {'a': 9}, breadth: 5), isNull);
-      expect(choose(waiting: {'a': 9}, breadth: 4)?.requirementId, 'a');
-    });
-
-    test('leaves a winner that already serves owed work, or is protected', () {
-      expect(choose(winner: 'a', waiting: {'a': 20}), isNull);
-      expect(choose(winnerProtected: true, waiting: {'a': 20}), isNull);
-    });
-
-    test('serves the most overdue, rank breaking ties', () {
-      expect(choose(waiting: {'a': 30, 'b': 20})?.requirementId, 'a');
-      expect(choose(waiting: {'a': 30, 'b': 30})?.requirementId, 'b');
-    });
-
-    test('promises nothing an owed requirement cannot be served by', () {
-      expect(choose(waiting: {'a': 30}, best: const {}), isNull);
-      expect(
-        choose(waiting: {'a': 30, 'b': 11}, best: {'b': 'b'})?.requirementId,
-        'b',
-      );
-    });
-  });
-
   group('waiting', () {
     RequirementObservation observed(
       String id, {
@@ -100,20 +51,20 @@ void main() {
       );
     });
 
-    test('clears on service, and leaves with the scope', () {
+    test('clears on service, and is kept while out of scope', () {
       final allocator = RequirementAllocator(k: 2, protectionFloor: 0.6)
         ..record([observed('r'), observed('s')])
         ..record([observed('r', served: true), observed('s')])
         ..record([observed('r')]);
 
       expect(allocator.waitingFor('r'), 1);
-      expect(allocator.waitingFor('s'), 0);
+      expect(allocator.waitingFor('s'), 2);
       expect(allocator.journalWaitingFor('s'), 0);
     });
   });
 
   test('an acquisition offer is an opportunity, under the clocks that count '
-      'it', () async {
+      'it, on the decisions characterized before the port', () async {
     final sessions = demoSessions(
       from: demoHistoryStart,
       until: demoHistoryStart.add(const Duration(days: 14)),
@@ -131,6 +82,10 @@ void main() {
         )).digest;
 
     final everySlot = await digest(OpportunityClock.everySlot);
+    expect(
+      everySlot,
+      '138a195e3117d73bfc8899390fc60cdf6cf4e569b407e4def025b5832b6d5c4c',
+    );
     expect(await digest(OpportunityClock.attemptsAndAcquisition), everySlot);
     expect(await digest(OpportunityClock.ordinaryAttempts), isNot(everySlot));
   });

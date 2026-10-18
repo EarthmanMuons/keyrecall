@@ -163,11 +163,12 @@ owed, the one furthest past its bound goes first, and the rank key breaks ties.
 Nothing acquires a weight it does not have today.
 
 **4. Scoped to the goal.** Service history belongs to the requirement in the
-active scope. A requirement leaving scope, by a focus or goal change, leaves its
-history behind, and one entering starts fresh, so narrowing practice never
-inherits a debt from material it no longer asks for. One exercise that serves
-several compatible requirements serves all of them, and an owed requirement is
-served only by an exercise in its own structure.
+active scope. A requirement leaving scope, by a focus or goal change, keeps its
+count but is never owed while it is out, and resumes the count if it returns, so
+narrowing practice never inherits a debt from material it no longer asks for and
+widening it again does not erase one. One exercise that serves several
+compatible requirements serves all of them, and an owed requirement is served
+only by an exercise in its own structure.
 
 What this does not do: it sets no family quota, it does not demote retention
 globally, it does not add a rank term, and it does not promise any requirement a

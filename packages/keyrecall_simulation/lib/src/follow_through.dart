@@ -180,6 +180,7 @@ class FollowThrough implements ServiceIntervention {
     if (chosen == null) return allocated;
 
     final promoted = pipeline.selectBest(followUps[chosen]!)!;
+    allocator.presented(promoted);
     final event = FollowThroughEvent(
       decision,
       journalLength,

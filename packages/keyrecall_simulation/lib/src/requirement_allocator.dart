@@ -16,74 +16,15 @@ enum OpportunityClock {
   /// Decisions that chose an ordinary exercise.
   ordinaryAttempts,
 
-  /// Decisions that chose an ordinary exercise or offered acquisition.
+  /// Decisions that chose an ordinary exercise or offered acquisition, the
+  /// production contract.
   attemptsAndAcquisition;
 
-  bool counts(SelectionResult result) => switch (result) {
-    CandidateSelected() => true,
-    AcquisitionOffered() => this != ordinaryAttempts,
-    SelectionBlocked() => this == everySlot,
+  bool counts(SelectionResult result) => switch (this) {
+    everySlot => true,
+    ordinaryAttempts => result is CandidateSelected,
+    attemptsAndAcquisition => isAllocationOpportunity(result),
   };
-}
-
-/// What allocation chose for a slot, and why.
-class AllocationChoice<T> {
-  final T candidate;
-
-  /// The requirement served, for an owed choice.
-  final String? requirementId;
-
-  /// Always `owed`: protection only ever keeps a slot, it never takes one.
-  final String reason;
-
-  const AllocationChoice(this.candidate, this.reason, [this.requirementId]);
-}
-
-/// The allocation contract for one slot ordinary ranking decided, or null to
-/// leave [winner].
-///
-/// A requirement is owed once its [waiting] exceeds [k] times [breadth], the
-/// number of requirements actionable now. Nothing changes while nothing owed
-/// has a candidate, while [winner] already serves an owed requirement, or
-/// while [winner] is protected: protection keeps its own slot and claims no
-/// other. Otherwise the owed requirement furthest past its bound takes the
-/// slot, its best candidate by [compare] breaking ties.
-AllocationChoice<T>? allocate<T>({
-  required T winner,
-  required bool winnerProtected,
-  required Map<String, int> waiting,
-  required Map<String, T> bestByRequirement,
-  required int breadth,
-  required int k,
-  required int Function(T a, T b) compare,
-  required bool Function(String requirementId, T candidate) serves,
-}) {
-  final bound = k * breadth;
-  final owed = [
-    for (final MapEntry(key: id, value: missed) in waiting.entries)
-      if (missed > bound && bestByRequirement.containsKey(id)) id,
-  ];
-  if (owed.isEmpty) return null;
-  if (owed.any((id) => serves(id, winner))) return null;
-  if (winnerProtected) return null;
-  String? chosen;
-  for (final id in owed) {
-    if (chosen == null) {
-      chosen = id;
-      continue;
-    }
-    final byWaiting = waiting[id]!.compareTo(waiting[chosen]!);
-    if (byWaiting > 0 ||
-        (byWaiting == 0 &&
-            compare(
-                  bestByRequirement[id] as T,
-                  bestByRequirement[chosen] as T,
-                ) >
-                0)) {
-      chosen = id;
-    }
-  }
-  return AllocationChoice(bestByRequirement[chosen] as T, 'owed', chosen);
 }
 
 /// What became of one owed requirement at one decision.
@@ -145,7 +86,9 @@ class RequirementAllocator implements ServiceIntervention {
 
   final OpportunityClock clock;
 
-  final Map<String, int> _waiting = {};
+  WaitCounters _waiting = const WaitCounters.empty();
+  AllocationSlot? _slot;
+  AllocationEvidence? _evidence;
   final Map<String, int> _journalWaiting = {};
   final Map<String, int> _breadthAtStart = {};
   bool _allocatable = false;
@@ -170,11 +113,14 @@ class RequirementAllocator implements ServiceIntervention {
     required this.k,
     required this.protectionFloor,
     this.relief,
-    this.clock = OpportunityClock.everySlot,
+    this.clock = OpportunityClock.attemptsAndAcquisition,
   });
 
+  AllocationPolicy get policy =>
+      AllocationPolicy(k: k, protectionFloor: protectionFloor);
+
   /// Actionable opportunities [requirementId] has missed in a row.
-  int waitingFor(String requirementId) => _waiting[requirementId] ?? 0;
+  int waitingFor(String requirementId) => _waiting[requirementId];
 
   /// Decisions [requirementId] has been due without service, the counter the
   /// journal could reproduce.
@@ -211,103 +157,44 @@ class RequirementAllocator implements ServiceIntervention {
     required DateTime at,
     required int journalLength,
   }) {
-    final winner = switch (result) {
-      CandidateSelected(:final candidate) => candidate,
-      _ => null,
-    };
-    _allocatable =
-        result is CandidateSelected && result.stage == SelectionStage.ranking;
+    final slot = _slot = AllocationSlot.of(
+      result: result,
+      requirements: requirements,
+      pipeline: pipeline,
+      state: state,
+      at: at,
+      policy: policy,
+    );
+    final winner = slot.winner;
+    _allocatable = slot.allocatable;
     _counted = clock.counts(result);
+    _breadth = slot.breadth;
 
     final byMaterial = <TechnicalMaterial, List<CandidateTrace>>{};
     for (final trace in result.traces) {
       byMaterial.putIfAbsent(trace.exercise.material, () => []).add(trace);
     }
-    final selectable = <TechnicalMaterial, List<CandidateTrace>>{};
-    for (final trace in result.selectable) {
-      if (trace.eligibility.tier == EligibilityTier.fullyEligible) {
-        selectable.putIfAbsent(trace.exercise.material, () => []).add(trace);
-      }
-    }
-    final byId = {
-      for (final state in requirements) state.resolved.requirement.id: state,
-    };
-    bool serves(String id, CandidateTrace trace) {
-      final resolved = byId[id]!.resolved;
-      return trace.exercise.material == resolved.material &&
-          resolved.requirement.constraints.matchesStructure(trace.exercise);
-    }
-
-    _breadth = 0;
-    final best = <String, CandidateTrace>{};
-    final healthOf = <TechnicalMaterial, double>{};
-    double health(TechnicalMaterial material) => healthOf[material] ??=
-        state.materialMemory[material.materialId]?.retrievabilityOrPrior(at) ??
-        0;
-    final fading = <String>{};
-    for (final requirement in requirements) {
-      final id = requirement.resolved.requirement.id;
-      final material = requirement.resolved.material;
-      if (requirement.isDue &&
-          (byMaterial[material] ?? const []).any(
-            (t) =>
-                t.isRanked &&
-                t.eligibility.tier == EligibilityTier.fullyEligible &&
-                serves(id, t),
-          )) {
-        _breadth++;
-      }
-      final own = pipeline.selectBest([
-        for (final trace in selectable[material] ?? const <CandidateTrace>[])
-          if (serves(id, trace)) trace,
-      ]);
-      if (own != null) best[id] = own;
-      if (requirement.isCovered && health(material) < protectionFloor) {
-        fading.add(id);
-      }
-    }
-    bool isProtected(CandidateTrace trace) =>
-        trace.exercise.guidance.isRetrievalObserved &&
-        trace.eligibility.tier == EligibilityTier.fullyEligible &&
-        fading.any((id) => serves(id, trace));
-    final order = pipeline.config.rankTolerances;
-    int compare(CandidateTrace a, CandidateTrace b) =>
-        order.compare(a.rankKey!, b.rankKey!);
+    final byId = slot.requirements;
+    final best = slot.best;
+    final serves = slot.serves;
     final bound = k * _breadth;
     final owed = [
       for (final id in byId.keys)
-        if ((_waiting[id] ?? 0) > bound) id,
+        if (_waiting[id] > bound) id,
     ];
-    final winnerProtected = _winnerProtected =
-        winner != null && isProtected(winner);
+    final winnerProtected = _winnerProtected = slot.winnerProtected;
 
     AllocationChoice<CandidateTrace>? choice;
     final withheld = <String>{};
     if (_allocatable) {
-      AllocationChoice<CandidateTrace>? choose(
-        Map<String, int> waiting, {
-        bool protectedWinner = true,
-        Map<String, CandidateTrace>? among,
-      }) => allocate(
-        winner: winner!,
-        winnerProtected: protectedWinner && winnerProtected,
-        waiting: {
-          for (final MapEntry(:key, :value) in waiting.entries)
-            if (byId.containsKey(key)) key: value,
-        },
-        bestByRequirement: among ?? best,
-        breadth: _breadth,
-        k: k,
-        compare: compare,
-        serves: serves,
-      );
       if (owed.any((id) => !best.containsKey(id))) _owedUnservable++;
-      choice = choose(_waiting);
-      final shadow = choose(_journalWaiting);
+      choice = slot.choose(_waiting.asMap);
+      final shadow = slot.choose(_journalWaiting);
       if (choice != null) _choices++;
       if (shadow != null) _journalChoices++;
       if (choice?.candidate != shadow?.candidate) _disagreements++;
-      if (winnerProtected && choose(_waiting, protectedWinner: false) != null) {
+      if (winnerProtected &&
+          slot.choose(_waiting.asMap, protectedWinner: false) != null) {
         _withheldForProtection++;
       }
       if (relief case final relief?) {
@@ -318,14 +205,14 @@ class RequirementAllocator implements ServiceIntervention {
             for (final requirement in requirements)
               requirement.resolved.requirement.id: ?pipeline.selectBest([
                 for (final trace
-                    in selectable[requirement.resolved.material] ??
+                    in slot.selectable[requirement.resolved.material] ??
                         const <CandidateTrace>[])
                   if (serves(requirement.resolved.requirement.id, trace) &&
                       !withheld.contains(ContextRelief.groupOf(trace.exercise)))
                     trace,
               ]),
           };
-          choice = choose(_waiting, among: among);
+          choice = slot.choose(_waiting.asMap, bestByRequirement: among);
           if (choice != null &&
               best[choice.requirementId] != choice.candidate &&
               withheld.contains(
@@ -338,6 +225,7 @@ class RequirementAllocator implements ServiceIntervention {
     }
 
     final chosen = choice?.candidate ?? winner;
+    _evidence = slot.evidence(chosen);
     final echoed = withoutFreshEcho([
       for (final trace in result.traces)
         if (trace.isRanked) trace,
@@ -401,9 +289,13 @@ class RequirementAllocator implements ServiceIntervention {
         decision: decision,
         displacedMaterialId: displaced.exercise.material.materialId,
         requirementId: promotedFor,
-        missed: _waiting[promotedFor] ?? 0,
-        behindOn: compare(promoted, displaced) < 0
-            ? decidingRankTerm(promoted.rankKey!, displaced.rankKey!, order)
+        missed: _waiting[promotedFor],
+        behindOn: slot.compare(promoted, displaced) < 0
+            ? decidingRankTerm(
+                promoted.rankKey!,
+                displaced.rankKey!,
+                pipeline.config.rankTolerances,
+              )
             : 'tie',
         displacedStage: (result as CandidateSelected).stage,
         reason: choice.reason,
@@ -413,17 +305,13 @@ class RequirementAllocator implements ServiceIntervention {
         promotedServesRequirement: serves(promotedFor, promoted),
       ),
     );
-    return CandidateSelected(
-      diagnostics: result.diagnostics,
-      traces: result.traces,
-      selectable: result.selectable,
-      pacing: result.pacing,
-      dose: result.dose,
-      introductions: result.introductions,
-      candidate: promoted,
-      stage: SelectionStage.ranking,
-    );
+    return slot.substitute(promoted);
   }
+
+  /// Replaces the candidate the last decision presents, for a rule that takes
+  /// the slot after allocation.
+  void presented(CandidateTrace candidate) =>
+      _evidence = _slot!.evidence(candidate);
 
   /// The furthest stage [compatible] realizations of an owed requirement
   /// reached, when none of them is feasible, and the leading reason there.
@@ -485,15 +373,29 @@ class RequirementAllocator implements ServiceIntervention {
 
   @override
   void record(List<RequirementObservation> observations) {
+    final observed = AllocationEvidence(
+      served: [
+        for (final o in observations)
+          if (o.served) o.requirementId,
+      ],
+      missed: [
+        for (final o in observations)
+          if (o.deferred) o.requirementId,
+      ],
+    );
+    if (_evidence case final evidence? when evidence != observed) {
+      throw StateError('allocation evidence $evidence, census $observed');
+    }
+    _evidence = null;
     if (!_counted) return;
     final present = {for (final o in observations) o.requirementId};
-    for (final map in [_waiting, _journalWaiting, _breadthAtStart]) {
+    for (final map in [_journalWaiting, _breadthAtStart]) {
       map.removeWhere((id, _) => !present.contains(id));
     }
+    _waiting = _waiting.advance(observed);
     for (final observation in observations) {
       final id = observation.requirementId;
       if (observation.served) {
-        _waiting.remove(id);
         _journalWaiting.remove(id);
         _breadthAtStart.remove(id);
         continue;
@@ -502,8 +404,7 @@ class RequirementAllocator implements ServiceIntervention {
           ? (_journalWaiting[id] ?? 0) + 1
           : 0;
       if (!observation.actionable) continue;
-      final waited = (_waiting[id] ?? 0) + 1;
-      _waiting[id] = waited;
+      final waited = _waiting[id];
       final start = _breadthAtStart.putIfAbsent(id, () => _breadth);
       if (_allocatable && waited > k * start && waited <= k * _breadth) {
         _postponedByBreadth++;

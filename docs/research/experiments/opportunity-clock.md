@@ -70,4 +70,10 @@ each acquisition attempt durably recorded, with the evidence the decision
 computed. A decision abandoned before commit, a blocked slot, and a replay of an
 event already recorded advance nothing, and a resumed pending decision commits
 the evidence it was made with. On every characterized run this is the policy
-that was measured.
+that was measured. Leaving blocked slots out is the one intended departure from
+`everySlot`: a blocked selection presents nothing, so there is no durable event
+to advance waiting, and none occurred in these runs.
+
+`isAllocationOpportunity` in `keyrecall_practice` states the contract, and
+`attemptsAndAcquisition`, the simulation's default clock, defers to it. The
+other two clocks remain for this comparison only.
