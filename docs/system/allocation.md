@@ -30,6 +30,30 @@ Three things follow, and this design is built on them:
   them rather than two rules taking turns.
 - Failure should change what is offered, never whether a requirement is owed.
 
+## What the pilot implements
+
+The pilot is the requirement-aware allocator stage of
+[two ways to build it](#two-ways-to-build-it), the
+[allocation contract](#allocation-contract) at `k` of 2 and protection floor
+0.60, and nothing more:
+
+- owed service relative to breadth, taking only a slot ordinary ranking chose,
+  and never a protected winner's;
+- ordinary ranking for everything else, and recovery, frontiers, acquisition,
+  and the other selection stages ahead of it as in v1-14;
+- waiting counted once per committed ordinary or supported attempt, never per
+  blocked slot, kept for a requirement while it is out of scope, and folded from
+  evidence each record carries;
+- decided by allocation only for an assigned profile in unrestricted General
+  Fluency, with both policies recorded on every decision.
+
+The [action taxonomy](#action-taxonomy), the action-first
+[decision sequence](#decision-sequence), and the
+[failure and recovery contract](#failure-and-recovery-contract) are proposals.
+None of them is built, and the pilot promises none of what they describe:
+failure does not move a requirement along a support path, nothing bounds
+temporary unavailability, and a blocked requirement has no recorded way out.
+
 ## Logical architecture
 
 Four questions, asked in order, each by one owner:
