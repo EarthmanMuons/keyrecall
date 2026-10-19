@@ -92,6 +92,13 @@ class LoopFailure extends ConsumerWidget {
             'twice.',
         'Save this attempt again',
       ),
+      PracticeFailure.overtaken => (
+        'This attempt could not be saved.',
+        'This profile recorded other practice while this exercise was open, '
+            'so what was just played is not part of its history. Everything '
+            'already recorded is kept. Practice continues from there.',
+        'Continue practicing',
+      ),
       PracticeFailure.plan => (
         'This goal and focus could not be read.',
         'Nothing practiced is affected. What was stored asks for material '

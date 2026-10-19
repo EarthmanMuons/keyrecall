@@ -231,6 +231,27 @@ class PracticeStateError extends StateError {
   PracticeStateError(super.message);
 }
 
+/// An attempt another session made obsolete before it could be recorded.
+///
+/// Storage established it: history had moved past the position the decision
+/// was made for, or holds this attempt as another session closed it. Nothing
+/// of it was written, and committing it anywhere else would record a decision
+/// made from state that is no longer history. The session that held it is
+/// behind what is recorded and refuses everything until it is reopened.
+class DecisionOvertaken implements Exception {
+  final String attemptId;
+
+  /// Whether another session recorded this same decision, with its own close.
+  final bool recordedElsewhere;
+
+  const DecisionOvertaken(this.attemptId, {required this.recordedElsewhere});
+
+  @override
+  String toString() => recordedElsewhere
+      ? 'DecisionOvertaken($attemptId was recorded by another session)'
+      : 'DecisionOvertaken($attemptId was overtaken by later history)';
+}
+
 /// One practice session, and the transaction that makes each attempt durable.
 ///
 /// Runs the ordered attempt transaction and survives being interrupted at any
@@ -305,6 +326,9 @@ class PracticeSession {
   PresentedAcquisition? _outstandingAcquisition;
 
   AllocationHistory? _allocation;
+
+  /// What made this session obsolete, once something did.
+  DecisionOvertaken? _overtaken;
 
   /// The record built for it, held so a retry writes the same event.
   AcquisitionAttemptRecord? _acquisitionInFlight;
@@ -650,6 +674,7 @@ class PracticeSession {
   /// unresolved decision is pending, since deciding again would abandon
   /// something a person may have been shown.
   Future<PracticeDecision> decideOutcome({required DateTime at}) async {
+    if (_overtaken case final overtaken?) throw overtaken;
     if (_outstanding != null) {
       throw PracticeStateError(
         'an attempt is already outstanding; commit or abandon it first',
@@ -1049,6 +1074,7 @@ class PracticeSession {
     MeasurementPolicy policy = MeasurementPolicy.standard,
     PresentationRecord? presentation,
   }) async {
+    if (_overtaken case final overtaken?) throw overtaken;
     final outstanding = _outstandingAcquisition;
     if (outstanding == null) {
       throw PracticeStateError('no supported task is outstanding');
@@ -1434,6 +1460,7 @@ class PracticeSession {
   Future<_PreparedCommit> _commitTransaction(
     _PreparedCommit Function() prepare,
   ) async {
+    if (_overtaken case final overtaken?) throw overtaken;
     // Prepared once. A retry finishes this transaction rather than computing a
     // second one: the caller reads its clock again on every call, so rebuilding
     // would offer the same attempt id carrying different content, which an
@@ -1569,11 +1596,46 @@ class PracticeSession {
         Error.throwWithStackTrace(error, stack);
       }
 
+      if (_overtakenBy(record, durable) case final overtaken?) {
+        _retire(overtaken);
+      }
       _reconcileAttempt(commit, durable);
       if (commit.durability == _Durability.notWritten) {
         Error.throwWithStackTrace(error, stack);
       }
     }
+  }
+
+  /// Makes this session obsolete for [overtaken], and throws it.
+  ///
+  /// The pending slot is left alone: whatever it holds now is another
+  /// session's, and this one's was already replaced or recorded.
+  Never _retire(DecisionOvertaken overtaken) {
+    _overtaken = overtaken;
+    _commit = null;
+    _pending = null;
+    _outstanding = null;
+    _epoch++;
+    throw overtaken;
+  }
+
+  /// Why [durable] leaves no place for [record], or null when it does.
+  static DecisionOvertaken? _overtakenBy(
+    AttemptRecord record,
+    AttemptJournal durable,
+  ) {
+    final attemptId = record.identity.attemptId;
+    final held = durable.records.where(
+      (held) => held.identity.attemptId == attemptId,
+    );
+    if (held.isNotEmpty) {
+      return contentHash(held.single.toJson()) == contentHash(record.toJson())
+          ? null
+          : DecisionOvertaken(attemptId, recordedElsewhere: true);
+    }
+    return durable.nextSequence == record.journalSequence
+        ? null
+        : DecisionOvertaken(attemptId, recordedElsewhere: false);
   }
 
   void _reconcileAttempt(_PreparedCommit commit, AttemptJournal journal) {
@@ -1609,6 +1671,7 @@ class PracticeSession {
   ///
   /// Throws [PracticeStateError] when the attempt is already history.
   Future<void> abandonPending() async {
+    if (_overtaken case final overtaken?) throw overtaken;
     if (_commit case final commit?) {
       // An append that threw may still have landed. Abandoning on the strength
       // of not knowing is what leaves one attempt in the file and none in the
@@ -1616,6 +1679,9 @@ class PracticeSession {
       // already filled.
       if (commit.durability == _Durability.unknown) {
         final durable = await store.loadJournal(profile.id);
+        if (_overtakenBy(commit.record, durable) case final overtaken?) {
+          _retire(overtaken);
+        }
         _reconcileAttempt(commit, durable);
       }
       if (commit.durability == _Durability.durable) {

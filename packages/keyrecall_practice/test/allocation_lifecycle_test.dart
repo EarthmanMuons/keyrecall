@@ -188,8 +188,8 @@ void main() {
     expect(folded.counters.asMap, {'missed': 2});
   });
 
-  test('a decision another session overtook cannot commit, so it leaves no '
-      'evidence', () async {
+  test('a decision another session overtook is refused, and its session '
+      'asks to be reopened', () async {
     final store = InMemoryPracticeStore();
     final overtaken = await open(store);
     final overtaking = await open(store, sessionId: 'switched');
@@ -199,13 +199,66 @@ void main() {
 
     await expectLater(
       commit(overtaken, late.exercise),
-      throwsA(isA<JournalFormatException>()),
+      throwsA(
+        isA<DecisionOvertaken>()
+            .having((e) => e.attemptId, 'attempt', late.decision.attemptId)
+            .having((e) => e.recordedElsewhere, 'recorded elsewhere', false),
+      ),
     );
-    final folded = history(await open(store, sessionId: 'audit'));
+    await expectLater(
+      overtaken.decideOutcome(at: t0.plusDays(2)),
+      throwsA(isA<DecisionOvertaken>()),
+    );
+    final reopened = await open(store, sessionId: 'reopened');
+    expect(reopened.pending, isNull);
+    expect(reopened.journal.length, 1);
+    final folded = history(reopened);
     expect(folded.observed, 1);
     expect(folded.staleDecisions, 0);
     expect(folded.counters.asMap, {'missed': 1});
+    expect(
+      await reopened.decideOutcome(at: t0.plusDays(2)),
+      isA<PresentedAttempt>(),
+    );
   });
+
+  test('a decision another session closed first is refused as recorded '
+      'elsewhere', () async {
+    final store = InMemoryPracticeStore();
+    final first = await open(store);
+    final presented = await decide(first, 1);
+    final resuming = await open(store, sessionId: 'resumed');
+    await resuming.closeWithOutcome(
+      outcomeFor(resuming.pending!.exercise, succeeded: false),
+    );
+
+    await expectLater(
+      commit(first, presented.exercise),
+      throwsA(
+        isA<DecisionOvertaken>().having(
+          (e) => e.recordedElsewhere,
+          'recorded elsewhere',
+          true,
+        ),
+      ),
+    );
+    expect((await open(store, sessionId: 'audit')).journal.length, 1);
+  });
+
+  test(
+    'a commit that landed before its answer was lost is still finished',
+    () async {
+      final store = _LosesAnswers();
+      final session = await open(store);
+      final presented = await decide(session, 1);
+      store.loseNextAnswer = true;
+      final record = await commit(session, presented.exercise);
+
+      expect(record.identity.attemptId, presented.decision.attemptId);
+      expect(session.journal.length, 1);
+      expect(history(session).observed, 1);
+    },
+  );
 
   group('the store', () {
     AcquisitionAttemptRecord placedAt(int attemptsBefore, {int repairs = 0}) =>
@@ -309,6 +362,20 @@ void main() {
       throwsA(isA<JournalFormatException>()),
     );
   });
+}
+
+/// Writes every attempt, and can throw after one as if its answer was lost.
+class _LosesAnswers extends InMemoryPracticeStore {
+  var loseNextAnswer = false;
+
+  @override
+  Future<void> appendAttempt(AttemptRecord record) async {
+    await super.appendAttempt(record);
+    if (loseNextAnswer) {
+      loseNextAnswer = false;
+      throw StateError('the answer was lost');
+    }
+  }
 }
 
 final Exercise _exercise = Exercise.linear(

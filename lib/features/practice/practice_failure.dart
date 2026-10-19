@@ -48,6 +48,14 @@ enum PracticeFailure {
   /// and abandon the performance the learner already supplied.
   commit,
 
+  /// A closed attempt cannot be recorded, because practice under this profile
+  /// recorded something else first.
+  ///
+  /// Saving it again would commit a decision made from history that has moved
+  /// on, so it is not offered. Reopening practises from what was recorded,
+  /// and what was just played is not part of it.
+  overtaken,
+
   /// The stored goal or focus names something this build cannot read.
   ///
   /// Nothing recorded is affected, and nothing is retried into: the plan says

@@ -703,24 +703,29 @@ void main() {
           await store.inner.appendAttempt(conflicting);
           store.journalLoadFailure = null;
 
+          final recordedElsewhere = isA<DecisionOvertaken>().having(
+            (overtaken) => overtaken.recordedElsewhere,
+            'recorded elsewhere',
+            isTrue,
+          );
           await expectLater(
             reconcileByAbandoning
                 ? session.abandonPending()
                 : session.closeWithOutcome(outcome),
-            throwsA(isA<JournalFormatException>()),
+            throwsA(recordedElsewhere),
           );
           for (var retry = 0; retry < 2; retry++) {
             await expectLater(
               session.closeWithOutcome(outcome),
-              throwsA(isA<JournalFormatException>()),
+              throwsA(recordedElsewhere),
             );
             await expectLater(
               session.abandonPending(),
-              throwsA(isA<JournalFormatException>()),
+              throwsA(recordedElsewhere),
             );
             expect(learnerStateHash(session.state), before);
             expect(session.journal.length, 0);
-            expect(session.hasOutstandingAttempt, isTrue);
+            expect(session.hasOutstandingAttempt, isFalse);
             expect(
               (await store.loadPendingDecision(alice.id))!.toJson(),
               pending,

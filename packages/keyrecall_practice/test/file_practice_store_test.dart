@@ -522,7 +522,13 @@ void main() {
 
       await expectLater(
         practise(session, attempts: 1, startDay: 20),
-        throwsA(isA<JournalFormatException>()),
+        throwsA(
+          isA<DecisionOvertaken>().having(
+            (overtaken) => overtaken.recordedElsewhere,
+            'recorded elsewhere',
+            isFalse,
+          ),
+        ),
       );
       final journal = await FilePracticeStore(root).loadJournal(alice.id);
       expect(journal.records.map((r) => r.journalSequence), [0, 1, 2]);

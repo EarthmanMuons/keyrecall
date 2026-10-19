@@ -1246,6 +1246,17 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final PracticeLoopState closed;
     try {
       closed = await close();
+    } on DecisionOvertaken catch (error, stackTrace) {
+      // Nothing about this attempt can be written, so the recovery is the
+      // session that history now describes.
+      _fail(
+        attempt.session,
+        PracticeFailure.overtaken,
+        error,
+        stackTrace,
+        retry: () async => ref.invalidateSelf(),
+      );
+      return;
     } catch (error, stackTrace) {
       // The transaction stays frozen on the session, so the recovery is to
       // write this same attempt again rather than to open a session that
