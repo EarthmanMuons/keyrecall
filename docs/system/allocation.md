@@ -305,6 +305,23 @@ its own, each keeping the one before as a comparator:
    requirements that are due and never actionable useful work on what they wait
    for.
 
+## Device gates
+
+The pilot opens to testers once these hold on a device, in a release or profile
+build. The fold timing, the policy switch, and the pilot report are on the
+developer screen.
+
+| Check                                                                      | iPhone 15 Pro | Android      |
+| -------------------------------------------------------------------------- | ------------- | ------------ |
+| Fold p50 and p95 at 5,000 attempts, and no visible hitch between exercises | not verified  | not verified |
+| The pilot assigned mid-exercise: that exercise by v1-14, the next by it    | not verified  | not verified |
+| A profile switch while an acquisition attempt saves: recorded once, usable | not verified  | not verified |
+| The assignment held across restarts                                        | not verified  | not verified |
+
+The acquisition check passes with either a record carrying its evidence or one
+marked `stale_acquisition`, whichever the interleaving produced: what has to
+hold is that the attempt is history exactly once and practice goes on.
+
 ## How it is judged
 
 The same five seed pairs and three archetypes, plus the scale-strong,

@@ -165,4 +165,96 @@ void main() {
       }
     },
   );
+
+  test(
+    'counts a material once, covered only when all its requirements are',
+    () {
+      final material = fixtureMaterials.first;
+      final candidates = [played(HandConfiguration.right)];
+      RequirementState requirement(String id, {required bool covered}) =>
+          RequirementState(
+            resolved: ResolvedRequirement(
+              requirement: CurriculumRequirement(
+                id: id,
+                familyId: material.familyId,
+                materialId: material.materialId,
+              ),
+              material: material,
+              candidates: candidates,
+            ),
+            coverage: covered
+                ? RequirementCoverage.covered
+                : RequirementCoverage.uncovered,
+            workStatus: RequirementWorkStatus.healthy,
+          );
+      AcquisitionJournal acquisition() => AcquisitionJournal(
+        AcquisitionJournalHeader(profileId: alice.id, createdAt: t0),
+      );
+      Map<String, Object?> breadthWith(List<bool> covered) {
+        final requirements = [
+          for (final (index, isCovered) in covered.indexed)
+            requirement('R$index', covered: isCovered),
+        ];
+        return pilotReportOf(
+              journal: AttemptJournal(
+                JournalHeader(profileId: alice.id, createdAt: t0),
+              ),
+              acquisition: acquisition(),
+              evaluated: EvaluatedPracticeScope(
+                scope: ResolvedPracticeScope(
+                  goalId: 'GOAL',
+                  curriculumId: 'CURRICULUM',
+                  curriculumVersion: '1',
+                  isNarrow: false,
+                  requirements: [
+                    for (final state in requirements) state.resolved,
+                  ],
+                ),
+                requirements: requirements,
+                coverage: ScopeCoverage(
+                  coveredTargetIds: const {},
+                  targetCount: 0,
+                ),
+              ),
+              assigned: SchedulingAssignment.v1_14,
+            )['breadth']!
+            as Map<String, Object?>;
+      }
+
+      final partly = breadthWith([true, false]);
+      final wholly = breadthWith([true, true]);
+
+      expect((partly['covered']! as Map)[material.familyId], 0);
+      expect((partly['requirements covered']! as Map)[material.familyId], 1);
+      expect((wholly['covered']! as Map)[material.familyId], 1);
+      expect((wholly['retained']! as Map)[material.familyId], 1);
+      expect((wholly['requirements covered']! as Map)[material.familyId], 2);
+    },
+  );
+
+  test('reads coverage against General Fluency whatever the session is '
+      'focused on', () async {
+    final session = await openSession(
+      InMemoryPracticeStore(createdAt: t0),
+      profile: alice.scheduledBy(SchedulingAssignment.allocationPilot),
+      materials: allPracticeMaterials,
+    );
+    await practise(session, attempts: 12);
+    final unfocused = session.pilotReport(at: t0.plusDays(30));
+    session.updateScope(
+      goal: PracticeGoal.generalFluency,
+      focus: PracticeFocus(
+        exclusiveRequirementIds: {
+          catalogRequirementId(
+            PracticeGoal.generalFluency.id,
+            allPracticeMaterials.first.materialId,
+          ),
+        },
+      ),
+    );
+    final focused = session.pilotReport(at: t0.plusDays(30));
+
+    expect(focused['coverage scope'], PracticeGoal.generalFluency.id);
+    expect(focused['breadth'], unfocused['breadth']);
+  });
 }

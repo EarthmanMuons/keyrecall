@@ -1701,14 +1701,19 @@ class PracticeSession {
     _epoch++;
   }
 
-  /// [pilotReportOf] this profile's history, with requirements evaluated at
-  /// [at] under the session's scope.
+  /// [pilotReportOf] this profile's history, with coverage read at [at]
+  /// against unrestricted General Fluency, the pilot's scope, whatever goal or
+  /// focus this session is practising under.
   ///
-  /// Throws [PracticeStateError] when the scope did not resolve.
+  /// Throws [PracticeStateError] when General Fluency does not resolve over
+  /// this session's catalog.
   Map<String, Object?> pilotReport({required DateTime at}) {
-    final resolution = _scopeResolution;
+    final resolution = _resolve(
+      PracticeGoal.generalFluency,
+      PracticeFocus.unrestricted,
+    );
     if (resolution is! ValidPracticeScope) {
-      throw PracticeStateError('the scope did not resolve');
+      throw PracticeStateError('General Fluency did not resolve');
     }
     final scratch = _state.copy();
     learner.propagate(scratch, _observationTime(at));
@@ -1727,7 +1732,7 @@ class PracticeSession {
     );
   }
 
-    /// Saves a checkpoint at the current position, if there is history to cover.
+  /// Saves a checkpoint at the current position, if there is history to cover.
   ///
   /// Purely an accelerator for the next [open]. Failing to save one costs time
   /// and nothing else.

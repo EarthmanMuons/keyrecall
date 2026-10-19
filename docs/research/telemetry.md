@@ -162,8 +162,9 @@ requirement a substitution was owed to, and the history its counters read.
 `pilotReportOf` in `keyrecall_practice` projects one profile's history into the
 first report, on the device and from nothing recorded for it:
 
-- breadth by family: introduced, covered, retained (covered and not due), and
-  revisited after a week away;
+- breadth by family, in distinct materials: introduced, covered, retained
+  (covered and not due), and revisited after a week away, with requirements
+  covered and retained beside them;
 - progression: strands managed, and the attempts and days to the first managed
   left-hand and hands-together scale;
 - difficulty: recovery, not started, incomplete, unmeasured, strands tried five
@@ -175,11 +176,19 @@ first report, on the device and from nothing recorded for it:
 - evidence: events observed, gaps by reason, and stale decisions, which say
   whether concurrency artifacts limit what the rest can be read as.
 
+Coverage is read against unrestricted General Fluency, the pilot's scope,
+whatever goal or focus the profile is practising under, so changing a focus
+cannot make breadth appear lost. The week and the five tries are provisional and
+descriptive: a return after an interval, not evidence of retention, and repeated
+unsuccessful execution, not evidence that practice has stopped helping.
+
 It carries catalog ids and counts, and time only as days and attempts since the
 first attempt, so it passes the [field test](#the-test-for-a-field) and the
-upload rules above. Until the projection project exists, a tester copies it from
-the developer screen and chooses whether to share it. No question here is asked
-after an attempt.
+upload rules above. That makes it de-identified rather than anonymous: a
+detailed history of milestones over named materials can still be distinctive.
+Until the projection project exists, a tester copies it from the developer
+screen and chooses whether to share it. No question here is asked after an
+attempt.
 
 ## What this settles
 

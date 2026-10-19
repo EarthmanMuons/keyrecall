@@ -8,20 +8,31 @@ import 'requirement_state.dart';
 
 /// Days between attempts at a material after which a return counts as a
 /// revisit.
+///
+/// Provisional and descriptive: a return after an interval, not evidence that
+/// anything was retained or forgotten.
 const int pilotRevisitGapDays = 7;
 
 /// Attempts at one strand, none of them managed, after which the strand counts
 /// as repeated without execution.
+///
+/// Provisional and descriptive: repeated unsuccessful execution, not evidence
+/// that further practice would not help.
 const int pilotUnmanagedRepeats = 5;
 
 /// What one profile's practice says about the allocation pilot, projected
 /// from history on the device.
 ///
-/// Everything here is derived from the attempt and acquisition logs and the
-/// scope as evaluated now; nothing is recorded for it. It names materials and
-/// requirements by their catalog ids and time by days and attempts since the
-/// first attempt, and nothing about the person: no name, profile id, session
-/// id, or date.
+/// Everything here is derived from the attempt and acquisition logs and
+/// [evaluated], the scope coverage is read against; nothing is recorded for
+/// it. Breadth counts distinct materials, a material covered when every
+/// requirement on it is and retained when none of those is due, with
+/// requirement counts beside them.
+///
+/// De-identified rather than anonymous: it names materials and requirements by
+/// their catalog ids and time by days and attempts since the first attempt,
+/// and carries no name, profile id, session id, or date, but a history's shape
+/// can still be distinctive.
 Map<String, Object?> pilotReportOf({
   required AttemptJournal journal,
   required AcquisitionJournal acquisition,
@@ -36,6 +47,20 @@ Map<String, Object?> pilotReportOf({
     for (final state in evaluated.requirements)
       state.resolved.material.materialId: state.resolved.material.familyId,
   };
+  final requirementsOf = <String, List<RequirementState>>{};
+  for (final state in evaluated.requirements) {
+    requirementsOf
+        .putIfAbsent(state.resolved.material.materialId, () => [])
+        .add(state);
+  }
+  final coveredMaterials = [
+    for (final MapEntry(key: material, value: states) in requirementsOf.entries)
+      if (states.every((state) => state.isCovered)) material,
+  ];
+  final retainedMaterials = [
+    for (final material in coveredMaterials)
+      if (!requirementsOf[material]!.any((state) => state.isDue)) material,
+  ];
   final familyOfRequirement = {
     for (final state in evaluated.requirements)
       state.resolved.requirement.id: state.resolved.material.familyId,
@@ -132,16 +157,23 @@ Map<String, Object?> pilotReportOf({
 
   return {
     'assigned policy': assigned.id,
+    'coverage scope': evaluated.scope.goalId,
     'attempts by effective policy': effective,
     'breadth': {
       'introduced': byFamily([
         for (final material in lastAt.keys) familyOfMaterial[material],
       ]),
       'covered': byFamily([
+        for (final material in coveredMaterials) familyOfMaterial[material],
+      ]),
+      'retained': byFamily([
+        for (final material in retainedMaterials) familyOfMaterial[material],
+      ]),
+      'requirements covered': byFamily([
         for (final state in evaluated.requirements)
           if (state.isCovered) state.resolved.material.familyId,
       ]),
-      'retained': byFamily([
+      'requirements retained': byFamily([
         for (final state in evaluated.requirements)
           if (state.isCovered && !state.isDue) state.resolved.material.familyId,
       ]),
