@@ -317,8 +317,14 @@ restarting the repository.
 
 | Check                                                                                            | iPhone 15 Pro | Android      |
 | ------------------------------------------------------------------------------------------------ | ------------- | ------------ |
-| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts         | not verified  | not verified |
+| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts         | passed        | not verified |
 | Profile build, the pilot switched on from the developer screen: a session practises as it should | not verified  | not verified |
+
+On the iPhone 15 Pro, iOS 27.0.1, release build, the fold over 5,000 attempts
+takes 2.7 ms whole, once as a session opens, and 13 to 15 us carried on by each
+decision. The worst frame gap while it runs is the same 13.0 ms at 1,000 and
+5,000 attempts, the wait for the next frame rather than the fold. Before the
+fold was carried on, it took 16.2 ms whole before every decision.
 
 ## How it is judged
 
