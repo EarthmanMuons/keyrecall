@@ -10,6 +10,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'arpeggio_policy_experiment.dart';
 import 'player_archetypes.dart';
 import 'python_compatible_random.dart';
+import 'synthetic_performance.dart';
 import 'synthetic_player.dart';
 
 /// One measured scheduling decision.
@@ -115,29 +116,38 @@ class BenchmarkSession {
 
   /// Decides one slot, plays it, and reports what the decision cost.
   ///
-  /// Null once the scope stops presenting work, which ends a run rather than
-  /// failing it.
+  /// A supported task is a decision too, and is played the way demo practice
+  /// plays one, so the session never holds a task the next slot would refuse
+  /// to decide past. Null once the scope stops presenting work, which ends a
+  /// run rather than failing it.
   Future<BenchmarkDecision?> step() async {
     final slot = _slot++;
     final at = _at0.add(Duration(minutes: slot + 1));
     final wall = Stopwatch()..start();
     final decision = await session.decideOutcome(at: at);
     wall.stop();
-    if (decision case PresentedAttempt(:final exercise)) {
-      await session.closeWithOutcome(
-        _playing.play(exercise, _random),
-        observedWallTime: at,
-      );
-      return BenchmarkDecision(
-        slot: slot,
-        decide: _pipeline.lastDecide,
-        wall: wall.elapsed,
-        generated: _pipeline.lastGenerated,
-        evaluated: _pipeline.lastEvaluated,
-        ranked: _pipeline.lastRanked,
-      );
+    switch (decision) {
+      case PresentedAttempt(:final exercise):
+        await session.closeWithOutcome(
+          _playing.play(exercise, _random),
+          observedWallTime: at,
+        );
+      case PresentedAcquisition(:final task):
+        await session.closeAcquisition(
+          performAcquisition(state: _playing, task: task, rng: _random, at: at),
+          at: at,
+        );
+      case _:
+        return null;
     }
-    return null;
+    return BenchmarkDecision(
+      slot: slot,
+      decide: _pipeline.lastDecide,
+      wall: wall.elapsed,
+      generated: _pipeline.lastGenerated,
+      evaluated: _pipeline.lastEvaluated,
+      ranked: _pipeline.lastRanked,
+    );
   }
 }
 

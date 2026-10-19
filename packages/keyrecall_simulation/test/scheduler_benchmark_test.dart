@@ -3,6 +3,26 @@ import 'package:test/test.dart';
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 void main() {
+  group('a warmed session', () {
+    for (final (player, warmup) in [('true_beginner', 40), ('advanced', 80)]) {
+      test(
+        'steps on past a supported task, as $player after $warmup',
+        () async {
+          final benchmark = await openBenchmarkSession(
+            scope: ArpeggioPolicyScope.fullMixed,
+            player: PlayerArchetypes.all.firstWhere(
+              (archetype) => archetype.id == player,
+            ),
+            warmupSlots: warmup,
+          );
+
+          expect(await benchmark.step(), isNotNull);
+          expect(benchmark.session.outstandingAcquisition, isNull);
+        },
+      );
+    }
+  });
+
   group('the worker boundary', () {
     test('sends nothing but the parameters', () async {
       final micros = await runSchedulerBenchmarkOnWorker(
