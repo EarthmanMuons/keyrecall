@@ -279,7 +279,8 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
   }
 
   /// Allocation's fold over histories of pilot length, on the UI isolate
-  /// where the session runs it before each decision.
+  /// where the session runs it: whole when a session opens, and carried on by
+  /// what each decision adds.
   Future<void> _measureAllocationFold(List<String> lines) async {
     lines
       ..add('')
@@ -289,7 +290,9 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
             'p50'.padLeft(12) +
             'p95'.padLeft(12) +
             'worst gap'.padLeft(12) +
-            'frames'.padLeft(8),
+            'frames'.padLeft(8) +
+            'next p50'.padLeft(12) +
+            'next p95'.padLeft(12),
       );
     for (final attempts in [1000, 5000]) {
       _reportProgress('allocation fold, $attempts', 0, 1);
@@ -301,12 +304,18 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
       final observed = await _framesDuring(
         () async => timeSyntheticFold(history, runs: 1),
       );
+      final next = [
+        for (final elapsed in timeSyntheticContinuation(history))
+          elapsed.inMicroseconds,
+      ];
       lines.add(
         '$attempts'.padRight(18) +
             _quantile(sorted, 0.5).padLeft(12) +
             _quantile(sorted, 0.95).padLeft(12) +
             _ms(observed.worst).padLeft(12) +
-            '${observed.frames}'.padLeft(8),
+            '${observed.frames}'.padLeft(8) +
+            '${next[next.length ~/ 2]} us'.padLeft(12) +
+            '${next[((next.length - 1) * 0.95).round()]} us'.padLeft(12),
       );
     }
   }

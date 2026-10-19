@@ -31,6 +31,10 @@ class AllocationHistory {
   /// none has been. Counters before it are unavailable rather than zero.
   final int? instrumentedFrom;
 
+  /// Events folded, and the place the last acquisition attempt took.
+  final int _position;
+  final int _placedAfter;
+
   AllocationHistory._({
     required this.counters,
     required this.basis,
@@ -38,28 +42,86 @@ class AllocationHistory {
     required Map<AllocationGap, int> gaps,
     required this.staleDecisions,
     required this.instrumentedFrom,
-  }) : gaps = Map.unmodifiable(gaps);
+    required int position,
+    required int placedAfter,
+  }) : gaps = Map.unmodifiable(gaps),
+       _position = position,
+       _placedAfter = placedAfter;
+
+  static final _empty = AllocationHistory._(
+    counters: const WaitCounters.empty(),
+    basis: AllocationBasis(attempts: 0, acquisitionAttempts: 0),
+    observed: 0,
+    gaps: const {},
+    staleDecisions: 0,
+    instrumentedFrom: null,
+    position: 0,
+    placedAfter: 0,
+  );
 
   /// Throws [JournalFormatException] for an acquisition attempt placed after
   /// more ordinary attempts than [attempts] holds.
   factory AllocationHistory.of(
     AttemptJournal attempts,
     AcquisitionJournal acquisition,
+  ) => _empty._continued(attempts, acquisition)!;
+
+  /// This history carried on through what [attempts] and [acquisition] hold
+  /// beyond it, which is what folding them whole would give.
+  ///
+  /// Assumes the logs extend the ones this was folded from, as appending does.
+  /// Folds them whole when what they add does not come after everything
+  /// already folded, as an acquisition attempt placed behind it does.
+  ///
+  /// Throws [JournalFormatException] as [AllocationHistory.of] does.
+  AllocationHistory continuedWith(
+    AttemptJournal attempts,
+    AcquisitionJournal acquisition,
+  ) =>
+      _continued(attempts, acquisition) ??
+      AllocationHistory.of(attempts, acquisition);
+
+  AllocationHistory? _continued(
+    AttemptJournal attempts,
+    AcquisitionJournal acquisition,
   ) {
-    var counters = const WaitCounters.empty();
-    var observed = 0, stale = 0, position = 0;
-    int? instrumentedFrom;
-    final gaps = <AllocationGap, int>{};
-    var attemptsBefore = 0, acquisitionAttemptsBefore = 0;
+    final records = attempts.records;
+    final acquired = acquisition.attempts;
+    if (records.length < basis.attempts ||
+        acquired.length < basis.acquisitionAttempts) {
+      return null;
+    }
+
+    final placed = <(int, AcquisitionAttemptRecord)>[];
+    var last = _placedAfter;
+    for (final record in acquired.skip(basis.acquisitionAttempts)) {
+      final at = record.attemptsBefore ?? last;
+      if (at > records.length) {
+        throw JournalFormatException(
+          'acquisition attempt ${record.identity.attemptId} is placed after '
+          '$at ordinary attempts, but history holds ${records.length}',
+        );
+      }
+      if (at < basis.attempts) return null;
+      placed.add((at, record));
+      last = at;
+    }
+
+    var observed = this.observed, stale = staleDecisions, position = _position;
+    var instrumentedFrom = this.instrumentedFrom;
+    final gaps = Map.of(this.gaps);
+    final evidence = <AllocationEvidence>[];
+    var attemptsBefore = basis.attempts;
+    var acquisitionAttemptsBefore = basis.acquisitionAttempts;
 
     void fold(AllocationRecord allocation) {
       switch (allocation) {
-        case AllocationObserved(:final basis, :final evidence):
-          counters = counters.advance(evidence);
+        case AllocationObserved(basis: final read, evidence: final applied):
+          evidence.add(applied);
           observed++;
           instrumentedFrom ??= position;
-          if (basis.attempts != attemptsBefore ||
-              basis.acquisitionAttempts != acquisitionAttemptsBefore) {
+          if (read.attempts != attemptsBefore ||
+              read.acquisitionAttempts != acquisitionAttemptsBefore) {
             stale++;
           }
         case AllocationUnobserved(:final gap):
@@ -68,23 +130,8 @@ class AllocationHistory {
       position++;
     }
 
-    final placed = <(int, AcquisitionAttemptRecord)>[];
-    var last = 0;
-    for (final record in acquisition.attempts) {
-      final at = record.attemptsBefore ?? last;
-      if (at > attempts.length) {
-        throw JournalFormatException(
-          'acquisition attempt ${record.identity.attemptId} is placed after '
-          '$at ordinary attempts, but history holds ${attempts.length}',
-        );
-      }
-      placed.add((at, record));
-      last = at;
-    }
-
-    final records = attempts.records;
     var next = 0;
-    for (var n = 0; n <= records.length; n++) {
+    for (var n = basis.attempts; n <= records.length; n++) {
       while (next < placed.length && placed[next].$1 == n) {
         fold(placed[next].$2.allocation);
         acquisitionAttemptsBefore++;
@@ -96,7 +143,7 @@ class AllocationHistory {
     }
 
     return AllocationHistory._(
-      counters: counters,
+      counters: counters.advanceAll(evidence),
       basis: AllocationBasis(
         attempts: attemptsBefore,
         acquisitionAttempts: acquisitionAttemptsBefore,
@@ -105,6 +152,8 @@ class AllocationHistory {
       gaps: gaps,
       staleDecisions: stale,
       instrumentedFrom: instrumentedFrom,
+      position: position,
+      placedAfter: last,
     );
   }
 }

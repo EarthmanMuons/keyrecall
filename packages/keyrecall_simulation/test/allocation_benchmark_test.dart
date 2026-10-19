@@ -21,5 +21,6 @@ void main() {
     expect(folded.gaps, isEmpty);
     expect(evidenceBytes, inInclusiveRange(500, 1500));
     expect(timeSyntheticFold(history, runs: 3), hasLength(3));
+    expect(timeSyntheticContinuation(history, runs: 3), hasLength(3));
   });
 }

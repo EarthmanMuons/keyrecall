@@ -132,3 +132,25 @@ List<Duration> timeSyntheticFold(
       return watch.elapsed;
     }(),
 ]..sort();
+
+/// How long carrying [history] on by its last ordinary attempt takes, [runs]
+/// times, sorted: what a decision pays once a session has folded the rest.
+List<Duration> timeSyntheticContinuation(
+  ({AttemptJournal attempts, AcquisitionJournal acquisition}) history, {
+  int runs = 31,
+}) {
+  final shorter = AttemptJournal(history.attempts.header);
+  final records = history.attempts.records;
+  for (final record in records.take(records.length - 1)) {
+    shorter.append(record);
+  }
+  final held = AllocationHistory.of(shorter, history.acquisition);
+  return [
+    for (var run = 0; run < runs; run++)
+      () {
+        final watch = Stopwatch()..start();
+        held.continuedWith(history.attempts, history.acquisition);
+        return watch.elapsed;
+      }(),
+  ]..sort();
+}

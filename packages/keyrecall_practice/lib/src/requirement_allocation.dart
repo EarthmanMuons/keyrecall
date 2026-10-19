@@ -106,13 +106,18 @@ class WaitCounters {
   /// Every nonzero count, in the order allocation breaks exact ties by.
   Map<String, int> get asMap => Map.unmodifiable(_missed);
 
-  WaitCounters advance(AllocationEvidence evidence) {
+  WaitCounters advance(AllocationEvidence evidence) => advanceAll([evidence]);
+
+  /// These counters advanced by each of [evidence] in turn.
+  WaitCounters advanceAll(Iterable<AllocationEvidence> evidence) {
     final next = Map.of(_missed);
-    for (final id in evidence.served) {
-      next.remove(id);
-    }
-    for (final id in evidence.missed) {
-      next[id] = (next[id] ?? 0) + 1;
+    for (final each in evidence) {
+      for (final id in each.served) {
+        next.remove(id);
+      }
+      for (final id in each.missed) {
+        next[id] = (next[id] ?? 0) + 1;
+      }
     }
     return WaitCounters._(next);
   }

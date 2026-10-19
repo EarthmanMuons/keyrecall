@@ -1167,16 +1167,18 @@ class PracticeSession {
     }
   }
 
-  /// Allocation's waiting as this session's history leaves it, folded once
-  /// for each history it is asked of.
+  /// Allocation's waiting as this session's history leaves it, carried on
+  /// from the last history it was asked of.
   AllocationHistory get _allocationHistory {
     final held = _allocation;
-    if (held != null &&
-        held.basis.attempts == _journal.length &&
+    if (held == null) {
+      return _allocation = AllocationHistory.of(_journal, _acquisition);
+    }
+    if (held.basis.attempts == _journal.length &&
         held.basis.acquisitionAttempts == _acquisition.attempts.length) {
       return held;
     }
-    return _allocation = AllocationHistory.of(_journal, _acquisition);
+    return _allocation = held.continuedWith(_journal, _acquisition);
   }
 
   /// The policy this profile is assigned and the one that decides under
