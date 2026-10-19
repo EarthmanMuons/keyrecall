@@ -65,8 +65,10 @@ List<DemoSession> demoSessions({
 /// instrument is synthetic. Attempts are spaced a minute or two apart, the
 /// time one actually takes, and ids are numbered rather than random, so the
 /// same inputs write the same journal. [onSession] reports each session as it
-/// closes; [onOpen] and [onDecision] time each opening and each decision, for
-/// a run that is measuring the app rather than populating it. [onArrival] and
+/// closes; [onOpen], [onDecision], and [onCommit] time each opening, decision,
+/// and close, for a run that is measuring the app rather than populating it.
+/// [scheduler] builds each session's host from [pipeline], in process when
+/// omitted. [onArrival] and
 /// [onClose] see each session's player and session before its first slot and
 /// after its last, for readings that must not move either.
 Future<void> practiceDemoHistory({
@@ -78,9 +80,11 @@ Future<void> practiceDemoHistory({
   int seed = 0,
   PracticeGoal goal = PracticeGoal.generalFluency,
   SchedulerPipeline? pipeline,
+  SchedulerHost Function(SchedulerPipeline pipeline)? scheduler,
   void Function(int completed, int total)? onSession,
   void Function(PracticeSession session, Duration elapsed)? onOpen,
   void Function(PracticeSession session, Duration elapsed)? onDecision,
+  void Function(PracticeSession session, Duration elapsed)? onCommit,
   void Function(PracticeSession session, PlayerState playing, DateTime at)?
   onArrival,
   void Function(PracticeSession session, PlayerState playing, DateTime at)?
@@ -100,6 +104,10 @@ Future<void> practiceDemoHistory({
       materials: materials,
       goal: goal,
       pipeline: pipeline,
+      scheduler: switch ((scheduler, pipeline)) {
+        (final make?, final pipeline?) => make(pipeline),
+        _ => null,
+      },
       sessionId: 'demo-session-$index',
       nextId: () => 'demo-${ids++}',
     );
@@ -113,15 +121,20 @@ Future<void> practiceDemoHistory({
       onDecision?.call(session, deciding.elapsed);
       if (decision case PresentedAttempt(:final exercise, decision: final d)) {
         await session.acknowledgePresentation(d.attemptId);
-        await session.closeWithOutcome(
-          playing.play(exercise, random, at: at),
-          observedWallTime: at,
-        );
+        final outcome = playing.play(exercise, random, at: at);
+        final committing = Stopwatch()..start();
+        await session.closeWithOutcome(outcome, observedWallTime: at);
+        onCommit?.call(session, committing.elapsed);
       } else if (decision case PresentedAcquisition(:final task)) {
-        await session.closeAcquisition(
-          performAcquisition(state: playing, task: task, rng: random, at: at),
+        final performed = performAcquisition(
+          state: playing,
+          task: task,
+          rng: random,
           at: at,
         );
+        final committing = Stopwatch()..start();
+        await session.closeAcquisition(performed, at: at);
+        onCommit?.call(session, committing.elapsed);
       } else {
         break;
       }

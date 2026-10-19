@@ -7,6 +7,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart'
 import 'package:material_ui/material_ui.dart';
 
 import '../input/input.dart';
+import 'allocation_timing.dart';
 import 'attempt_preview.dart';
 import 'demo_profile.dart';
 import 'loop_failure.dart';
@@ -274,6 +275,31 @@ class _Tools extends ConsumerWidget {
         },
       ),
       const _DemoProfileTool(),
+      _Tool(
+        icon: Icons.speed,
+        title: 'Allocation fold timing',
+        subtitle: 'Fold this history into waiting counters, as a decision does',
+        onTap: () {
+          final loop = ref.read(practiceLoopProvider).value;
+          if (loop == null) return;
+          final lines = describeAllocationTiming(
+            timeAllocationFold(loop.session),
+          );
+          showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Allocation fold'),
+              content: Text(lines.join('\n')),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
       _Tool(
         icon: Icons.restart_alt,
         title: 'Reopen the session',
