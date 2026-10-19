@@ -397,20 +397,29 @@ class _SchedulingSwitch extends ConsumerWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: const Text('Scheduling'),
-      subtitle: const Text('From the next decision on'),
-      trailing: DropdownButton<SchedulingAssignment?>(
-        value: profile?.schedulingOverride,
-        onChanged: profile == null || busy
-            ? null
-            : (chosen) => ref
-                  .read(profileRosterProvider.notifier)
-                  .assign(profile.id, chosen),
-        items: [
-          DropdownMenuItem(
-            child: Text('Production (${SchedulingAssignment.production.id})'),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('From the next decision on'),
+          DropdownButton<SchedulingAssignment?>(
+            isExpanded: true,
+            value: profile?.schedulingOverride,
+            onChanged: profile == null || busy
+                ? null
+                : (chosen) => ref
+                      .read(profileRosterProvider.notifier)
+                      .assign(profile.id, chosen),
+            items: [
+              DropdownMenuItem(
+                child: Text(
+                  'Production (${SchedulingAssignment.production.id})',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              for (final assignment in SchedulingAssignment.values)
+                DropdownMenuItem(value: assignment, child: Text(assignment.id)),
+            ],
           ),
-          for (final assignment in SchedulingAssignment.values)
-            DropdownMenuItem(value: assignment, child: Text(assignment.id)),
         ],
       ),
     );
