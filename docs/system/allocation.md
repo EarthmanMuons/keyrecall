@@ -339,10 +339,10 @@ by allocation; switching profiles while a supported attempt saves, and back,
 records it once and leaves practice usable; and an assignment survives
 restarting the repository.
 
-| Check                                                                                            | iPhone 15 Pro | Android      |
-| ------------------------------------------------------------------------------------------------ | ------------- | ------------ |
-| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts         | passed        | not verified |
-| Profile build, the pilot switched on from the developer screen: a session practises as it should | not verified  | not verified |
+| Check                                                                                            | iPhone 15 Pro | Android  |
+| ------------------------------------------------------------------------------------------------ | ------------- | -------- |
+| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts         | passed        | deferred |
+| Profile build, the pilot switched on from the developer screen: a session practises as it should | passed        | deferred |
 
 On the iPhone 15 Pro, iOS 27.0.1, release build, the fold over 5,000 attempts
 takes 2.7 ms whole, once as a session opens, and 13 to 15 us carried on by each
@@ -350,6 +350,12 @@ decision, where it took 16.2 ms whole before every decision until the fold was
 carried on. The worst frame gap measured while it runs was 13.0 ms at both 1,000
 and 5,000 attempts, with no sign of a penalty that grows with history; the
 benchmark does not establish what that gap consists of.
+
+Practising with the pilot on, on the iPhone, showed no noticeable delay between
+exercises, and progress survived closing and reopening the app. The Android
+checks are deferred: earlier benchmarks put the Pixel 9a at about 2 to 2.5 times
+the iPhone's cost, which would put the whole fold at 5,000 attempts near 5 to 7
+ms, paid once as a session opens.
 
 ## How it is judged
 
