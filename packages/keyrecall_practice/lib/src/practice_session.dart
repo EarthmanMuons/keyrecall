@@ -232,6 +232,24 @@ class PracticeStateError extends StateError {
   PracticeStateError(super.message);
 }
 
+/// A supported attempt recorded where history now stands, by a session that
+/// is behind it.
+///
+/// Another session for this profile recorded practice after this one read
+/// history, and storage held no trace of this attempt, so it was moved to the
+/// durable log's position and logical time and recorded once, keeping the
+/// time it was recorded at. The attempt is history. The session that recorded
+/// it cannot represent that history and refuses everything until reopened.
+class AcquisitionRecordedReopenRequired implements Exception {
+  final AcquisitionAttemptRecord record;
+
+  const AcquisitionRecordedReopenRequired(this.record);
+
+  @override
+  String toString() =>
+      'AcquisitionRecordedReopenRequired(${record.identity.attemptId})';
+}
+
 /// An attempt another session made obsolete before it could be recorded.
 ///
 /// Storage established it: history had moved past the position the decision
@@ -329,7 +347,11 @@ class PracticeSession {
   AllocationHistory? _allocation;
 
   /// What made this session obsolete, once something did.
-  DecisionOvertaken? _overtaken;
+  Exception? _retired;
+
+  /// Whether the supported attempt in flight was moved to where another
+  /// session left the log, so recording it retires this session.
+  bool _acquisitionRebased = false;
 
   /// The record built for it, held so a retry writes the same event.
   AcquisitionAttemptRecord? _acquisitionInFlight;
@@ -675,7 +697,7 @@ class PracticeSession {
   /// unresolved decision is pending, since deciding again would abandon
   /// something a person may have been shown.
   Future<PracticeDecision> decideOutcome({required DateTime at}) async {
-    if (_overtaken case final overtaken?) throw overtaken;
+    if (_retired case final retired?) throw retired;
     if (_outstanding != null) {
       throw PracticeStateError(
         'an attempt is already outstanding; commit or abandon it first',
@@ -1075,7 +1097,7 @@ class PracticeSession {
     MeasurementPolicy policy = MeasurementPolicy.standard,
     PresentationRecord? presentation,
   }) async {
-    if (_overtaken case final overtaken?) throw overtaken;
+    if (_retired case final retired?) throw retired;
     final outstanding = _outstandingAcquisition;
     if (outstanding == null) {
       throw PracticeStateError('no supported task is outstanding');
@@ -1120,51 +1142,86 @@ class PracticeSession {
     return recorded;
   }
 
-  /// Appends [record], placing it again where storage proves another session
-  /// moved history under it.
+  /// Records [record], settling from storage whatever a failed append leaves
+  /// uncertain.
   ///
-  /// Only an attempt storage holds no trace of is placed again, and only at
-  /// the position the durable log was just read at, so it is still one
-  /// attempt and lands once. The learning event survives either way. Placed
-  /// among ordinary attempts it did not see, it keeps no evidence and says why;
-  /// placed after acquisition records it did not see, its evidence stands and
-  /// the fold counts its decision as stale.
+  /// A failure is classified by what storage holds, not by what was thrown.
+  /// This exact attempt durable is success. Another attempt under its id is
+  /// another writer's, and retires the session. Neither log moved past what
+  /// this session read means the failure was storage's own, and the frozen
+  /// record is offered again on retry. Either log moved, with this attempt
+  /// absent, means it is moved to the durable position and logical time and
+  /// recorded once: placed among ordinary attempts it did not see, it keeps no
+  /// evidence and says why, and placed only after acquisition records it did
+  /// not see, its evidence stands for the fold to count stale. A session that
+  /// recorded a moved attempt is behind history and retires once it is
+  /// durable. When storage cannot be read at all, nothing is concluded.
   Future<AcquisitionAttemptRecord> _recordAcquisition(
     AcquisitionAttemptRecord record,
   ) async {
-    for (var tries = 0; ; tries++) {
+    final attemptId = record.identity.attemptId;
+    try {
+      await store.appendAcquisitionEntry(record);
+      _acquisition.append(record);
+    } catch (error, stack) {
+      final AcquisitionJournal durable;
+      final AttemptJournal durableAttempts;
       try {
-        await _appendAcquisition(record);
-        return record;
-      } on StaleAcquisitionPlacement catch (stale) {
-        if (tries > 2) rethrow;
-        // Refused outright, so nothing was written and the durable log is the
-        // one now held.
-        record = record.placed(
-          attemptsBefore: stale.attempts,
-          journalSequence: _acquisition.nextSequence,
-          allocation: AllocationUnobserved(
-            AllocationGap.staleAcquisition,
-            policy: record.allocation.policy,
-          ),
-        );
-      } on JournalFormatException {
-        final attemptsBefore = record.attemptsBefore;
-        if (tries > 2 ||
-            attemptsBefore == null ||
-            _acquisitionDurabilityUnknown ||
-            _acquisition.contains(record.identity.attemptId) ||
-            _acquisition.nextSequence == record.journalSequence) {
-          rethrow;
-        }
-        record = record.placed(
-          attemptsBefore: attemptsBefore,
-          journalSequence: _acquisition.nextSequence,
-          allocation: record.allocation,
-        );
+        durable = await store.loadAcquisitionJournal(profile.id);
+        durableAttempts = await store.loadJournal(profile.id);
+      } catch (_) {
+        _acquisitionDurabilityUnknown = true;
+        Error.throwWithStackTrace(error, stack);
       }
-      _acquisitionInFlight = record;
+      _acquisition = durable;
+      _acquisitionDurabilityUnknown = false;
+
+      final held = durable.records.where(
+        (entry) => entry.identity.attemptId == attemptId,
+      );
+      if (held.isNotEmpty) {
+        if (contentHash(held.single.toJson()) != contentHash(record.toJson())) {
+          _retire(DecisionOvertaken(attemptId, recordedElsewhere: true));
+        }
+        if (durableAttempts.length != _journal.length) {
+          _acquisitionRebased = true;
+        }
+      } else {
+        final ordinaryMoved =
+            durableAttempts.length !=
+            (record.attemptsBefore ?? _journal.length);
+        if (!ordinaryMoved && durable.nextSequence == record.journalSequence) {
+          Error.throwWithStackTrace(error, stack);
+        }
+        var occurredAt = record.identity.occurredAt;
+        for (final tail in [
+          if (durable.records.isNotEmpty)
+            durable.records.last.identity.occurredAt,
+          if (durableAttempts.records.isNotEmpty)
+            durableAttempts.records.last.identity.occurredAt,
+        ]) {
+          if (tail.isAfter(occurredAt)) occurredAt = tail;
+        }
+        final rebased = _acquisitionInFlight = record.rebasedTo(
+          journalSequence: durable.nextSequence,
+          attemptsBefore: durableAttempts.length,
+          occurredAt: occurredAt,
+          allocation: ordinaryMoved
+              ? AllocationUnobserved(
+                  AllocationGap.staleAcquisition,
+                  policy: record.allocation.policy,
+                )
+              : record.allocation,
+        );
+        _acquisitionRebased = true;
+        return _recordAcquisition(rebased);
+      }
     }
+    if (_acquisitionRebased) {
+      _acquisitionRebased = false;
+      _retire(AcquisitionRecordedReopenRequired(record));
+    }
+    return record;
   }
 
   /// Allocation's waiting as this session's history leaves it, carried on
@@ -1495,7 +1552,7 @@ class PracticeSession {
   Future<_PreparedCommit> _commitTransaction(
     _PreparedCommit Function() prepare,
   ) async {
-    if (_overtaken case final overtaken?) throw overtaken;
+    if (_retired case final retired?) throw retired;
     // Prepared once. A retry finishes this transaction rather than computing a
     // second one: the caller reads its clock again on every call, so rebuilding
     // would offer the same attempt id carrying different content, which an
@@ -1645,13 +1702,15 @@ class PracticeSession {
   ///
   /// The pending slot is left alone: whatever it holds now is another
   /// session's, and this one's was already replaced or recorded.
-  Never _retire(DecisionOvertaken overtaken) {
-    _overtaken = overtaken;
+  Never _retire(Exception reason) {
+    _retired = reason;
     _commit = null;
     _pending = null;
     _outstanding = null;
+    _outstandingAcquisition = null;
+    _acquisitionInFlight = null;
     _epoch++;
-    throw overtaken;
+    throw reason;
   }
 
   /// Why [durable] leaves no place for [record], or null when it does.
@@ -1706,7 +1765,7 @@ class PracticeSession {
   ///
   /// Throws [PracticeStateError] when the attempt is already history.
   Future<void> abandonPending() async {
-    if (_overtaken case final overtaken?) throw overtaken;
+    if (_retired case final retired?) throw retired;
     if (_commit case final commit?) {
       // An append that threw may still have landed. Abandoning on the strength
       // of not knowing is what leaves one attempt in the file and none in the

@@ -386,6 +386,52 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     schemaVersion: schemaVersion,
   );
 
+  /// This attempt moved to where a log now stands: at [journalSequence],
+  /// after [attemptsBefore] ordinary attempts, at logical time [occurredAt],
+  /// carrying [allocation].
+  ///
+  /// When [occurredAt] is later than this attempt's own, the time it was
+  /// recorded at is kept as [observedWallTime], unless one already is.
+  AcquisitionAttemptRecord rebasedTo({
+    required int journalSequence,
+    required int attemptsBefore,
+    required DateTime occurredAt,
+    required AllocationRecord allocation,
+  }) {
+    final moved = occurredAt.isAfter(identity.occurredAt);
+    return AcquisitionAttemptRecord(
+      journalSequence: journalSequence,
+      identity: AttemptIdentity(
+        profileId: identity.profileId,
+        attemptId: identity.attemptId,
+        sessionId: identity.sessionId,
+        indexInSession: identity.indexInSession,
+        occurredAt: moved ? occurredAt : identity.occurredAt,
+      ),
+      observedWallTime: moved
+          ? observedWallTime ?? identity.occurredAt
+          : observedWallTime,
+      executionEvidenceRevision: executionEvidenceRevision,
+      attemptsBefore: attemptsBefore,
+      scope: scope,
+      allocation: allocation,
+      task: task,
+      presentation: presentation,
+      started: started,
+      completion: completion,
+      repairs: repairs,
+      repeats: repeats,
+      intrusions: intrusions,
+      earnedProbe: earnedProbe,
+      gaps: gaps,
+      sequence: sequence,
+      continuity: continuity,
+      termination: termination,
+      firstAbsentPosition: firstAbsentPosition,
+      schemaVersion: schemaVersion,
+    );
+  }
+
   /// The exercise a criterion success here would earn a probe of.
   @override
   Exercise get parent => task.parent;

@@ -138,9 +138,15 @@ void main() {
       final other = await open(store, sessionId: 'switched');
       await commit(other, (await decide(other, 1)).exercise);
 
-      final record = await offering.closeAcquisition(
-        PerformanceTranscript.empty,
-        at: t0.plusDays(1),
+      final record = await recordedBeforeReopening(
+        offering.closeAcquisition(
+          PerformanceTranscript.empty,
+          at: t0.plusDays(1),
+        ),
+      );
+      await expectLater(
+        offering.decideOutcome(at: t0.plusDays(2)),
+        throwsA(isA<AcquisitionRecordedReopenRequired>()),
       );
       expect(record.attemptsBefore, 1);
       expect(
@@ -162,7 +168,7 @@ void main() {
   });
 
   test('an acquisition attempt the log moved under is placed after what '
-      'landed, and kept', () async {
+      'landed, kept, and its session reopened', () async {
     final store = InMemoryPracticeStore();
     final first = await open(store, pipeline: const AlwaysOffersAcquisition());
     final second = await open(
@@ -177,9 +183,8 @@ void main() {
       at: t0.plusDays(1),
     );
 
-    final record = await second.closeAcquisition(
-      PerformanceTranscript.empty,
-      at: t0.plusDays(1),
+    final record = await recordedBeforeReopening(
+      second.closeAcquisition(PerformanceTranscript.empty, at: t0.plusDays(1)),
     );
     expect(record.journalSequence, 1);
     expect(record.allocation, isA<AllocationObserved>());

@@ -1246,6 +1246,11 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final PracticeLoopState closed;
     try {
       closed = await close();
+    } on AcquisitionRecordedReopenRequired {
+      // The attempt is history; only this session is behind it, so the
+      // session history now describes takes over without a failure to answer.
+      if (_owns(attempt.session)) ref.invalidateSelf();
+      return;
     } on DecisionOvertaken catch (error, stackTrace) {
       // Nothing about this attempt can be written, so the recovery is the
       // session that history now describes.

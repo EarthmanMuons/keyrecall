@@ -295,3 +295,17 @@ AttemptRecord recordOf(
 /// The measurement a record carries, for tests that know it has one.
 Measured measuredOf(AttemptRecord record) =>
     record.closure.measurement as Measured;
+
+/// The attempt [closing] recorded before its session asked to be reopened.
+///
+/// Fails the test when the close returns, or throws anything else.
+Future<AcquisitionAttemptRecord> recordedBeforeReopening(
+  Future<Object?> closing,
+) async {
+  try {
+    await closing;
+  } on AcquisitionRecordedReopenRequired catch (reopen) {
+    return reopen.record;
+  }
+  throw StateError('the close returned rather than asking to be reopened');
+}
