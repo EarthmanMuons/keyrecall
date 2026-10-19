@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+import 'allocation_record.dart';
 import 'attempt_closure.dart';
 import 'attempt_timing.dart';
 import 'canonical_json.dart';
@@ -212,6 +213,9 @@ class AttemptRecord {
   /// derived from a measurement lives inside it rather than beside it.
   final AttemptClosure closure;
 
+  /// What the decision did for allocation, or why it records nothing.
+  final AllocationRecord allocation;
+
   /// Content hash of the learner state the decision was made from.
   ///
   /// Not the state itself: a full snapshot per attempt would duplicate almost
@@ -233,6 +237,7 @@ class AttemptRecord {
     this.scope,
     this.timing,
     this.input,
+    this.allocation = const AllocationUnobserved(AllocationGap.notInstrumented),
     this.stateBeforeHash,
     this.stateAfterHash,
     this.observedWallTime,
@@ -257,6 +262,7 @@ class AttemptRecord {
     scope: scope,
     timing: timing,
     input: input,
+    allocation: allocation,
     stateBeforeHash: before,
     stateAfterHash: after,
     observedWallTime: observedWallTime,
@@ -290,6 +296,7 @@ class AttemptRecord {
     'timing': timing == null ? null : encodeAttemptTiming(timing!),
     'input': input == null ? null : encodeInputProvenance(input!),
     'closure': encodeClosure(closure),
+    'allocation': allocation.toJson(),
     'state_before_hash': stateBeforeHash,
     'state_after_hash': stateAfterHash,
   };
@@ -398,6 +405,10 @@ class AttemptRecord {
             ),
       closure: decodeClosure(
         requireMap(json, 'closure', location: location),
+        location: location,
+      ),
+      allocation: AllocationRecord.fromJson(
+        requireMap(json, 'allocation', location: location),
         location: location,
       ),
       stateBeforeHash: asOptionalString(

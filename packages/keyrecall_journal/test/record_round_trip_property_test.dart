@@ -23,6 +23,7 @@ typedef Content = ({
   AttemptClosure closure,
   String? stateBeforeHash,
   String? stateAfterHash,
+  AllocationRecord allocation,
 });
 
 final Arbitrary<Content> anyContent =
@@ -37,7 +38,7 @@ final Arbitrary<Content> anyContent =
         optional(anyTiming),
         optional(anyInput),
       ),
-      combine3(anyClosure, optional(anyHash), optional(anyHash)),
+      combine4(anyClosure, optional(anyHash), optional(anyHash), anyAllocation),
     ).map((parts) {
       final (
         observed,
@@ -49,7 +50,7 @@ final Arbitrary<Content> anyContent =
         timing,
         input,
       ) = parts.$1;
-      final (closure, before, after) = parts.$2;
+      final (closure, before, after, allocation) = parts.$2;
       return (
         observedWallTime: observed,
         provenance: ModelProvenance(
@@ -66,6 +67,7 @@ final Arbitrary<Content> anyContent =
         closure: agreeingWith(closure, presentation),
         stateBeforeHash: before,
         stateAfterHash: after,
+        allocation: allocation,
       );
     });
 
@@ -106,6 +108,7 @@ AttemptRecord recordOf(
   closure: content.closure,
   stateBeforeHash: content.stateBeforeHash,
   stateAfterHash: content.stateAfterHash,
+  allocation: content.allocation,
 );
 
 final Arbitrary<AttemptRecord> anyRecord =
@@ -186,6 +189,7 @@ AttemptRecord builtBackward(AttemptRecord record) {
       opportunitySites: exercise.opportunitySites.toList().reversed.toSet(),
     ),
     presentation: record.presentation,
+    allocation: record.allocation,
     decision: record.decision,
     scope: scope == null
         ? null

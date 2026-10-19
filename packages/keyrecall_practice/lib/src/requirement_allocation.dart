@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
@@ -82,48 +83,6 @@ AllocationChoice<T>? allocate<T>({
     }
   }
   return AllocationChoice(bestByRequirement[chosen] as T, 'owed', chosen);
-}
-
-/// What one allocation opportunity did for the requirements in scope, in
-/// scope order: those its exercise served, and those actionable and missed.
-///
-/// An acquisition offer serves no requirement.
-@immutable
-class AllocationEvidence {
-  final List<String> served;
-  final List<String> missed;
-
-  /// Throws [ArgumentError] when a requirement is named twice, in either list
-  /// or both.
-  AllocationEvidence({
-    required Iterable<String> served,
-    required Iterable<String> missed,
-  }) : served = List.unmodifiable(served),
-       missed = List.unmodifiable(missed) {
-    final named = <String>{};
-    for (final id in [...this.served, ...this.missed]) {
-      if (!named.add(id)) {
-        throw ArgumentError.value(id, 'requirementId', 'named twice');
-      }
-    }
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is AllocationEvidence &&
-      _sameOrder(served, other.served) &&
-      _sameOrder(missed, other.missed);
-
-  @override
-  int get hashCode =>
-      Object.hash(Object.hashAll(served), Object.hashAll(missed));
-
-  @override
-  String toString() => 'AllocationEvidence(served: $served, missed: $missed)';
-
-  static bool _sameOrder(List<String> a, List<String> b) =>
-      a.length == b.length &&
-      Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 }
 
 /// Actionable opportunities each requirement has missed in a row.

@@ -1,3 +1,4 @@
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
@@ -87,23 +88,6 @@ void main() {
 
       expect(counters.asMap.keys, ['a', 'b']);
     });
-  });
-
-  test('evidence is fixed when made, and names each requirement once', () {
-    final served = ['r'];
-    final evidence = AllocationEvidence(served: served, missed: const ['s']);
-    served.add('t');
-
-    expect(evidence.served, ['r']);
-    expect(() => evidence.missed.add('t'), throwsUnsupportedError);
-    expect(
-      () => AllocationEvidence(served: const ['r'], missed: const ['r']),
-      throwsArgumentError,
-    );
-    expect(
-      () => AllocationEvidence(served: const [], missed: const ['s', 's']),
-      throwsArgumentError,
-    );
   });
 
   test('a blocked slot is not an allocation opportunity', () {

@@ -1,3 +1,4 @@
+import 'allocation_record.dart';
 import 'attempt_closure.dart';
 import 'schema.dart';
 
@@ -11,8 +12,11 @@ import 'schema.dart';
 Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      9 => _version9To10(json),
-      _ => _version9To10(_version8To9(_attemptToVersion8(json))),
+      10 => _version10To11(json),
+      9 => _version10To11(_version9To10(json)),
+      _ => _version10To11(
+        _version9To10(_version8To9(_attemptToVersion8(json))),
+      ),
     };
 
 Map<String, Object?> _attemptToVersion8(Map<String, Object?> json) {
@@ -58,17 +62,19 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 
 /// Brings a persisted pending decision forward.
 ///
-/// Nothing in a pending decision changed between versions: it names an
-/// exercise that was shown and the state it was chosen from, and neither an
-/// outcome nor a closure was ever part of it. It carries the attempt version
-/// because it becomes an attempt.
+/// It carries the attempt version because it becomes an attempt, and changes
+/// only where the decision it shares with that attempt did: neither an outcome
+/// nor a closure was ever part of it.
 ///
 /// Throws [JournalFormatException] for a version this build cannot upgrade.
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      9 => _version9To10(json),
-      _ => _version9To10(_version8To9(_pendingDecisionToVersion8(json))),
+      10 => _version10To11(json),
+      9 => _version10To11(_version9To10(json)),
+      _ => _version10To11(
+        _version9To10(_version8To9(_pendingDecisionToVersion8(json))),
+      ),
     };
 
 Map<String, Object?> _pendingDecisionToVersion8(Map<String, Object?> json) =>
@@ -120,7 +126,8 @@ Map<String, Object?> _stampedForward(
       version == 6 ||
       version == 7 ||
       version == 8 ||
-      version == 9) {
+      version == 9 ||
+      version == 10) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -268,6 +275,14 @@ Map<String, Object?> _version9To10(Map<String, Object?> json) {
   }
   return upgraded;
 }
+
+/// Version 10 computed no allocation evidence, so a record reads back as
+/// legacy rather than as a decision that served and missed nothing.
+Map<String, Object?> _version10To11(Map<String, Object?> json) => {
+  ...json,
+  'schema_version': 11,
+  'allocation': AllocationUnobserved.legacy.toJson(),
+};
 
 /// [presentation] as written before a continuing beat could be shown on
 /// screen, in the shape that says none was.

@@ -44,7 +44,13 @@
 /// Reading an earlier version, it defaults to zero because it was not
 /// recorded: a scheduler before it had no such term, so the default says
 /// nothing about how that decision would have ranked the shapes it compared.
-const int attemptSchemaVersion = 10;
+///
+/// Version 11 records what each decision did for allocation: the policies in
+/// force, how much history its waiting counters had folded, and which
+/// requirements it served or left waiting, or why it records none. An earlier
+/// record reads back as legacy, with no evidence, because no decision before
+/// it computed any and none can be reconstructed from what it kept.
+const int attemptSchemaVersion = 11;
 
 /// Version of the checkpoint wire format.
 ///
@@ -111,7 +117,13 @@ const int checkpointSchemaVersion = 3;
 /// Version 10 records how many continuing beats were shown on screen, for the
 /// reason [attemptSchemaVersion]'s version 8 gives. An earlier presentation
 /// reads back as none shown.
-const int acquisitionSchemaVersion = 10;
+///
+/// Version 11 records how many ordinary attempts were history when an attempt
+/// was offered, which places it among them, the scope it was offered under,
+/// and what it did for allocation, for the reason [attemptSchemaVersion]'s
+/// version 11 gives. An earlier record has no place among ordinary attempts
+/// and reads back as legacy.
+const int acquisitionSchemaVersion = 11;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

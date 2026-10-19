@@ -14,6 +14,7 @@
 library;
 
 export 'src/acquisition_journal.dart';
+export 'src/allocation_record.dart';
 export 'src/attempt_closure.dart';
 export 'src/attempt_journal.dart';
 export 'src/attempt_record.dart';

@@ -510,9 +510,11 @@ AcquisitionAttemptRecord attemptOf(
   required Exercise parent,
   required int journalSequence,
   required AttemptIdentity identity,
+  DecisionScope? scope,
 }) => AcquisitionAttemptRecord(
   journalSequence: journalSequence,
   identity: identity,
+  scope: scope,
   observedWallTime: content.observedWallTime,
   executionEvidenceRevision: content.executionEvidenceRevision,
   task: AcquisitionTask(
@@ -537,6 +539,39 @@ AcquisitionAttemptRecord attemptOf(
   continuity: content.continuity,
 );
 
+final Arbitrary<AllocationRecord> anyAllocation =
+    combine4(
+      boolean(),
+      choiceOf(AllocationGap.values),
+      combine3(anyCount, anyCount, optional(anyText)),
+      list(anyText, maxLength: 6),
+    ).map((parts) {
+      final (observed, gap, (attempts, acquisitionAttempts, effective), ids) =
+          parts;
+      final policy = AllocationPolicyIdentity(
+        assigned: 'v1-14',
+        effective: effective == null || effective.isEmpty ? 'v1-14' : effective,
+      );
+      if (!observed) {
+        return AllocationUnobserved(
+          gap,
+          policy: gap == AllocationGap.legacy ? null : policy,
+        );
+      }
+      final named = ids.toSet().toList();
+      return AllocationObserved(
+        policy: policy,
+        basis: AllocationBasis(
+          attempts: attempts,
+          acquisitionAttempts: acquisitionAttempts,
+        ),
+        evidence: AllocationEvidence(
+          served: [for (var i = 0; i < named.length; i += 2) named[i]],
+          missed: [for (var i = 1; i < named.length; i += 2) named[i]],
+        ),
+      );
+    });
+
 final Arbitrary<AttemptIdentity> anyIdentity =
     combine5(anyProfileId, anyText, anyText, anyCount, anyTime).map(
       (parts) => AttemptIdentity(
@@ -549,14 +584,28 @@ final Arbitrary<AttemptIdentity> anyIdentity =
     );
 
 final Arbitrary<AcquisitionAttemptRecord> anyAttempt =
-    combine4(anyAttemptContent, anyExercise, anyCount, anyIdentity).map(
-      (parts) => attemptOf(
+    combine5(
+      anyAttemptContent,
+      anyExercise,
+      anyCount,
+      anyIdentity,
+      combine3(optional(anyCount), anyAllocation, optional(anyScope)),
+    ).map((parts) {
+      final (attemptsBefore, allocation, scope) = parts.$5;
+      return attemptOf(
         parts.$1,
         parent: parts.$2,
         journalSequence: parts.$3,
         identity: parts.$4,
-      ),
-    );
+        scope: scope,
+      ).placed(
+        attemptsBefore: switch (allocation) {
+          AllocationObserved(:final basis) => basis.attempts,
+          _ => attemptsBefore ?? 0,
+        },
+        allocation: allocation,
+      );
+    });
 
 final Arbitrary<AcquisitionProbeServedRecord> anyProbe =
     combine4(optional(anyTime), anyExercise, anyCount, anyIdentity).map(

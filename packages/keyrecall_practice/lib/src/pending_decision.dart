@@ -66,6 +66,10 @@ class PendingDecision {
   /// Hash of the state the decision was made from.
   final String stateBeforeHash;
 
+  /// What the decision does for allocation once committed, fixed when it was
+  /// made so that resuming it commits the same evidence.
+  final AllocationRecord allocation;
+
   PendingDecision({
     required this.attemptId,
     required String profileId,
@@ -79,6 +83,7 @@ class PendingDecision {
     required this.decision,
     this.scope,
     required this.stateBeforeHash,
+    this.allocation = const AllocationUnobserved(AllocationGap.notInstrumented),
   }) : profileId = requireProfileId(profileId),
        decidedAt = decidedAt.toUtc();
 
@@ -101,6 +106,7 @@ class PendingDecision {
     'decision': encodeDecision(decision, encodePrediction),
     'scope': scope == null ? null : encodeDecisionScope(scope!),
     'state_before_hash': stateBeforeHash,
+    'allocation': allocation.toJson(),
   };
 
   /// Reads a pending decision back.
@@ -164,6 +170,10 @@ class PendingDecision {
         'state_before_hash',
         location: location,
       ),
+      allocation: AllocationRecord.fromJson(
+        requireMap(json, 'allocation', location: location),
+        location: location,
+      ),
     );
   }
 
@@ -194,6 +204,7 @@ class PendingDecision {
     timing: timing,
     input: input,
     closure: closure,
+    allocation: allocation,
     stateBeforeHash: stateBeforeHash,
     stateAfterHash: stateAfterHash,
   );

@@ -66,8 +66,15 @@ const unrecordedRankKeyFlags = [
 ];
 
 /// A version 9 record: the rank key had no shape progression term.
+/// A version 10 record: no decision computed allocation evidence.
+Map<String, Object?> version10(Map<String, Object?> current) =>
+    Map<String, Object?>.of(current)
+      ..['schema_version'] = 10
+      ..remove('allocation');
+
 Map<String, Object?> version9(Map<String, Object?> current) {
-  final old = Map<String, Object?>.of(current)..['schema_version'] = 9;
+  final old = Map<String, Object?>.of(version10(current))
+    ..['schema_version'] = 9;
   if (old['decision'] case final Map<String, Object?> decision) {
     old['decision'] = {
       ...decision,
@@ -314,6 +321,47 @@ void main() {
           termsBeforeVersion9(original.decision?.rankKey),
         );
       }
+    });
+  });
+
+  group('version 10 to current', () {
+    final observed = AllocationObserved(
+      policy: AllocationPolicyIdentity(assigned: 'v1-14', effective: 'v1-14'),
+      basis: AllocationBasis(attempts: 0, acquisitionAttempts: 0),
+      evidence: AllocationEvidence(served: const [], missed: const []),
+    );
+
+    test('reads a record as legacy, not as observing nothing', () {
+      final record = journal.records.first;
+      final json = AttemptRecord(
+        journalSequence: record.journalSequence,
+        identity: record.identity,
+        provenance: record.provenance,
+        exercise: record.exercise,
+        closure: record.closure,
+        decision: record.decision,
+        allocation: observed,
+      ).toJson();
+
+      expect(AttemptRecord.fromJson(json).allocation, observed);
+      expect(
+        AttemptRecord.fromJson(version10(json)).allocation,
+        AllocationUnobserved.legacy,
+      );
+    });
+
+    test('reads a pending decision the same way', () {
+      final upgraded = upgradePendingDecisionJson(
+        version10(journal.records.first.toJson()),
+      );
+
+      expect(upgraded['schema_version'], attemptSchemaVersion);
+      expect(
+        AllocationRecord.fromJson(
+          upgraded['allocation']! as Map<String, Object?>,
+        ),
+        AllocationUnobserved.legacy,
+      );
     });
   });
 

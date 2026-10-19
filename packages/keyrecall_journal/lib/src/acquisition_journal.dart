@@ -4,10 +4,12 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
+import 'allocation_record.dart';
 import 'attempt_closure.dart';
 import 'attempt_record.dart';
 import 'canonical_json.dart';
 import 'codecs/domain_codec.dart';
+import 'decision_scope.dart';
 import 'presentation_record.dart';
 import 'profile.dart';
 import 'schema.dart';
@@ -45,6 +47,7 @@ const Set<int> readableAcquisitionVersions = {
   7,
   8,
   9,
+  10,
   acquisitionSchemaVersion,
 };
 
@@ -166,6 +169,17 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// Null for history that did not record causal ordering.
   final int? executionEvidenceRevision;
 
+  /// How many ordinary attempts were history when it was offered, which
+  /// places it after the last of them and before the next, or null for a
+  /// record that was given no place.
+  final int? attemptsBefore;
+
+  /// The goal and focus it was offered under, or null where unrecorded.
+  final DecisionScope? scope;
+
+  /// What it did for allocation, or why it records nothing.
+  final AllocationRecord allocation;
+
   /// The task that was presented.
   final AcquisitionTask task;
 
@@ -233,6 +247,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     required this.identity,
     this.observedWallTime,
     this.executionEvidenceRevision,
+    this.attemptsBefore,
+    this.scope,
+    this.allocation = const AllocationUnobserved(AllocationGap.notInstrumented),
     required this.task,
     this.presentation,
     required this.started,
@@ -252,6 +269,18 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       throw ArgumentError.value(
         executionEvidenceRevision,
         'executionEvidenceRevision',
+      );
+    }
+    if (attemptsBefore != null && attemptsBefore! < 0) {
+      throw ArgumentError.value(attemptsBefore, 'attemptsBefore');
+    }
+    if (allocation case AllocationObserved(
+      :final basis,
+    ) when basis.attempts != attemptsBefore) {
+      throw ArgumentError.value(
+        attemptsBefore,
+        'attemptsBefore',
+        'allocation evidence is placed after the attempts its counters read',
       );
     }
     if (earnedProbe && !completion.isComplete) {
@@ -327,6 +356,35 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       sequence == CriterionVerdict.notMet ||
       continuity == CriterionVerdict.notMet;
 
+  /// This attempt placed after [attemptsBefore] ordinary attempts, carrying
+  /// [allocation].
+  AcquisitionAttemptRecord placed({
+    required int attemptsBefore,
+    required AllocationRecord allocation,
+  }) => AcquisitionAttemptRecord(
+    journalSequence: journalSequence,
+    identity: identity,
+    observedWallTime: observedWallTime,
+    executionEvidenceRevision: executionEvidenceRevision,
+    attemptsBefore: attemptsBefore,
+    scope: scope,
+    allocation: allocation,
+    task: task,
+    presentation: presentation,
+    started: started,
+    completion: completion,
+    repairs: repairs,
+    repeats: repeats,
+    intrusions: intrusions,
+    earnedProbe: earnedProbe,
+    gaps: gaps,
+    sequence: sequence,
+    continuity: continuity,
+    termination: termination,
+    firstAbsentPosition: firstAbsentPosition,
+    schemaVersion: schemaVersion,
+  );
+
   /// The exercise a criterion success here would earn a probe of.
   @override
   Exercise get parent => task.parent;
@@ -344,6 +402,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'occurred_at': encodeTime(identity.occurredAt),
     'observed_wall_time': encodeOptionalTime(observedWallTime),
     'execution_evidence_revision': executionEvidenceRevision,
+    'attempts_before': attemptsBefore,
+    'scope': scope == null ? null : encodeDecisionScope(scope!),
+    'allocation': allocation.toJson(),
     'parent': encodeExercise(task.parent),
     'portion': switch (task.portion) {
       FullTraversal() => 'FULL_TRAVERSAL',
@@ -428,6 +489,27 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       executionEvidenceRevision: json['execution_evidence_revision'] == null
           ? null
           : requireInt(json, 'execution_evidence_revision', location: location),
+      // A record before version 11 has no place among ordinary attempts and
+      // computed no allocation evidence.
+      attemptsBefore: version < 11
+          ? null
+          : asOptionalInt(
+              json['attempts_before'],
+              'attempts_before',
+              location: location,
+            ),
+      scope: version < 11 || json['scope'] == null
+          ? null
+          : decodeDecisionScope(
+              asMap(json['scope'], 'scope', location: location),
+              location: location,
+            ),
+      allocation: version < 11
+          ? AllocationUnobserved.legacy
+          : AllocationRecord.fromJson(
+              requireMap(json, 'allocation', location: location),
+              location: location,
+            ),
       schemaVersion: version,
       journalSequence: requireInt(json, 'journal_sequence', location: location),
       identity: AttemptIdentity(
@@ -693,6 +775,7 @@ class AcquisitionJournal {
   final List<AcquisitionEntry> _records = [];
   final Map<String, String> _hashByAttemptId = {};
   final Set<Exercise> _attemptedParents = {};
+  int _placedAfter = 0;
 
   AcquisitionJournal(this.header);
 
@@ -719,8 +802,10 @@ class AcquisitionJournal {
   ///
   /// Throws [JournalFormatException] when the record belongs to another
   /// profile, when its sequence is not the next one, when its timestamp
-  /// precedes the previous attempt, or when it serves a probe for a parent
-  /// this log holds no attempt at, which [replay] could not apply.
+  /// precedes the previous attempt, when it is placed before ordinary attempts
+  /// an earlier acquisition attempt was placed after, or when it serves a
+  /// probe for a parent this log holds no attempt at, which [replay] could not
+  /// apply.
   bool append(AcquisitionEntry record) {
     final location = 'acquisition entry ${record.identity.attemptId}';
 
@@ -764,6 +849,16 @@ class AcquisitionJournal {
       }
     }
 
+    if (record case AcquisitionAttemptRecord(
+      :final attemptsBefore?,
+    ) when attemptsBefore < _placedAfter) {
+      throw JournalFormatException(
+        'placed after $attemptsBefore ordinary attempts, behind an earlier '
+        'acquisition attempt placed after $_placedAfter',
+        location: location,
+      );
+    }
+
     if (record is AcquisitionProbeServedRecord &&
         !_attemptedParents.contains(record.parent)) {
       throw JournalFormatException(
@@ -777,6 +872,7 @@ class AcquisitionJournal {
     _hashByAttemptId[record.identity.attemptId] = hash;
     if (record is AcquisitionAttemptRecord) {
       _attemptedParents.add(record.parent);
+      if (record.attemptsBefore case final placed?) _placedAfter = placed;
     }
     return true;
   }
