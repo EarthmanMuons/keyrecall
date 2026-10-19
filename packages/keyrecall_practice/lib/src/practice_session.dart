@@ -1085,7 +1085,7 @@ class PracticeSession {
     // recognize and the same attempt lands twice.
     if (_acquisitionInFlight == null) await _reconcileAcquisition();
     final logicalTime = _observationTime(at);
-    var record = _acquisitionInFlight ??= acquisitionRecordOf(
+    final record = _acquisitionInFlight ??= acquisitionRecordOf(
       observation: observeAcquisition(
         task: outstanding.task,
         transcript: transcript,
@@ -1113,26 +1113,58 @@ class PracticeSession {
       scope: outstanding.scope,
       allocation: outstanding.allocation,
     );
-    try {
-      await _appendAcquisition(record);
-    } on StaleAcquisitionPlacement catch (stale) {
-      // Refused outright, so nothing was written and the durable log is the
-      // one now held. The attempt is still history; only its evidence was
-      // computed against ordinary attempts that are no longer all of it.
-      record = _acquisitionInFlight = record.placed(
-        attemptsBefore: stale.attempts,
-        journalSequence: _acquisition.nextSequence,
-        allocation: AllocationUnobserved(
-          AllocationGap.staleAcquisition,
-          policy: record.allocation.policy,
-        ),
-      );
-      await _appendAcquisition(record);
-    }
+    final recorded = await _recordAcquisition(record);
     _outstandingAcquisition = null;
     _acquisitionInFlight = null;
     _epoch++;
-    return record;
+    return recorded;
+  }
+
+  /// Appends [record], placing it again where storage proves another session
+  /// moved history under it.
+  ///
+  /// Only an attempt storage holds no trace of is placed again, and only at
+  /// the position the durable log was just read at, so it is still one
+  /// attempt and lands once. The learning event survives either way. Placed
+  /// among ordinary attempts it did not see, it keeps no evidence and says why;
+  /// placed after acquisition records it did not see, its evidence stands and
+  /// the fold counts its decision as stale.
+  Future<AcquisitionAttemptRecord> _recordAcquisition(
+    AcquisitionAttemptRecord record,
+  ) async {
+    for (var tries = 0; ; tries++) {
+      try {
+        await _appendAcquisition(record);
+        return record;
+      } on StaleAcquisitionPlacement catch (stale) {
+        if (tries > 2) rethrow;
+        // Refused outright, so nothing was written and the durable log is the
+        // one now held.
+        record = record.placed(
+          attemptsBefore: stale.attempts,
+          journalSequence: _acquisition.nextSequence,
+          allocation: AllocationUnobserved(
+            AllocationGap.staleAcquisition,
+            policy: record.allocation.policy,
+          ),
+        );
+      } on JournalFormatException {
+        final attemptsBefore = record.attemptsBefore;
+        if (tries > 2 ||
+            attemptsBefore == null ||
+            _acquisitionDurabilityUnknown ||
+            _acquisition.contains(record.identity.attemptId) ||
+            _acquisition.nextSequence == record.journalSequence) {
+          rethrow;
+        }
+        record = record.placed(
+          attemptsBefore: attemptsBefore,
+          journalSequence: _acquisition.nextSequence,
+          allocation: record.allocation,
+        );
+      }
+      _acquisitionInFlight = record;
+    }
   }
 
   /// Allocation's waiting as this session's history leaves it, folded once

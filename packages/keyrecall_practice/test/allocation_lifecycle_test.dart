@@ -161,6 +161,33 @@ void main() {
     });
   });
 
+  test('an acquisition attempt the log moved under is placed after what '
+      'landed, and kept', () async {
+    final store = InMemoryPracticeStore();
+    final first = await open(store, pipeline: const AlwaysOffersAcquisition());
+    final second = await open(
+      store,
+      sessionId: 'switched',
+      pipeline: const AlwaysOffersAcquisition(),
+    );
+    await first.decideOutcome(at: t0.plusDays(1));
+    await second.decideOutcome(at: t0.plusDays(1));
+    await first.closeAcquisition(
+      PerformanceTranscript.empty,
+      at: t0.plusDays(1),
+    );
+
+    final record = await second.closeAcquisition(
+      PerformanceTranscript.empty,
+      at: t0.plusDays(1),
+    );
+    expect(record.journalSequence, 1);
+    expect(record.allocation, isA<AllocationObserved>());
+    final folded = history(await open(store, sessionId: 'audit'));
+    expect(folded.observed, 2);
+    expect(folded.staleDecisions, 1);
+  });
+
   test('a decision made before an acquisition attempt landed is applied as '
       'committed, and counted stale', () async {
     final store = InMemoryPracticeStore();
