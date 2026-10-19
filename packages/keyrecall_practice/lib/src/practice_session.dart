@@ -155,11 +155,24 @@ class PresentedAcquisition extends PracticeDecision {
   /// The ordinary work this was chosen instead of, if any.
   final Exercise? displaced;
 
+  /// The ordinary attempts history held when it was offered, or null for an
+  /// offer not placed among them.
+  final int? attemptsBefore;
+
+  /// The goal and focus it was offered under.
+  final DecisionScope? scope;
+
+  /// What recording it does for allocation.
+  final AllocationRecord allocation;
+
   const PresentedAcquisition({
     required this.attemptId,
     required this.task,
     required this.coverage,
     this.displaced,
+    this.attemptsBefore,
+    this.scope,
+    this.allocation = const AllocationUnobserved(AllocationGap.notInstrumented),
   });
 
   @override
@@ -761,12 +774,23 @@ class PracticeSession {
     if (verdict.epoch != _epoch) return PracticeSuperseded(verdict.epoch);
 
     verdict.effect.applyTo(_session);
+    final decisionScope = DecisionScope(
+      goalId: scope.goalId,
+      curriculumId: scope.curriculumId,
+      curriculumVersion: scope.curriculumVersion,
+      exclusiveRequirementIds: focus.exclusiveRequirementIds,
+      emphasisByRequirementId: focus.emphasisByRequirementId,
+    );
+    final allocation = _allocationOf(verdict.evidence);
     if (verdict.acquisitionTask case final task?) {
       final offered = PresentedAcquisition(
         attemptId: _nextId(),
         task: task,
         coverage: evaluated.coverage,
         displaced: verdict.displacedByAcquisition,
+        attemptsBefore: _journal.nextSequence,
+        scope: decisionScope,
+        allocation: allocation,
       );
       _outstandingAcquisition = offered;
       return offered;
@@ -795,14 +819,9 @@ class PracticeSession {
       ),
       exercise: chosen.exercise,
       decision: SchedulerDecision.fromTrace(chosen, pipeline.config),
-      scope: DecisionScope(
-        goalId: scope.goalId,
-        curriculumId: scope.curriculumId,
-        curriculumVersion: scope.curriculumVersion,
-        exclusiveRequirementIds: focus.exclusiveRequirementIds,
-        emphasisByRequirementId: focus.emphasisByRequirementId,
-      ),
+      scope: decisionScope,
       stateBeforeHash: learnerStateHash(scratch),
+      allocation: allocation,
     );
 
     if (verdict.diagnostics.isNotEmpty) {
@@ -1033,7 +1052,7 @@ class PracticeSession {
     // recognize and the same attempt lands twice.
     if (_acquisitionInFlight == null) await _reconcileAcquisition();
     final logicalTime = _observationTime(at);
-    final record = _acquisitionInFlight ??= acquisitionRecordOf(
+    var record = _acquisitionInFlight ??= acquisitionRecordOf(
       observation: observeAcquisition(
         task: outstanding.task,
         transcript: transcript,
@@ -1057,12 +1076,51 @@ class PracticeSession {
             outstanding.task.parent,
           )] ??
           0,
+      attemptsBefore: outstanding.attemptsBefore,
+      scope: outstanding.scope,
+      allocation: outstanding.allocation,
     );
-    await _appendAcquisition(record);
+    try {
+      await _appendAcquisition(record);
+    } on StaleAcquisitionPlacement catch (stale) {
+      // Refused outright, so nothing was written and the durable log is the
+      // one now held. The attempt is still history; only its evidence was
+      // computed against ordinary attempts that are no longer all of it.
+      record = _acquisitionInFlight = record.placed(
+        attemptsBefore: stale.attempts,
+        journalSequence: _acquisition.nextSequence,
+        allocation: AllocationUnobserved(
+          AllocationGap.staleAcquisition,
+          policy: record.allocation.policy,
+        ),
+      );
+      await _appendAcquisition(record);
+    }
     _outstandingAcquisition = null;
     _acquisitionInFlight = null;
     _epoch++;
     return record;
+  }
+
+  AllocationRecord _allocationOf(AllocationEvidence? evidence) {
+    final policy = AllocationPolicyIdentity(
+      assigned: pipeline.config.modelVersion,
+      effective: pipeline.config.modelVersion,
+    );
+    if (evidence == null) {
+      return AllocationUnobserved(
+        AllocationGap.notInstrumented,
+        policy: policy,
+      );
+    }
+    return AllocationObserved(
+      policy: policy,
+      basis: AllocationBasis(
+        attempts: _journal.nextSequence,
+        acquisitionAttempts: _acquisition.attempts.length,
+      ),
+      evidence: evidence,
+    );
   }
 
   /// The model time an observation read at [wallTime] belongs to.

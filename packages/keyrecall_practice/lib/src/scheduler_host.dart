@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
@@ -128,6 +129,10 @@ class SchedulerVerdict {
   /// What to apply to the session if this verdict is still current.
   final SessionDecisionEffect effect;
 
+  /// What presenting this would do for allocation, or null where the host
+  /// computed none.
+  final AllocationEvidence? evidence;
+
   /// Every trace, where the decision was made in this isolate.
   ///
   /// Diagnostics read it and nothing in the product does, so a host that
@@ -140,6 +145,7 @@ class SchedulerVerdict {
     required this.epoch,
     required this.effect,
     this.result,
+    this.evidence,
   }) : blockedReason = null,
        acquisitionTask = null,
        displacedByAcquisition = null;
@@ -150,6 +156,7 @@ class SchedulerVerdict {
     required this.epoch,
     required this.effect,
     this.result,
+    this.evidence,
   }) : chosen = null,
        acquisitionTask = null,
        displacedByAcquisition = null;
@@ -161,6 +168,7 @@ class SchedulerVerdict {
     required this.effect,
     this.result,
     this.displacedByAcquisition,
+    this.evidence,
   }) : chosen = null,
        blockedReason = null;
 }

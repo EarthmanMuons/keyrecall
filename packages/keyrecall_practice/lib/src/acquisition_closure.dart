@@ -37,6 +37,11 @@ AcquisitionAttemptRecord acquisitionRecordOf({
   PresentationRecord? presentation,
   int? executionEvidenceRevision,
   DateTime? observedWallTime,
+  int? attemptsBefore,
+  DecisionScope? scope,
+  AllocationRecord allocation = const AllocationUnobserved(
+    AllocationGap.notInstrumented,
+  ),
 }) {
   final integrity = termination.captureIntegrity;
   final sequence = observation.sequence.under(integrity);
@@ -46,6 +51,9 @@ AcquisitionAttemptRecord acquisitionRecordOf({
     identity: identity,
     executionEvidenceRevision: executionEvidenceRevision,
     observedWallTime: observedWallTime,
+    attemptsBefore: attemptsBefore,
+    scope: scope,
+    allocation: allocation,
     termination: termination,
     task: observation.task,
     presentation: presentation,

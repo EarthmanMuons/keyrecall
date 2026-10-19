@@ -357,12 +357,13 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       continuity == CriterionVerdict.notMet;
 
   /// This attempt placed after [attemptsBefore] ordinary attempts, carrying
-  /// [allocation].
+  /// [allocation], at [journalSequence] when given.
   AcquisitionAttemptRecord placed({
     required int attemptsBefore,
     required AllocationRecord allocation,
+    int? journalSequence,
   }) => AcquisitionAttemptRecord(
-    journalSequence: journalSequence,
+    journalSequence: journalSequence ?? this.journalSequence,
     identity: identity,
     observedWallTime: observedWallTime,
     executionEvidenceRevision: executionEvidenceRevision,
@@ -793,6 +794,9 @@ class AcquisitionJournal {
 
   /// The sequence the next appended record must carry.
   int get nextSequence => _records.length;
+
+  /// Whether an event with [attemptId] is recorded.
+  bool contains(String attemptId) => _hashByAttemptId.containsKey(attemptId);
 
   /// Appends [record], or does nothing if that exact attempt is already
   /// recorded.

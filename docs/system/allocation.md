@@ -1,10 +1,12 @@
 # Allocation
 
-> **Status:** proposed. Nothing here is built, and scheduler v1-14 is the
-> policy. It answers
+> **Status:** in integration as an opt-in General Fluency pilot at `k` of 2 with
+> protection floor 0.60; scheduler v1-14 stays the default. The choice and its
+> waiting fold are shared code in `keyrecall_practice`, and attempt and
+> acquisition records carry its evidence from schema 11. No host computes
+> evidence yet, so nothing presents an allocation choice. It answers
 > [`service-census.md`](../research/experiments/service-census.md) and
-> [`service-pressure.md`](../research/experiments/service-pressure.md), and it
-> is to be tested as a counterfactual before anything moves into production.
+> [`service-pressure.md`](../research/experiments/service-pressure.md).
 
 The scheduler makes each decision defensibly and promises nothing about the next
 hundred. Eligibility, admission, ranking, and six selection stages each answer a
@@ -210,27 +212,41 @@ such rather than buried by a guard.
 Everything allocation needs is derivable except one thing, and that one can be
 derived too, at a stated approximation.
 
-| Needed                          | Source                                                  | New state? |
-| ------------------------------- | ------------------------------------------------------- | ---------- |
-| coverage, due, retrieval health | journal and learner state, as the evaluator reads now   | no         |
-| useful actions, feasibility     | learner state, attempt history, admission               | no         |
-| last service, and its outcome   | journal: the last compatible attempt and its closure    | no         |
-| position on the support path    | journal: consecutive unmanaged attempts since a success | no         |
-| waiting in actionable decisions | not in the journal: past actionability is not recorded  | see below  |
+| Needed                          | Source                                                     | New state? |
+| ------------------------------- | ---------------------------------------------------------- | ---------- |
+| coverage, due, retrieval health | journal and learner state, as the evaluator reads now      | no         |
+| useful actions, feasibility     | learner state, attempt history, admission                  | no         |
+| last service, and its outcome   | journal: the last compatible attempt and its closure       | no         |
+| position on the support path    | journal: consecutive unmanaged attempts since a success    | no         |
+| waiting in actionable decisions | evidence on each committed attempt and acquisition attempt | yes        |
 
-Exact actionable-opportunity counts would need a persisted service ledger,
-versioned with the scheduler model and rebuilt by replaying decisions, which is
-costly and couples allocation to a second history. The journal can reproduce
-**decisions since last service while the requirement was due**, but that is a
-different quantity rather than a coarser one: a requirement blocked for a
-hundred decisions and then actionable for five has missed five opportunities and
-waited a hundred and five. Counting the block would hand long-blocked work
-priority the moment it becomes choosable, which could be a sound policy, but it
-should be chosen rather than inherited from a counter. The experiment uses exact
-counts as the reference and asks, at every decision, whether the journal counter
-would have chosen the same; no ledger is built unless the difference matters. No
-learner estimate is added: allocation reads the learner model and never infers
-ability of its own.
+Exact waiting is folded from what each decision recorded when it was made: which
+requirements its exercise served and which actionable ones it left waiting.
+Nothing is recomputed from the catalog, eligibility, or predictions, so a later
+scheduler or curriculum cannot reinterpret it. An ordinary decision carries its
+evidence in the pending slot saved before presentation and commits it with the
+attempt; an acquisition offer holds it until its attempt is recorded. Either way
+evidence lives inside the record it describes, which the store writes whole or
+not at all, so no event is durable without its evidence or the reverse. A
+retried commit is the same record, which both logs already absorb by attempt id.
+
+The two logs fold in one order without a shared sequence. An acquisition attempt
+records how many ordinary attempts history held when it was offered, and replay
+places it after the last of them and before the next. The store checks that
+count against the attempts actually on disk in the same serialized write as the
+append, after idempotence. Within a session decisions resolve one at a time, so
+the check only fires when another session for the profile committed an ordinary
+attempt meanwhile, as a profile switch during an acquisition close can. Then the
+attempt is still recorded, at the true place, with its evidence replaced by an
+explicit `staleAcquisition` gap: a learning event is never lost to scheduler
+accounting, and evidence is never invented to repair an ordering race. An
+ordinary decision whose counters missed an acquisition attempt that landed first
+commits as made, and the fold counts it as a stale decision rather than altering
+it.
+
+A record without evidence names why, `legacy` before schema 11, and contributes
+nothing; it is not a decision that served and missed nothing. Counters before
+the first observed event are unavailable rather than zero.
 
 ## Two ways to build it
 

@@ -17,6 +17,7 @@
 library;
 
 export 'src/acquisition_closure.dart';
+export 'src/allocation_history.dart';
 export 'src/attempt_windows.dart';
 export 'src/file_practice_store.dart';
 export 'src/file_profile_repository.dart';

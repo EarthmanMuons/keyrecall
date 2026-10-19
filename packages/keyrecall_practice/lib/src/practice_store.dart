@@ -6,6 +6,49 @@ import 'fluency_history.dart';
 import 'pending_decision.dart';
 import 'profile_lifetime.dart';
 
+/// An acquisition attempt placed among ordinary attempts that are no longer
+/// the whole history, refused before anything was written.
+///
+/// A decision elsewhere committed an ordinary attempt after this one was
+/// offered. The attempt itself is still history to record; its allocation
+/// evidence cannot be placed.
+class StaleAcquisitionPlacement implements Exception {
+  final String attemptId;
+  final int placedAfter;
+
+  /// The ordinary attempts history holds.
+  final int attempts;
+
+  const StaleAcquisitionPlacement({
+    required this.attemptId,
+    required this.placedAfter,
+    required this.attempts,
+  });
+
+  @override
+  String toString() =>
+      'StaleAcquisitionPlacement($attemptId placed after $placedAfter '
+      'ordinary attempts, history holds $attempts)';
+}
+
+/// Throws [StaleAcquisitionPlacement] when [entry] is an acquisition attempt
+/// [log] does not hold, placed after other than [attempts] ordinary attempts.
+void requireCurrentPlacement(
+  AcquisitionEntry entry,
+  AcquisitionJournal log, {
+  required int attempts,
+}) {
+  if (entry case AcquisitionAttemptRecord(:final attemptsBefore?)
+      when attemptsBefore != attempts &&
+          !log.contains(entry.identity.attemptId)) {
+    throw StaleAcquisitionPlacement(
+      attemptId: entry.identity.attemptId,
+      placedAfter: attemptsBefore,
+      attempts: attempts,
+    );
+  }
+}
+
 /// Durable storage for one install's practice history.
 ///
 /// The port the application transaction writes through. Several kinds of thing
@@ -115,6 +158,11 @@ abstract interface class PracticeStore {
   ///
   /// Must be idempotent on the attempt id, so a retry after an interrupted
   /// commit cannot discharge an obligation twice or record one attempt as two.
+  ///
+  /// Must refuse a new acquisition attempt placed after a number of ordinary
+  /// attempts other than the history holds, with [StaleAcquisitionPlacement]
+  /// and nothing written, checked in the same serialized write as the append
+  /// and after idempotence, so an identical retry still succeeds.
   Future<void> appendAcquisitionEntry(AcquisitionEntry entry);
 
   /// Every post-attempt feedback exposure for [profileId], oldest first.
@@ -326,7 +374,13 @@ class InMemoryPracticeStore implements PracticeStore {
 
   @override
   Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
-    _acquisitionFor(entry.identity.profileId, null).append(entry);
+    final log = _acquisitionFor(entry.identity.profileId, null);
+    requireCurrentPlacement(
+      entry,
+      log,
+      attempts: _journals[entry.identity.profileId]?.length ?? 0,
+    );
+    log.append(entry);
   }
 
   @override

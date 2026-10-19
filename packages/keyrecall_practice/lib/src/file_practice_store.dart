@@ -294,6 +294,13 @@ class FilePracticeStore implements PracticeStore {
     // appended: the log enforces contiguous sequence, forward time, and
     // conflicting-id detection, and those checks mean nothing against a copy.
     final log = await _loadAcquisition(profileId, null);
+    requireCurrentPlacement(
+      entry,
+      log,
+      attempts: _journalFile(profileId).existsSync()
+          ? (await _journalIndex(profileId)).nextSequence
+          : 0,
+    );
     if (!log.append(entry)) return;
 
     await _appendLine(file, canonicalJson(entry.toJson()));
