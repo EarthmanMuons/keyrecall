@@ -322,9 +322,10 @@ restarting the repository.
 
 On the iPhone 15 Pro, iOS 27.0.1, release build, the fold over 5,000 attempts
 takes 2.7 ms whole, once as a session opens, and 13 to 15 us carried on by each
-decision. The worst frame gap while it runs is the same 13.0 ms at 1,000 and
-5,000 attempts, the wait for the next frame rather than the fold. Before the
-fold was carried on, it took 16.2 ms whole before every decision.
+decision, where it took 16.2 ms whole before every decision until the fold was
+carried on. The worst frame gap measured while it runs was 13.0 ms at both 1,000
+and 5,000 attempts, with no sign of a penalty that grows with history; the
+benchmark does not establish what that gap consists of.
 
 ## How it is judged
 
