@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:clock/clock.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
@@ -275,6 +279,40 @@ class _Tools extends ConsumerWidget {
         },
       ),
       const _DemoProfileTool(),
+      _Tool(
+        icon: Icons.summarize,
+        title: 'Pilot report',
+        subtitle: 'What this history says about the allocation pilot',
+        onTap: () {
+          final loop = ref.read(practiceLoopProvider).value;
+          if (loop == null) return;
+          final report = const JsonEncoder.withIndent('  ')
+              .convert(loop.session.pilotReport(at: clock.now().toUtc()));
+          showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Pilot report'),
+              content: SingleChildScrollView(
+                child: Text(
+                  report,
+                  style: const TextStyle(fontFamily: 'monospace'),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () =>
+                      Clipboard.setData(ClipboardData(text: report)),
+                  child: const Text('Copy'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
       _Tool(
         icon: Icons.speed,
         title: 'Allocation fold timing',

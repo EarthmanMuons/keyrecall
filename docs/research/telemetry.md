@@ -152,6 +152,35 @@ erasing for this purpose, since the history the subject described is gone.
 question is always answered within one version or across a replay that states
 which.
 
+## The allocation pilot
+
+Whether allocation broadens retained repertoire without an unacceptable cost to
+progression or participation is a question the table's rows answer once attempts
+record their allocation, which they do from attempt schema version 11: the
+assigned and effective policy, what each decision served and left waiting, the
+requirement a substitution was owed to, and the history its counters read.
+`pilotReportOf` in `keyrecall_practice` projects one profile's history into the
+first report, on the device and from nothing recorded for it:
+
+- breadth by family: introduced, covered, retained (covered and not due), and
+  revisited after a week away;
+- progression: strands managed, and the attempts and days to the first managed
+  left-hand and hands-together scale;
+- difficulty: recovery, not started, incomplete, unmeasured, strands tried five
+  times or more and never managed, and acquisition attempts;
+- allocation: substitutions by family, those not managed, and what is still
+  waiting;
+- participation: sessions, active days, the longest break, and attempts per
+  session;
+- evidence: events observed, gaps by reason, and stale decisions, which say
+  whether concurrency artifacts limit what the rest can be read as.
+
+It carries catalog ids and counts, and time only as days and attempts since the
+first attempt, so it passes the [field test](#the-test-for-a-field) and the
+upload rules above. Until the projection project exists, a tester copies it from
+the developer screen and chooses whether to share it. No question here is asked
+after an attempt.
+
 ## What this settles
 
 Three of the four gaps are closed: the goal and focus, the timing, and the input

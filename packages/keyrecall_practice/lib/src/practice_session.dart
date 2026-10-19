@@ -9,6 +9,7 @@ import 'acquisition_closure.dart';
 import 'allocation_history.dart';
 import 'pending_decision.dart';
 import 'performance_closure.dart';
+import 'pilot_report.dart';
 import 'practice_store.dart';
 import 'requirement_allocation.dart';
 import 'requirement_state.dart';
@@ -1700,7 +1701,33 @@ class PracticeSession {
     _epoch++;
   }
 
-  /// Saves a checkpoint at the current position, if there is history to cover.
+  /// [pilotReportOf] this profile's history, with requirements evaluated at
+  /// [at] under the session's scope.
+  ///
+  /// Throws [PracticeStateError] when the scope did not resolve.
+  Map<String, Object?> pilotReport({required DateTime at}) {
+    final resolution = _scopeResolution;
+    if (resolution is! ValidPracticeScope) {
+      throw PracticeStateError('the scope did not resolve');
+    }
+    final scratch = _state.copy();
+    learner.propagate(scratch, _observationTime(at));
+    return pilotReportOf(
+      journal: _journal,
+      acquisition: _acquisition,
+      evaluated: _scopeEvaluator.evaluate(
+        scope: resolution.scope,
+        state: scratch,
+        journal: _journal,
+        learner: learner,
+        at: _observationTime(at),
+      ),
+      assigned: profile.scheduling,
+      learner: learner,
+    );
+  }
+
+    /// Saves a checkpoint at the current position, if there is history to cover.
   ///
   /// Purely an accelerator for the next [open]. Failing to save one costs time
   /// and nothing else.
