@@ -157,7 +157,7 @@ class SchedulerVerdict {
         epoch: epoch,
         effect: effect,
         result: kept,
-        diagnostics: result.diagnostics,
+        diagnostics: allocation?.diagnostics ?? result.diagnostics,
         allocation: allocation,
       ),
       SelectionBlocked(:final reason) => SchedulerVerdict.blocked(
@@ -165,7 +165,7 @@ class SchedulerVerdict {
         epoch: epoch,
         effect: effect,
         result: kept,
-        diagnostics: result.diagnostics,
+        diagnostics: allocation?.diagnostics ?? result.diagnostics,
         allocation: allocation,
       ),
       AcquisitionOffered(:final task, :final displaced) =>
@@ -174,7 +174,7 @@ class SchedulerVerdict {
           epoch: epoch,
           effect: effect,
           result: kept,
-          diagnostics: result.diagnostics,
+          diagnostics: allocation?.diagnostics ?? result.diagnostics,
           displacedByAcquisition: displaced,
           allocation: allocation,
         ),

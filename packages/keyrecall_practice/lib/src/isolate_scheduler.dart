@@ -428,7 +428,7 @@ class _Worker {
       replies.send(
         _DecisionResponse(
           id: request.id,
-          diagnostics: result.diagnostics,
+          diagnostics: resolved?.allocation.diagnostics ?? result.diagnostics,
           epoch: request.epoch,
           allocation: resolved?.allocation,
           chosen: switch (result) {

@@ -386,10 +386,16 @@ class AllocationVerdict {
   /// ordinary ranking's choice.
   final String? owedRequirementId;
 
+  /// What to persist about the decision when allocation decided it: ordinary
+  /// ranking's diagnostics, named as such, and then allocation's own account.
+  /// Null when allocation only observed, whose diagnostics are ranking's.
+  final String? diagnostics;
+
   const AllocationVerdict({
     required this.evidence,
     required this.basis,
     this.owedRequirementId,
+    this.diagnostics,
   });
 }
 
@@ -403,20 +409,68 @@ class AllocationVerdict {
   required LearnerState state,
   required DateTime at,
 }) {
-  final resolution = AllocationSlot.of(
+  final policy = request.policy;
+  final slot = AllocationSlot.of(
     result: result,
     requirements: request.requirements,
     pipeline: pipeline,
     state: state,
     at: at,
-    policy: request.policy ?? AllocationPolicy.pilot,
-  ).resolve(request.counters, allocating: request.policy != null);
+    policy: policy ?? AllocationPolicy.pilot,
+  );
+  final resolution = slot.resolve(request.counters, allocating: policy != null);
   return (
     result: resolution.result,
     allocation: AllocationVerdict(
       evidence: resolution.evidence,
       basis: request.basis,
       owedRequirementId: resolution.choice?.requirementId,
+      diagnostics: policy == null
+          ? null
+          : allocationDiagnostics(slot, resolution, request.counters),
     ),
   );
+}
+
+/// What allocation made of [slot], after ordinary ranking's diagnostics,
+/// which are kept as they were written and named as ranking's.
+///
+/// The final exercise is described in full and by its candidate number, so
+/// it can be found whether or not ranking listed it among its contenders.
+String allocationDiagnostics(
+  AllocationSlot slot,
+  AllocationResolution resolution,
+  WaitCounters counters,
+) {
+  final traces = slot.result.traces;
+  String described(CandidateTrace? trace) => trace == null
+      ? 'none'
+      : 'candidate=${traces.indexOf(trace)} '
+            '${trace.exercise.material.materialId} '
+            '${trace.exercise.conditions.hands.id} '
+            '${trace.exercise.conditions.handMotion.id} '
+            '${trace.exercise.conditions.octaves}oct '
+            '${trace.exercise.conditions.direction.id} '
+            '${trace.exercise.conditions.tempoBpm}bpm '
+            'g=${trace.exercise.guidance.independence}';
+  final choice = resolution.choice;
+  final finalCandidate = switch (resolution.result) {
+    CandidateSelected(:final candidate) => candidate,
+    _ => null,
+  };
+  return [
+    'section=ordinary_ranking; the selection diagnostics below describe '
+        'ordinary ranking, and winner names its choice',
+    slot.result.diagnostics,
+    '',
+    'section=allocation; allocation diagnostics v1; what was presented',
+    'policy k=${slot.policy.k} protection_floor=${slot.policy.protectionFloor} '
+        'breadth=${slot.breadth} allocatable=${slot.allocatable} '
+        'winner_protected=${slot.winnerProtected}',
+    'substituted=${choice != null} '
+        'owed_requirement=${choice?.requirementId ?? '-'} '
+        'waited=${choice == null ? '-' : counters[choice.requirementId!]}',
+    'ordinary_winner ${described(slot.winner)}',
+    'final ${described(finalCandidate)}',
+  ].join('\n');
 }

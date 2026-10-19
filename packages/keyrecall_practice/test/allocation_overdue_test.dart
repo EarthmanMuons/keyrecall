@@ -43,6 +43,8 @@ void main() {
       expect(host.observedOwed, 0);
       expect(host.substituted, greaterThan(0));
       expect(host.substituted, host.allocatedOwed);
+      expect(host.diagnosticsDiffered, 0);
+      expect(host.accountsMissing, 0);
     });
   }
 }
@@ -58,6 +60,8 @@ class _Overdue implements SchedulerHost {
   var observedOwed = 0;
   var substituted = 0;
   var allocatedOwed = 0;
+  var diagnosticsDiffered = 0;
+  var accountsMissing = 0;
 
   _Overdue(this.inner);
 
@@ -134,6 +138,27 @@ class _Overdue implements SchedulerHost {
     if (observed.allocation!.owedRequirementId != null) observedOwed++;
     if (allocated.chosen?.exercise != ordinary.chosen!.exercise) substituted++;
     if (allocated.allocation!.owedRequirementId != null) allocatedOwed++;
+    if (observed.diagnostics != ordinary.diagnostics) diagnosticsDiffered++;
+    final account = allocated.diagnostics;
+    final owed = allocated.allocation!.owedRequirementId;
+    final presented = allocated.chosen!.exercise;
+    if (!account.startsWith('section=ordinary_ranking') ||
+        !account.contains(ordinary.diagnostics) ||
+        !account.contains('substituted=${owed != null}') ||
+        !account.contains('owed_requirement=${owed ?? '-'}') ||
+        !account.contains(
+          'final candidate=${allocated.result?.traces.indexOf(allocated.chosen!) ?? ''}',
+        ) ||
+        !account
+            .split('\n')
+            .any(
+              (line) =>
+                  line.startsWith('final ') &&
+                  line.contains(presented.material.materialId) &&
+                  line.contains(presented.conditions.hands.id),
+            )) {
+      accountsMissing++;
+    }
     return observed;
   }
 }
