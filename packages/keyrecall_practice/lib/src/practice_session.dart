@@ -250,6 +250,22 @@ class AcquisitionRecordedReopenRequired implements Exception {
       'AcquisitionRecordedReopenRequired(${record.identity.attemptId})';
 }
 
+/// A supported attempt that other writers kept moving the log past, so it
+/// was not recorded this time.
+///
+/// Storage proved it absent each time it was placed again. It is held, and
+/// closing again reconciles it against wherever history stands then.
+class AcquisitionUnsettled implements Exception {
+  final String attemptId;
+  final int rebases;
+
+  const AcquisitionUnsettled(this.attemptId, {required this.rebases});
+
+  @override
+  String toString() =>
+      'AcquisitionUnsettled($attemptId, moved $rebases times without landing)';
+}
+
 /// An attempt another session made obsolete before it could be recorded.
 ///
 /// Storage established it: history had moved past the position the decision
@@ -1142,6 +1158,10 @@ class PracticeSession {
     return recorded;
   }
 
+  /// How many times one close places a supported attempt again before it
+  /// stops and leaves the attempt held for another.
+  static const _maxAcquisitionRebases = 3;
+
   /// Records [record], settling from storage whatever a failed append leaves
   /// uncertain.
   ///
@@ -1155,10 +1175,13 @@ class PracticeSession {
   /// evidence and says why, and placed only after acquisition records it did
   /// not see, its evidence stands for the fold to count stale. A session that
   /// recorded a moved attempt is behind history and retires once it is
-  /// durable. When storage cannot be read at all, nothing is concluded.
+  /// durable. When storage cannot be read at all, nothing is concluded, and
+  /// when other writers keep moving the log, the attempt is held unwritten
+  /// for the next close after a few placements.
   Future<AcquisitionAttemptRecord> _recordAcquisition(
-    AcquisitionAttemptRecord record,
-  ) async {
+    AcquisitionAttemptRecord record, {
+    int rebases = 0,
+  }) async {
     final attemptId = record.identity.attemptId;
     try {
       await store.appendAcquisitionEntry(record);
@@ -1214,7 +1237,10 @@ class PracticeSession {
               : record.allocation,
         );
         _acquisitionRebased = true;
-        return _recordAcquisition(rebased);
+        if (rebases == _maxAcquisitionRebases) {
+          throw AcquisitionUnsettled(attemptId, rebases: rebases + 1);
+        }
+        return _recordAcquisition(rebased, rebases: rebases + 1);
       }
     }
     if (_acquisitionRebased) {

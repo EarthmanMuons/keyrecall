@@ -98,6 +98,40 @@ void main() {
     },
   );
 
+  test('a supported attempt other writers keep overtaking is held after a few '
+      'placements, then recorded once they stop', () async {
+    final contested = _Contested();
+    final first = await openSession(
+      contested,
+      sessionId: 'first',
+      ids: countingIds('first'),
+      pipeline: const AlwaysOffersAcquisition(),
+    );
+    final offered = await offer(first, 1);
+    contested.contested = offered.attemptId;
+
+    await expectLater(
+      close(first, 1),
+      throwsA(
+        isA<AcquisitionUnsettled>().having(
+          (unsettled) => unsettled.rebases,
+          'rebases',
+          4,
+        ),
+      ),
+    );
+    final held = await contested.loadAcquisitionJournal(alice.id);
+    expect(held.contains(offered.attemptId), isFalse);
+    expect(held.attemptCount, 4);
+
+    contested.competing = false;
+    final record = await recordedBeforeReopening(close(first, 1));
+    final log = await contested.loadAcquisitionJournal(alice.id);
+    expect(log.attempts.last, record);
+    expect(log.attemptCount, 5);
+    expect(record.observedWallTime, t0.plusDays(1));
+  });
+
   test('a save that landed before its answer was lost is the attempt, and the '
       'session goes on', () async {
     final first = await open('first');
@@ -158,6 +192,42 @@ void main() {
     await expectRetired(first);
     await expectUsableReopened();
   });
+}
+
+/// Lands a competing supported attempt ahead of [contested] each time it is
+/// written, while [competing].
+class _Contested extends InMemoryPracticeStore {
+  String? contested;
+  var competing = true;
+  var landed = 0;
+
+  _Contested() : super(createdAt: t0);
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
+    if (competing && entry.identity.attemptId == contested) {
+      final log = await loadAcquisitionJournal(alice.id);
+      final competitor = entry as AcquisitionAttemptRecord;
+      await super.appendAcquisitionEntry(
+        competitor
+            .rebasedTo(
+              journalSequence: log.nextSequence,
+              attemptsBefore: competitor.attemptsBefore!,
+              occurredAt: entry.identity.occurredAt.add(
+                const Duration(minutes: 1),
+              ),
+              allocation: competitor.allocation,
+            )
+            .withId('competitor-${landed++}'),
+      );
+    }
+    await super.appendAcquisitionEntry(entry);
+  }
+}
+
+extension on AcquisitionAttemptRecord {
+  AcquisitionAttemptRecord withId(String attemptId) =>
+      AcquisitionAttemptRecord.fromJson(toJson()..['attempt_id'] = attemptId);
 }
 
 class _StorageFailure implements Exception {
