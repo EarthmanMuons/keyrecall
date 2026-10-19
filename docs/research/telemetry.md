@@ -170,9 +170,11 @@ first report, on the device and from nothing recorded for it:
 - difficulty: recovery, not started, incomplete, unmeasured, strands tried five
   times or more and never managed, and acquisition attempts;
 - allocation: substitutions by family, those not managed, and what is still
-  waiting;
+  waiting in General Fluency, apart from counters kept for requirements of other
+  goals, which wait for their scope's return rather than as backlog;
 - participation: sessions, active days, the longest break, and attempts per
-  session;
+  session, counting supported attempts as practice alongside ordinary ones, from
+  the first of either;
 - evidence: events observed, gaps by reason, and stale decisions, which say
   whether concurrency artifacts limit what the rest can be read as.
 

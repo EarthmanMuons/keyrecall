@@ -29,6 +29,9 @@ const int pilotUnmanagedRepeats = 5;
 /// requirement on it is and retained when none of those is due, with
 /// requirement counts beside them.
 ///
+/// Participation counts ordinary and supported attempts alike, from the first
+/// of either; progression and difficulty read ordinary outcomes only.
+///
 /// De-identified rather than anonymous: it names materials and requirements by
 /// their catalog ids and time by days and attempts since the first attempt,
 /// and carries no name, profile id, session id, or date, but a history's shape
@@ -41,7 +44,12 @@ Map<String, Object?> pilotReportOf({
   LearnerModel learner = const LearnerModel(),
 }) {
   final records = journal.records;
-  final first = records.isEmpty ? null : records.first.identity.occurredAt;
+  final supported = acquisition.attempts;
+  // Practice began with whichever kind of attempt came first.
+  final first = [
+    if (records.isNotEmpty) records.first.identity.occurredAt,
+    if (supported.isNotEmpty) supported.first.identity.occurredAt,
+  ].fold<DateTime?>(null, (a, b) => a == null || b.isBefore(a) ? b : a);
   int dayOf(DateTime at) => at.difference(first!).inDays;
   final familyOfMaterial = {
     for (final state in evaluated.requirements)
@@ -145,8 +153,20 @@ Map<String, Object?> pilotReportOf({
     'day': index == null ? null : dayOf(records[index].identity.occurredAt),
   };
 
+  for (final record in supported) {
+    sessions.update(record.identity.sessionId, (n) => n + 1, ifAbsent: () => 1);
+    days.add(dayOf(record.identity.occurredAt));
+  }
+
   final history = AllocationHistory.of(journal, acquisition);
-  final waiting = history.counters.asMap.values.toList()..sort();
+  final waiting = [
+    for (final MapEntry(key: id, value: count)
+        in history.counters.asMap.entries)
+      if (familyOfRequirement.containsKey(id)) count,
+  ]..sort();
+  final waitingElsewhere = history.counters.asMap.keys
+      .where((id) => !familyOfRequirement.containsKey(id))
+      .length;
   final perSession = sessions.values.toList()..sort();
   final sortedDays = days.toList()..sort();
   var longestGap = 0;
@@ -201,8 +221,8 @@ Map<String, Object?> pilotReportOf({
                   !managedAt.containsKey(strand))
                 familyOfMaterial[strand.$1],
           ]),
-      'acquisition attempts': acquisition.attempts.length,
-      'acquisition attempts completed': acquisition.attempts
+      'acquisition attempts': supported.length,
+      'acquisition attempts completed': supported
           .where((record) => record.completion.isComplete)
           .length,
     },
@@ -210,16 +230,19 @@ Map<String, Object?> pilotReportOf({
       'substitutions': byFamily(owedFamilies),
       'substitutions not managed': substitutedUnmanaged,
       'requirements waiting': waiting.length,
+      'requirements waiting outside ${evaluated.scope.goalId}':
+          waitingElsewhere,
       'longest wait': waiting.lastOrNull ?? 0,
       'median wait': waiting.isEmpty ? 0 : waiting[waiting.length ~/ 2],
     },
     'participation': {
-      'attempts': records.length,
+      'ordinary attempts': records.length,
+      'supported attempts': supported.length,
       'sessions': sessions.length,
       'active days': days.length,
       'days since first attempt': sortedDays.lastOrNull ?? 0,
       'longest break in days': longestGap,
-      'median attempts per session': perSession.isEmpty
+      'median attempts per session, of either kind': perSession.isEmpty
           ? 0
           : perSession[perSession.length ~/ 2],
     },

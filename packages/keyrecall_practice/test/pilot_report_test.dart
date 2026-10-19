@@ -257,4 +257,140 @@ void main() {
     expect(focused['coverage scope'], PracticeGoal.generalFluency.id);
     expect(focused['breadth'], unfocused['breadth']);
   });
+
+  group('participation', () {
+    Future<void> supportedAt(
+      InMemoryPracticeStore store,
+      String sessionId,
+      double day,
+    ) async {
+      final session = await openSession(
+        store,
+        sessionId: sessionId,
+        ids: countingIds('$sessionId-$day'),
+        pipeline: const AlwaysOffersAcquisition(),
+      );
+      await session.decideOutcome(at: t0.plusDays(day));
+      await session.closeAcquisition(
+        PerformanceTranscript.empty,
+        at: t0.plusDays(day),
+      );
+    }
+
+    test(
+      'counts supported practice alone, without inventing milestones',
+      () async {
+        final store = InMemoryPracticeStore(createdAt: t0);
+        await supportedAt(store, 'monday', 1);
+        await supportedAt(store, 'monday', 1.1);
+        await supportedAt(store, 'wednesday', 3);
+        final report = (await openSession(
+          store,
+          sessionId: 'report',
+        )).pilotReport(at: t0.plusDays(30));
+        final participation = report['participation']! as Map<String, Object?>;
+        final progression = report['progression']! as Map<String, Object?>;
+
+        expect(participation['ordinary attempts'], 0);
+        expect(participation['supported attempts'], 3);
+        expect(participation['sessions'], 2);
+        expect(participation['active days'], 2);
+        expect(participation['days since first attempt'], 2);
+        expect(
+          (progression['first hands-together scale managed']! as Map)['day'],
+          isNull,
+        );
+      },
+    );
+
+    test(
+      'counts one session once when it held both kinds of attempt',
+      () async {
+        final store = InMemoryPracticeStore(createdAt: t0);
+        await supportedAt(store, 'session', 1);
+        final ordinary = await openSession(
+          store,
+          sessionId: 'session',
+          ids: countingIds('ordinary'),
+        );
+        final presented =
+            await ordinary.decideOutcome(at: t0.plusDays(1.1))
+                as PresentedAttempt;
+        await ordinary.closeWithOutcome(outcomeFor(presented.exercise));
+        final participation =
+            ordinary.pilotReport(at: t0.plusDays(30))['participation']!
+                as Map<String, Object?>;
+
+        expect(participation['ordinary attempts'], 1);
+        expect(participation['supported attempts'], 1);
+        expect(participation['sessions'], 1);
+        expect(participation['active days'], 1);
+        expect(participation['median attempts per session, of either kind'], 2);
+      },
+    );
+  });
+
+  test('tells waiting in General Fluency from waiting kept for other goals', () {
+    final record = recordOf(played(HandConfiguration.right));
+    final inScope = catalogRequirementId(
+      PracticeGoal.generalFluency.id,
+      scale.materialId,
+    );
+    final journal =
+        AttemptJournal(JournalHeader(profileId: alice.id, createdAt: t0))
+          ..append(
+            AttemptRecord(
+              journalSequence: 0,
+              identity: record.identity,
+              provenance: record.provenance,
+              exercise: record.exercise,
+              closure: record.closure,
+              allocation: AllocationObserved(
+                policy: AllocationPolicyIdentity(
+                  assigned: SchedulingAssignment.v1_14.id,
+                  effective: SchedulingAssignment.v1_14.id,
+                ),
+                basis: AllocationBasis(attempts: 0, acquisitionAttempts: 0),
+                evidence: AllocationEvidence(
+                  served: const [],
+                  missed: [inScope, 'FOUNDATIONS:${scale.materialId}'],
+                ),
+              ),
+            ),
+          );
+    final scope =
+        (PracticeScopeResolver().resolve(
+                  goal: PracticeGoal.generalFluency,
+                  focus: PracticeFocus.unrestricted,
+                  catalog: fixtureMaterials,
+                  instrument: InstrumentProfile(),
+                )
+                as ValidPracticeScope)
+            .scope;
+    final allocation =
+        pilotReportOf(
+              journal: journal,
+              acquisition: AcquisitionJournal(
+                AcquisitionJournalHeader(profileId: alice.id, createdAt: t0),
+              ),
+              evaluated: const PracticeScopeEvaluator().evaluate(
+                scope: scope,
+                state: learner.placementState(
+                  PlacementTier.someExperience,
+                  at: t0,
+                ),
+                journal: journal,
+                learner: learner,
+                at: t0.plusDays(2),
+              ),
+              assigned: SchedulingAssignment.v1_14,
+            )['allocation']!
+            as Map<String, Object?>;
+
+    expect(allocation['requirements waiting'], 1);
+    expect(
+      allocation['requirements waiting outside ${PracticeGoal.generalFluency.id}'],
+      1,
+    );
+  });
 }
