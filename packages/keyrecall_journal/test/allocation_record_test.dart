@@ -178,6 +178,18 @@ void main() {
       expect(() => recordAt(0, allocation: observed()), throwsArgumentError);
     });
 
+    test('the log counts its attempts and reads them from any position', () {
+      final log = emptyLog()
+        ..append(recordAt(0, attemptsBefore: 1))
+        ..append(recordAt(1, attemptsBefore: 2))
+        ..append(recordAt(2, attemptsBefore: 2));
+
+      expect(log.attemptCount, 3);
+      expect(log.attemptsFrom(1), [log.attempts[1], log.attempts[2]]);
+      expect(log.attemptsFrom(3), isEmpty);
+      expect(() => log.attempts.add(recordAt(3)), throwsUnsupportedError);
+    });
+
     test('is never placed before an earlier acquisition attempt', () {
       final log = emptyLog()..append(recordAt(0, attemptsBefore: 3));
 

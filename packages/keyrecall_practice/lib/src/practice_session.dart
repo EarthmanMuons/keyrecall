@@ -1232,7 +1232,7 @@ class PracticeSession {
       return _allocation = AllocationHistory.of(_journal, _acquisition);
     }
     if (held.basis.attempts == _journal.length &&
-        held.basis.acquisitionAttempts == _acquisition.attempts.length) {
+        held.basis.acquisitionAttempts == _acquisition.attemptCount) {
       return held;
     }
     return _allocation = held.continuedWith(_journal, _acquisition);

@@ -85,21 +85,20 @@ class AllocationHistory {
     AttemptJournal attempts,
     AcquisitionJournal acquisition,
   ) {
-    final records = attempts.records;
-    final acquired = acquisition.attempts;
-    if (records.length < basis.attempts ||
-        acquired.length < basis.acquisitionAttempts) {
+    final total = attempts.length;
+    if (total < basis.attempts ||
+        acquisition.attemptCount < basis.acquisitionAttempts) {
       return null;
     }
 
     final placed = <(int, AcquisitionAttemptRecord)>[];
     var last = _placedAfter;
-    for (final record in acquired.skip(basis.acquisitionAttempts)) {
+    for (final record in acquisition.attemptsFrom(basis.acquisitionAttempts)) {
       final at = record.attemptsBefore ?? last;
-      if (at > records.length) {
+      if (at > total) {
         throw JournalFormatException(
           'acquisition attempt ${record.identity.attemptId} is placed after '
-          '$at ordinary attempts, but history holds ${records.length}',
+          '$at ordinary attempts, but history holds $total',
         );
       }
       if (at < basis.attempts) return null;
@@ -130,15 +129,16 @@ class AllocationHistory {
       position++;
     }
 
+    final added = attempts.recordsFrom(basis.attempts).toList();
     var next = 0;
-    for (var n = basis.attempts; n <= records.length; n++) {
+    for (var n = basis.attempts; n <= total; n++) {
       while (next < placed.length && placed[next].$1 == n) {
         fold(placed[next].$2.allocation);
         acquisitionAttemptsBefore++;
         next++;
       }
-      if (n == records.length) break;
-      fold(records[n].allocation);
+      if (n == total) break;
+      fold(added[n - basis.attempts].allocation);
       attemptsBefore++;
     }
 

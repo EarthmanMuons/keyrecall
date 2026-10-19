@@ -86,6 +86,10 @@ class AttemptJournal {
   /// Every attempt, oldest first.
   List<AttemptRecord> get records => List.unmodifiable(_records);
 
+  /// The records from [start] on, oldest first, without copying the history
+  /// before them.
+  Iterable<AttemptRecord> recordsFrom(int start) => _records.skip(start);
+
   /// How many attempts this journal holds.
   int get length => _records.length;
 

@@ -56,6 +56,19 @@ void main() {
       ]);
     });
 
+    test('reads its records from any position', () {
+      final journal = AttemptJournal(header())
+        ..append(recordAt(attemptId: 'a', indexInSession: 0))
+        ..append(recordAt(attemptId: 'b', indexInSession: 1))
+        ..append(recordAt(attemptId: 'c', indexInSession: 2));
+
+      expect(
+        journal.recordsFrom(1).map((record) => record.identity.attemptId),
+        ['b', 'c'],
+      );
+      expect(journal.recordsFrom(3), isEmpty);
+    });
+
     test('re-appending the same attempt is a no-op', () {
       // An interrupted commit that gets retried must not fold the same
       // evidence in twice, which is why the attempt id is the idempotency key.

@@ -820,6 +820,7 @@ class AcquisitionJournal {
   final AcquisitionJournalHeader header;
 
   final List<AcquisitionEntry> _records = [];
+  final List<AcquisitionAttemptRecord> _attempts = [];
   final Map<String, String> _hashByAttemptId = {};
   final Set<Exercise> _attemptedParents = {};
   int _placedAfter = 0;
@@ -830,10 +831,15 @@ class AcquisitionJournal {
   List<AcquisitionEntry> get records => List.unmodifiable(_records);
 
   /// Every attempt at an acquisition task, oldest first.
-  List<AcquisitionAttemptRecord> get attempts => [
-    for (final entry in _records)
-      if (entry is AcquisitionAttemptRecord) entry,
-  ];
+  List<AcquisitionAttemptRecord> get attempts => List.unmodifiable(_attempts);
+
+  /// How many attempts at acquisition tasks this log holds.
+  int get attemptCount => _attempts.length;
+
+  /// The attempts at acquisition tasks from [start] on, oldest first, without
+  /// copying the ones before them.
+  Iterable<AcquisitionAttemptRecord> attemptsFrom(int start) =>
+      _attempts.skip(start);
 
   /// How many events this log holds.
   int get length => _records.length;
@@ -921,6 +927,7 @@ class AcquisitionJournal {
     _records.add(record);
     _hashByAttemptId[record.identity.attemptId] = hash;
     if (record is AcquisitionAttemptRecord) {
+      _attempts.add(record);
       _attemptedParents.add(record.parent);
       if (record.attemptsBefore case final placed?) _placedAfter = placed;
     }
