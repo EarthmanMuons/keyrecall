@@ -192,6 +192,60 @@ void main() {
     });
   });
 
+  group('assigning', () {
+    forEachRepository('changes the scheduling policy and nothing else', (
+      repository,
+    ) async {
+      final created = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        presentationHint: 'teal',
+        placement: PlacementTier.someExperience,
+      );
+
+      final assigned = await repository.assign(
+        created.id,
+        SchedulingAssignment.allocationPilot,
+      );
+
+      expect(
+        assigned,
+        created.scheduledBy(SchedulingAssignment.allocationPilot),
+      );
+      expect(
+        (await repository.find(created.id))!.scheduling,
+        SchedulingAssignment.allocationPilot,
+      );
+      expect(
+        () => repository.assign('nobody', SchedulingAssignment.v1_14),
+        throwsArgumentError,
+      );
+    });
+
+    test('survives a restart, and comes off again', () async {
+      final first = FileProfileRepository(root, now: () => t0);
+      final created = await first.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      await first.assign(created.id, SchedulingAssignment.allocationPilot);
+
+      final second = FileProfileRepository(root, now: () => t0);
+      expect(
+        (await second.find(created.id))!.scheduling,
+        SchedulingAssignment.allocationPilot,
+      );
+      await second.assign(created.id, SchedulingAssignment.v1_14);
+
+      final third = FileProfileRepository(root, now: () => t0);
+      expect(
+        (await third.find(created.id))!.scheduling,
+        SchedulingAssignment.v1_14,
+      );
+    });
+  });
+
   group('selecting', () {
     forEachRepository('switches the active profile', (repository) async {
       final alice = await repository.create(

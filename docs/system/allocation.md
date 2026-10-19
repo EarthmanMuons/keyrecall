@@ -307,20 +307,18 @@ its own, each keeping the one before as a comparator:
 
 ## Device gates
 
-The pilot opens to testers once these hold on a device, in a release or profile
-build. The fold timing, the policy switch, and the pilot report are on the
-developer screen.
+The pilot opens to testers once these hold on a device. The lifecycle cases that
+depend on timing a save against a switch are not asked of a person: tests drive
+them through the app's providers, deterministically. Assigning the pilot while
+an exercise is on screen resumes that exercise under v1-14 and decides the next
+by allocation; switching profiles while a supported attempt saves, and back,
+records it once and leaves practice usable; and an assignment survives
+restarting the repository.
 
-| Check                                                                      | iPhone 15 Pro | Android      |
-| -------------------------------------------------------------------------- | ------------- | ------------ |
-| Fold p50 and p95 at 5,000 attempts, and no visible hitch between exercises | not verified  | not verified |
-| The pilot assigned mid-exercise: that exercise by v1-14, the next by it    | not verified  | not verified |
-| A profile switch while an acquisition attempt saves: recorded once, usable | not verified  | not verified |
-| The assignment held across restarts                                        | not verified  | not verified |
-
-The acquisition check passes with either a record carrying its evidence or one
-marked `stale_acquisition`, whichever the interleaving produced: what has to
-hold is that the attempt is history exactly once and practice goes on.
+| Check                                                                                            | iPhone 15 Pro | Android      |
+| ------------------------------------------------------------------------------------------------ | ------------- | ------------ |
+| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts         | not verified  | not verified |
+| Profile build, the pilot switched on from the developer screen: a session practises as it should | not verified  | not verified |
 
 ## How it is judged
 

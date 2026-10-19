@@ -13,6 +13,7 @@
 library;
 
 export 'src/acquisition_census.dart';
+export 'src/allocation_benchmark.dart';
 export 'src/altered_form_experiment.dart';
 export 'src/arpeggio_policy_experiment.dart';
 export 'src/attempt_trace.dart';

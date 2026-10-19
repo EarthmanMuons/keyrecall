@@ -193,6 +193,7 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
     }
 
     await _measureOwningWorker(lines);
+    await _measureAllocationFold(lines);
 
     lines
       ..add('')
@@ -274,6 +275,39 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
         );
     } finally {
       worker.stop();
+    }
+  }
+
+  /// Allocation's fold over histories of pilot length, on the UI isolate
+  /// where the session runs it before each decision.
+  Future<void> _measureAllocationFold(List<String> lines) async {
+    lines
+      ..add('')
+      ..add('allocation fold on the UI isolate')
+      ..add(
+        'attempts'.padRight(18) +
+            'p50'.padLeft(12) +
+            'p95'.padLeft(12) +
+            'worst gap'.padLeft(12) +
+            'frames'.padLeft(8),
+      );
+    for (final attempts in [1000, 5000]) {
+      _reportProgress('allocation fold, $attempts', 0, 1);
+      final history = syntheticAllocationHistory(attempts: attempts);
+      final sorted = [
+        for (final elapsed in timeSyntheticFold(history))
+          elapsed.inMicroseconds,
+      ];
+      final observed = await _framesDuring(
+        () async => timeSyntheticFold(history, runs: 1),
+      );
+      lines.add(
+        '$attempts'.padRight(18) +
+            _quantile(sorted, 0.5).padLeft(12) +
+            _quantile(sorted, 0.95).padLeft(12) +
+            _ms(observed.worst).padLeft(12) +
+            '${observed.frames}'.padLeft(8),
+      );
     }
   }
 
