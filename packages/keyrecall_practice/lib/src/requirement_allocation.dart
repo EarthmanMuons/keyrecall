@@ -340,3 +340,82 @@ class AllocationResolution {
     required this.evidence,
   });
 }
+
+/// What allocation reads at one decision, taken together so that what the
+/// decision records is exactly what it read.
+@immutable
+class AllocationRequest {
+  /// Every requirement in scope, as the evaluation the decision was scoped by
+  /// left it, in scope order.
+  final List<RequirementState> requirements;
+
+  final WaitCounters counters;
+
+  /// The history [counters] were folded from.
+  final AllocationBasis basis;
+
+  /// The policy to apply, or null to observe ordinary ranking unchanged.
+  final AllocationPolicy? policy;
+
+  AllocationRequest({
+    required List<RequirementState> requirements,
+    required this.counters,
+    required this.basis,
+    this.policy,
+  }) : requirements = List.unmodifiable(requirements);
+}
+
+/// What allocation made of one decision.
+@immutable
+class AllocationVerdict {
+  /// What presenting the decision does for every requirement in scope.
+  final AllocationEvidence evidence;
+
+  /// The history the decision's counters were folded from, as requested.
+  final AllocationBasis basis;
+
+  /// The owed requirement allocation took the slot for, or null when it left
+  /// ordinary ranking's choice.
+  final String? owedRequirementId;
+
+  const AllocationVerdict({
+    required this.evidence,
+    required this.basis,
+    this.owedRequirementId,
+  });
+}
+
+/// The shadow policy's parameters: evidence is the same under any, and
+/// nothing is chosen.
+const AllocationPolicy _observing = AllocationPolicy(
+  k: 2,
+  protectionFloor: 0.6,
+);
+
+/// [result] as [request] resolves it, and what that records for allocation.
+///
+/// What every host runs, wherever it decides.
+({SelectionResult result, AllocationVerdict allocation}) resolveAllocation(
+  SelectionResult result,
+  AllocationRequest request, {
+  required SchedulerPipeline pipeline,
+  required LearnerState state,
+  required DateTime at,
+}) {
+  final resolution = AllocationSlot.of(
+    result: result,
+    requirements: request.requirements,
+    pipeline: pipeline,
+    state: state,
+    at: at,
+    policy: request.policy ?? _observing,
+  ).resolve(request.counters, allocating: request.policy != null);
+  return (
+    result: resolution.result,
+    allocation: AllocationVerdict(
+      evidence: resolution.evidence,
+      basis: request.basis,
+      owedRequirementId: resolution.choice?.requirementId,
+    ),
+  );
+}

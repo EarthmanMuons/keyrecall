@@ -200,6 +200,11 @@ sealed class AllocationRecord {
           served: ids('served'),
           missed: ids('missed'),
         ),
+        owedRequirementId: asOptionalString(
+          json['owed_requirement_id'],
+          'owed_requirement_id',
+          location: location,
+        ),
       );
     },
     'allocation',
@@ -215,10 +220,15 @@ final class AllocationObserved extends AllocationRecord {
   final AllocationBasis basis;
   final AllocationEvidence evidence;
 
+  /// The owed requirement allocation took the slot for, or null when ordinary
+  /// ranking's choice stood.
+  final String? owedRequirementId;
+
   const AllocationObserved({
     required this.policy,
     required this.basis,
     required this.evidence,
+    this.owedRequirementId,
   });
 
   @override
@@ -230,6 +240,7 @@ final class AllocationObserved extends AllocationRecord {
       'acquisition_attempts': basis.acquisitionAttempts,
     },
     'evidence': {'served': evidence.served, 'missed': evidence.missed},
+    if (owedRequirementId != null) 'owed_requirement_id': owedRequirementId,
   };
 
   @override
@@ -237,10 +248,11 @@ final class AllocationObserved extends AllocationRecord {
       other is AllocationObserved &&
       other.policy == policy &&
       other.basis == basis &&
-      other.evidence == evidence;
+      other.evidence == evidence &&
+      other.owedRequirementId == owedRequirementId;
 
   @override
-  int get hashCode => Object.hash(policy, basis, evidence);
+  int get hashCode => Object.hash(policy, basis, evidence, owedRequirementId);
 }
 
 /// An event that contributes nothing to allocation, and why.

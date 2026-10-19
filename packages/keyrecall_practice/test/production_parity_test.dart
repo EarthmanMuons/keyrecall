@@ -376,6 +376,7 @@ class _RecordingHost implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) async => last = await inner.decide(
     epoch: epoch,
     state: state,
@@ -388,5 +389,6 @@ class _RecordingHost implements SchedulerHost {
     acquisitionFamilyFloor: acquisitionFamilyFloor,
     acquisition: acquisition,
     history: history,
+    allocation: allocation,
   );
 }

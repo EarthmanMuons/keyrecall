@@ -5,6 +5,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'requirement_allocation.dart';
 import 'scheduler_host.dart';
 
 /// Thrown where a decision was being computed on a worker that went away.
@@ -124,6 +125,7 @@ class IsolateScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) async {
     final worker = _worker;
     if (worker == null) {
@@ -148,6 +150,7 @@ class IsolateScheduler implements SchedulerHost {
         acquisitionFamilyFloor: acquisitionFamilyFloor,
         acquisition: acquisition,
         history: history,
+        allocation: allocation,
       ),
     );
   }
@@ -172,6 +175,7 @@ class _DecisionRequest {
   final AcquisitionFloor? acquisitionFamilyFloor;
   final AcquisitionProgress? acquisition;
   final AttemptHistory? history;
+  final AllocationRequest? allocation;
 
   const _DecisionRequest({
     required this.id,
@@ -186,6 +190,7 @@ class _DecisionRequest {
     required this.acquisitionFamilyFloor,
     required this.acquisition,
     required this.history,
+    required this.allocation,
   });
 }
 
@@ -198,6 +203,7 @@ class _DecisionResponse {
   final AcquisitionTask? acquisitionTask;
   final Exercise? displacedByAcquisition;
   final SelectionEffect effect;
+  final AllocationVerdict? allocation;
 
   const _DecisionResponse({
     required this.id,
@@ -208,6 +214,7 @@ class _DecisionResponse {
     required this.acquisitionTask,
     required this.displacedByAcquisition,
     required this.effect,
+    required this.allocation,
   });
 
   SchedulerVerdict get verdict {
@@ -218,6 +225,7 @@ class _DecisionResponse {
         effect: effect,
         diagnostics: diagnostics,
         displacedByAcquisition: displacedByAcquisition,
+        allocation: allocation,
       );
     }
     return chosen == null
@@ -226,12 +234,14 @@ class _DecisionResponse {
             epoch: epoch,
             effect: effect,
             diagnostics: diagnostics,
+            allocation: allocation,
           )
         : SchedulerVerdict.selected(
             chosen!,
             epoch: epoch,
             effect: effect,
             diagnostics: diagnostics,
+            allocation: allocation,
           );
   }
 }
@@ -404,28 +414,40 @@ class _Worker {
         emphasis: emphasis,
         uncoveredTargets: uncoveredTargetsIn(scope, request.uncoveredTargetIds),
       );
+      final resolved = switch (request.allocation) {
+        null => null,
+        final allocation => resolveAllocation(
+          slot.result,
+          allocation,
+          pipeline: pipeline,
+          state: request.state,
+          at: request.at,
+        ),
+      };
+      final result = resolved?.result ?? slot.result;
       replies.send(
         _DecisionResponse(
           id: request.id,
-          diagnostics: slot.result.diagnostics,
+          diagnostics: result.diagnostics,
           epoch: request.epoch,
-          chosen: switch (slot.result) {
+          allocation: resolved?.allocation,
+          chosen: switch (result) {
             CandidateSelected(:final candidate) => candidate,
             SelectionBlocked() || AcquisitionOffered() => null,
           },
-          blockedReason: switch (slot.result) {
+          blockedReason: switch (result) {
             SelectionBlocked(:final reason) => reason,
             CandidateSelected() || AcquisitionOffered() => null,
           },
-          acquisitionTask: switch (slot.result) {
+          acquisitionTask: switch (result) {
             AcquisitionOffered(:final task) => task,
             CandidateSelected() || SelectionBlocked() => null,
           },
-          displacedByAcquisition: switch (slot.result) {
+          displacedByAcquisition: switch (result) {
             AcquisitionOffered(:final displaced) => displaced,
             CandidateSelected() || SelectionBlocked() => null,
           },
-          effect: SelectionEffect.of(slot.result),
+          effect: SelectionEffect.of(result),
         ),
       );
     }

@@ -136,6 +136,7 @@ class _ParityScheduler extends IsolateScheduler {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) async {
     final verdict = await super.decide(
       epoch: epoch,
@@ -149,6 +150,7 @@ class _ParityScheduler extends IsolateScheduler {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       history: history,
+      allocation: allocation,
     );
     final directly = await _direct.decide(
       epoch: epoch,
@@ -162,11 +164,18 @@ class _ParityScheduler extends IsolateScheduler {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       history: history,
+      allocation: allocation,
     );
     expect(verdict.chosen?.exercise, directly.chosen?.exercise);
     expect(verdict.blockedReason, directly.blockedReason);
     expect(verdict.acquisitionTask, directly.acquisitionTask);
     expect(verdict.diagnostics, directly.diagnostics);
+    expect(verdict.allocation?.evidence, directly.allocation?.evidence);
+    expect(verdict.allocation?.basis, directly.allocation?.basis);
+    expect(
+      verdict.allocation?.owedRequirementId,
+      directly.allocation?.owedRequirementId,
+    );
     expect(
       verdict.effect.guidanceProbeAvailable,
       directly.effect.guidanceProbeAvailable,

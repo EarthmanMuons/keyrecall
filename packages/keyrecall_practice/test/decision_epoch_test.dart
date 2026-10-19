@@ -192,6 +192,7 @@ class _InterceptingScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) async {
     final verdict = await inner.decide(
       epoch: epoch,
@@ -205,6 +206,7 @@ class _InterceptingScheduler implements SchedulerHost {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       history: history,
+      allocation: allocation,
     );
     whileDeciding?.call();
     return verdict;

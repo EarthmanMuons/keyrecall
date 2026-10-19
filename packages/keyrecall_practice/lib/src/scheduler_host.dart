@@ -1,8 +1,9 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
-import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
+
+import 'requirement_allocation.dart';
 
 /// The candidates [dueRequirementIds] name, against [scope], and those of
 /// live support in only the hand configurations [liveSupportHands] names.
@@ -129,9 +130,8 @@ class SchedulerVerdict {
   /// What to apply to the session if this verdict is still current.
   final SessionDecisionEffect effect;
 
-  /// What presenting this would do for allocation, or null where the host
-  /// computed none.
-  final AllocationEvidence? evidence;
+  /// What allocation made of this decision, or null where none was asked.
+  final AllocationVerdict? allocation;
 
   /// Every trace, where the decision was made in this isolate.
   ///
@@ -139,13 +139,55 @@ class SchedulerVerdict {
   /// decides elsewhere leaves it null rather than sending it back.
   final SelectionResult? result;
 
+  /// The verdict [result] answers with, and the session effect it carries.
+  ///
+  /// [keepResult] sends every trace back, which only a host deciding in the
+  /// caller's isolate does.
+  factory SchedulerVerdict.of(
+    SelectionResult result, {
+    required int epoch,
+    AllocationVerdict? allocation,
+    bool keepResult = false,
+  }) {
+    final effect = SelectionEffect.of(result);
+    final kept = keepResult ? result : null;
+    return switch (result) {
+      CandidateSelected(:final candidate) => SchedulerVerdict.selected(
+        candidate,
+        epoch: epoch,
+        effect: effect,
+        result: kept,
+        diagnostics: result.diagnostics,
+        allocation: allocation,
+      ),
+      SelectionBlocked(:final reason) => SchedulerVerdict.blocked(
+        reason,
+        epoch: epoch,
+        effect: effect,
+        result: kept,
+        diagnostics: result.diagnostics,
+        allocation: allocation,
+      ),
+      AcquisitionOffered(:final task, :final displaced) =>
+        SchedulerVerdict.acquisition(
+          task,
+          epoch: epoch,
+          effect: effect,
+          result: kept,
+          diagnostics: result.diagnostics,
+          displacedByAcquisition: displaced,
+          allocation: allocation,
+        ),
+    };
+  }
+
   const SchedulerVerdict.selected(
     CandidateTrace this.chosen, {
     this.diagnostics = '',
     required this.epoch,
     required this.effect,
     this.result,
-    this.evidence,
+    this.allocation,
   }) : blockedReason = null,
        acquisitionTask = null,
        displacedByAcquisition = null;
@@ -156,7 +198,7 @@ class SchedulerVerdict {
     required this.epoch,
     required this.effect,
     this.result,
-    this.evidence,
+    this.allocation,
   }) : chosen = null,
        acquisitionTask = null,
        displacedByAcquisition = null;
@@ -168,7 +210,7 @@ class SchedulerVerdict {
     required this.effect,
     this.result,
     this.displacedByAcquisition,
-    this.evidence,
+    this.allocation,
   }) : chosen = null,
        blockedReason = null;
 }
@@ -208,6 +250,10 @@ abstract interface class SchedulerHost {
   /// [acquisition] and [history] are rebuilt from persisted history by the
   /// caller, because a host holds no history of its own. Omit them and the
   /// slot decides from learner state alone.
+  ///
+  /// [allocation] is resolved over the slot through [resolveAllocation], which
+  /// may replace ordinary ranking's choice when it carries a policy. Omit it
+  /// and the verdict records nothing for allocation.
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
@@ -220,6 +266,7 @@ abstract interface class SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   });
 
   /// Releases whatever computes decisions. A host is disposable: a session
@@ -271,6 +318,7 @@ class InProcessScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) async {
     final slot = pipeline.evaluateSlot(
       state: state,
@@ -285,31 +333,20 @@ class InProcessScheduler implements SchedulerHost {
       emphasis: _emphasis,
       uncoveredTargets: uncoveredTargetsIn(_scope!, uncoveredTargetIds),
     );
-    final effect = SelectionEffect.of(slot.result);
-    return switch (slot.result) {
-      CandidateSelected(:final candidate) => SchedulerVerdict.selected(
-        candidate,
-        epoch: epoch,
-        effect: effect,
-        result: slot.result,
-        diagnostics: slot.result.diagnostics,
-      ),
-      SelectionBlocked(:final reason) => SchedulerVerdict.blocked(
-        reason,
-        epoch: epoch,
-        effect: effect,
-        result: slot.result,
-        diagnostics: slot.result.diagnostics,
-      ),
-      AcquisitionOffered(:final task, :final displaced) =>
-        SchedulerVerdict.acquisition(
-          task,
-          epoch: epoch,
-          effect: effect,
-          result: slot.result,
-          diagnostics: slot.result.diagnostics,
-          displacedByAcquisition: displaced,
-        ),
-    };
+    final resolved = allocation == null
+        ? null
+        : resolveAllocation(
+            slot.result,
+            allocation,
+            pipeline: pipeline,
+            state: state,
+            at: at,
+          );
+    return SchedulerVerdict.of(
+      resolved?.result ?? slot.result,
+      epoch: epoch,
+      allocation: resolved?.allocation,
+      keepResult: true,
+    );
   }
 }

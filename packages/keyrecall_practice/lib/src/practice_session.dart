@@ -6,9 +6,11 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
 import 'acquisition_closure.dart';
+import 'allocation_history.dart';
 import 'pending_decision.dart';
 import 'performance_closure.dart';
 import 'practice_store.dart';
+import 'requirement_allocation.dart';
 import 'requirement_state.dart';
 import 'scheduler_host.dart';
 import 'scope_resolution.dart';
@@ -301,6 +303,8 @@ class PracticeSession {
   /// identity, it holds the record a retry would write again, and deciding
   /// again while it stands would replace both without closing either.
   PresentedAcquisition? _outstandingAcquisition;
+
+  AllocationHistory? _allocation;
 
   /// The record built for it, held so a retry writes the same event.
   AcquisitionAttemptRecord? _acquisitionInFlight;
@@ -768,6 +772,7 @@ class PracticeSession {
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
       history: history,
+      allocation: _allocationRequest(evaluated),
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.
@@ -781,7 +786,7 @@ class PracticeSession {
       exclusiveRequirementIds: focus.exclusiveRequirementIds,
       emphasisByRequirementId: focus.emphasisByRequirementId,
     );
-    final allocation = _allocationOf(verdict.evidence);
+    final allocation = _allocationOf(verdict.allocation);
     if (verdict.acquisitionTask case final task?) {
       final offered = PresentedAcquisition(
         attemptId: _nextId(),
@@ -1102,12 +1107,35 @@ class PracticeSession {
     return record;
   }
 
-  AllocationRecord _allocationOf(AllocationEvidence? evidence) {
+  /// Allocation's waiting as this session's history leaves it, folded once
+  /// for each history it is asked of.
+  AllocationHistory get _allocationHistory {
+    final held = _allocation;
+    if (held != null &&
+        held.basis.attempts == _journal.length &&
+        held.basis.acquisitionAttempts == _acquisition.attempts.length) {
+      return held;
+    }
+    return _allocation = AllocationHistory.of(_journal, _acquisition);
+  }
+
+  /// What a decision under [evaluated] asks allocation, with the counters and
+  /// the history they came from read together.
+  AllocationRequest _allocationRequest(EvaluatedPracticeScope evaluated) {
+    final history = _allocationHistory;
+    return AllocationRequest(
+      requirements: evaluated.requirements,
+      counters: history.counters,
+      basis: history.basis,
+    );
+  }
+
+  AllocationRecord _allocationOf(AllocationVerdict? verdict) {
     final policy = AllocationPolicyIdentity(
       assigned: pipeline.config.modelVersion,
       effective: pipeline.config.modelVersion,
     );
-    if (evidence == null) {
+    if (verdict == null) {
       return AllocationUnobserved(
         AllocationGap.notInstrumented,
         policy: policy,
@@ -1115,11 +1143,9 @@ class PracticeSession {
     }
     return AllocationObserved(
       policy: policy,
-      basis: AllocationBasis(
-        attempts: _journal.nextSequence,
-        acquisitionAttempts: _acquisition.attempts.length,
-      ),
-      evidence: evidence,
+      basis: verdict.basis,
+      evidence: verdict.evidence,
+      owedRequirementId: verdict.owedRequirementId,
     );
   }
 

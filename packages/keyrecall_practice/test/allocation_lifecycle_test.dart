@@ -335,6 +335,7 @@ class _EvidentHost implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) async {
     final verdict = await inner.decide(
       epoch: epoch,
@@ -349,9 +350,12 @@ class _EvidentHost implements SchedulerHost {
       acquisition: acquisition,
       history: history,
     );
-    final evidence = AllocationEvidence(
-      served: ['$name-served-${_decisions++}'],
-      missed: const ['missed'],
+    final evidence = AllocationVerdict(
+      evidence: AllocationEvidence(
+        served: ['$name-served-${_decisions++}'],
+        missed: const ['missed'],
+      ),
+      basis: allocation!.basis,
     );
     if (verdict.chosen case final chosen?) {
       return SchedulerVerdict.selected(
@@ -359,7 +363,7 @@ class _EvidentHost implements SchedulerHost {
         epoch: verdict.epoch,
         effect: verdict.effect,
         result: verdict.result,
-        evidence: evidence,
+        allocation: evidence,
       );
     }
     if (verdict.acquisitionTask case final task?) {
@@ -369,7 +373,7 @@ class _EvidentHost implements SchedulerHost {
         effect: verdict.effect,
         result: verdict.result,
         displacedByAcquisition: verdict.displacedByAcquisition,
-        evidence: evidence,
+        allocation: evidence,
       );
     }
     return verdict;

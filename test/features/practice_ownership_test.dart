@@ -585,6 +585,7 @@ class _LosesTheWorkerOnce extends InProcessScheduler {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     AttemptHistory? history,
+    AllocationRequest? allocation,
   }) {
     if (!_bound) {
       throw StateError('no scope is bound; bind one before deciding');
@@ -605,6 +606,7 @@ class _LosesTheWorkerOnce extends InProcessScheduler {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       history: history,
+      allocation: allocation,
     );
   }
 }
