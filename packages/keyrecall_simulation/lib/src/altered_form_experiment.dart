@@ -327,6 +327,7 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
       displayName: player.id,
       createdAt: at0,
       placement: player.placement,
+      schedulingOverride: SchedulingAssignment.v1_14,
     ),
     materials: fixture.materials,
     learner: learner,

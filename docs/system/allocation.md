@@ -1,13 +1,15 @@
 # Allocation
 
-> **Status:** in integration as an opt-in General Fluency pilot at `k` of 2 with
-> protection floor 0.60; scheduler v1-14 stays the default. The choice and its
-> waiting fold are shared code in `keyrecall_practice`, and attempt and
-> acquisition records carry its evidence from schema 11. Every decision records
-> shadow evidence; a profile a tester assigns to the pilot is decided by
-> allocation in unrestricted General Fluency and by v1-14 anywhere else, and
-> each decision records both policies. It answers
-> [`service-census.md`](../research/experiments/service-census.md) and
+> **Status:** the production policy for unrestricted General Fluency, at `k` of
+> 2 with protection floor 0.60, over v1-14; every other goal and any focus is
+> decided by v1-14. Allocation fixes the observed service imbalance, and its
+> demonstrated cost to hands-together progression is accepted as the initial
+> General Fluency policy. That is a product choice under uncertainty, not a
+> finding that it teaches better, and real practice can revise it. A profile can
+> be set to v1-14 from the developer screen, which persists; one that follows
+> production adopts allocation with the counters its shadow evidence already
+> built. Every decision records the policy assigned and the one that decided. It
+> answers [`service-census.md`](../research/experiments/service-census.md) and
 > [`service-pressure.md`](../research/experiments/service-pressure.md).
 
 The scheduler makes each decision defensibly and promises nothing about the next
@@ -30,9 +32,9 @@ Three things follow, and this design is built on them:
   them rather than two rules taking turns.
 - Failure should change what is offered, never whether a requirement is owed.
 
-## What the pilot implements
+## What production implements
 
-The pilot is the requirement-aware allocator stage of
+Production runs the requirement-aware allocator stage of
 [two ways to build it](#two-ways-to-build-it), the
 [allocation contract](#allocation-contract) at `k` of 2 and protection floor
 0.60, and nothing more:
@@ -44,13 +46,14 @@ The pilot is the requirement-aware allocator stage of
 - waiting counted once per committed ordinary or supported attempt, never per
   blocked slot, kept for a requirement while it is out of scope, and folded from
   evidence each record carries;
-- decided by allocation only for an assigned profile in unrestricted General
-  Fluency, with both policies recorded on every decision.
+- decided by allocation in unrestricted General Fluency for every profile that
+  follows production or chose allocation, with both policies recorded on every
+  decision.
 
 The [action taxonomy](#action-taxonomy), the action-first
 [decision sequence](#decision-sequence), and the
 [failure and recovery contract](#failure-and-recovery-contract) are proposals.
-None of them is built, and the pilot promises none of what they describe:
+None of them is built, and production promises none of what they describe:
 failure does not move a requirement along a support path, nothing bounds
 temporary unavailability, and a blocked requirement has no recorded way out.
 
@@ -331,18 +334,19 @@ its own, each keeping the one before as a comparator:
 
 ## Device gates
 
-The pilot opens to testers once these hold on a device. The lifecycle cases that
-depend on timing a save against a switch are not asked of a person: tests drive
-them through the app's providers, deterministically. Assigning the pilot while
-an exercise is on screen resumes that exercise under v1-14 and decides the next
-by allocation; switching profiles while a supported attempt saves, and back,
-records it once and leaves practice usable; and an assignment survives
-restarting the repository.
+These held on a device before allocation became the production policy. The
+lifecycle cases that depend on timing a save against a switch are not asked of a
+person: tests drive them through the app's providers, deterministically.
+Changing the policy while an exercise is on screen resumes that exercise under
+the policy that chose it and decides the next by the new one; switching profiles
+while a supported attempt saves, and back, records it once and leaves practice
+usable; and an explicit choice of either policy survives restarting the
+repository, renaming, and restyling.
 
-| Check                                                                                            | iPhone 15 Pro | Android  |
-| ------------------------------------------------------------------------------------------------ | ------------- | -------- |
-| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts         | passed        | deferred |
-| Profile build, the pilot switched on from the developer screen: a session practises as it should | passed        | deferred |
+| Check                                                                                    | iPhone 15 Pro | Android  |
+| ---------------------------------------------------------------------------------------- | ------------- | -------- |
+| Release build, Scheduler benchmark: the allocation fold rows at 1,000 and 5,000 attempts | passed        | deferred |
+| Profile build, allocation deciding: a session practises as it should                     | passed        | deferred |
 
 On the iPhone 15 Pro, iOS 27.0.1, release build, the fold over 5,000 attempts
 takes 2.7 ms whole, once as a session opens, and 13 to 15 us carried on by each
@@ -351,7 +355,7 @@ carried on. The worst frame gap measured while it runs was 13.0 ms at both 1,000
 and 5,000 attempts, with no sign of a penalty that grows with history; the
 benchmark does not establish what that gap consists of.
 
-Practising with the pilot on, on the iPhone, showed no noticeable delay between
+Practising under allocation, on the iPhone, showed no noticeable delay between
 exercises, and progress survived closing and reopening the app. The Android
 checks are deferred: earlier benchmarks put the Pixel 9a at about 2 to 2.5 times
 the iPhone's cost, which would put the whole fold at 5,000 attempts near 5 to 7

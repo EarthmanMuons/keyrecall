@@ -8,12 +8,15 @@ import 'schema.dart';
 
 /// A scheduling policy a profile can be assigned.
 enum SchedulingAssignment {
-  /// Ordinary ranking, the default.
+  /// Ordinary ranking alone.
   v1_14('v1-14'),
 
-  /// Allocation at `k` of 2 with protection floor 0.60 over v1-14, for the
-  /// General Fluency pilot.
-  allocationPilot('v1-14+alloc-k2-p60');
+  /// Allocation at `k` of 2 with protection floor 0.60 over v1-14, deciding
+  /// unrestricted General Fluency.
+  allocation('v1-14+alloc-k2-p60');
+
+  /// What decides a profile nobody overrode.
+  static const SchedulingAssignment production = allocation;
 
   const SchedulingAssignment(this.id);
 
@@ -71,12 +74,13 @@ class Profile {
   /// nothing here interprets it.
   final String? presentationHint;
 
-  /// The scheduling policy a tester assigned this profile.
+  /// The scheduling policy chosen for this profile, or null to follow
+  /// [SchedulingAssignment.production].
   ///
-  /// Nothing assigns it but a tester: the scheduler never moves a profile
+  /// Only someone choosing it sets it: the scheduler never moves a profile
   /// between policies. Which policy decides a given slot also depends on what
   /// is being practised, so each decision records both.
-  final SchedulingAssignment scheduling;
+  final SchedulingAssignment? schedulingOverride;
 
   Profile({
     required String id,
@@ -84,7 +88,7 @@ class Profile {
     required DateTime createdAt,
     required this.placement,
     this.presentationHint,
-    this.scheduling = SchedulingAssignment.v1_14,
+    this.schedulingOverride,
   }) : id = requireProfileId(id, 'id'),
        createdAt = createdAt.toUtc() {
     if (displayName.isEmpty) {
@@ -120,7 +124,7 @@ class Profile {
     createdAt: createdAt,
     placement: placement,
     presentationHint: presentationHint,
-    scheduling: scheduling,
+    schedulingOverride: schedulingOverride,
   );
 
   /// This profile shown differently, keeping everything it is.
@@ -133,17 +137,22 @@ class Profile {
     createdAt: createdAt,
     placement: placement,
     presentationHint: presentationHint,
-    scheduling: scheduling,
+    schedulingOverride: schedulingOverride,
   );
 
-  /// This profile assigned to [scheduling], keeping everything it is.
-  Profile scheduledBy(SchedulingAssignment scheduling) => Profile(
+  /// The scheduling policy that decides this profile.
+  SchedulingAssignment get scheduling =>
+      schedulingOverride ?? SchedulingAssignment.production;
+
+  /// This profile with [schedulingOverride] chosen, or following the
+  /// production policy when it is null, keeping everything it is.
+  Profile scheduledBy(SchedulingAssignment? schedulingOverride) => Profile(
     id: id,
     displayName: displayName,
     createdAt: createdAt,
     placement: placement,
     presentationHint: presentationHint,
-    scheduling: scheduling,
+    schedulingOverride: schedulingOverride,
   );
 
   /// Writes the profile.
@@ -153,7 +162,7 @@ class Profile {
     'created_at': encodeTime(createdAt),
     'placement': placement.id,
     'presentation_hint': presentationHint,
-    if (scheduling != SchedulingAssignment.v1_14) 'scheduling': scheduling.id,
+    if (schedulingOverride case final chosen?) 'scheduling': chosen.id,
   };
 
   /// Reads a profile back.
@@ -177,9 +186,9 @@ class Profile {
         'presentation_hint',
         location: 'profile',
       ),
-      // Absent for every profile nobody assigned, which is what v1-14 means.
-      scheduling: switch (json['scheduling']) {
-        null => SchedulingAssignment.v1_14,
+      // Absent for a profile that follows the production policy.
+      schedulingOverride: switch (json['scheduling']) {
+        null => null,
         final id => SchedulingAssignment.fromId(
           asString(id, 'scheduling', location: 'profile'),
         ),
@@ -197,7 +206,7 @@ class Profile {
       other.createdAt == createdAt &&
       other.placement == placement &&
       other.presentationHint == presentationHint &&
-      other.scheduling == scheduling;
+      other.schedulingOverride == schedulingOverride;
 
   @override
   int get hashCode => Object.hash(
@@ -206,7 +215,7 @@ class Profile {
     createdAt,
     placement,
     presentationHint,
-    scheduling,
+    schedulingOverride,
   );
 
   @override

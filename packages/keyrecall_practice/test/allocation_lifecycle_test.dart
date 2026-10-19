@@ -154,8 +154,8 @@ void main() {
         AllocationUnobserved(
           AllocationGap.staleAcquisition,
           policy: AllocationPolicyIdentity(
-            assigned: v1SchedulerConfig.modelVersion,
-            effective: v1SchedulerConfig.modelVersion,
+            assigned: SchedulingAssignment.production.id,
+            effective: SchedulingAssignment.production.id,
           ),
         ),
       );

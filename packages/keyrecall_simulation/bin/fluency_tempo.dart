@@ -188,6 +188,7 @@ Future<_Run> _run(TrajectoryJob job, _Plan plan) async {
     displayName: player.id,
     createdAt: _start,
     placement: player.placement,
+    schedulingOverride: SchedulingAssignment.v1_14,
   );
   final store = InMemoryPracticeStore(createdAt: _start);
   final playing = player.begin();

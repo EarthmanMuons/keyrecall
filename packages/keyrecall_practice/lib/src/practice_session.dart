@@ -1276,7 +1276,7 @@ class PracticeSession {
   ) {
     final assigned = profile.scheduling;
     final allocating =
-        assigned == SchedulingAssignment.allocationPilot &&
+        assigned == SchedulingAssignment.allocation &&
         scope.goalId == PracticeGoal.generalFluency.id &&
         focus.exclusiveRequirementIds == null &&
         focus.emphasisByRequirementId.isEmpty;
@@ -1285,7 +1285,7 @@ class PracticeSession {
         assigned: assigned.id,
         effective: allocating ? assigned.id : SchedulingAssignment.v1_14.id,
       ),
-      policy: allocating ? AllocationPolicy.pilot : null,
+      policy: allocating ? AllocationPolicy.production : null,
     );
   }
 
@@ -1821,7 +1821,7 @@ class PracticeSession {
   }
 
   /// [pilotReportOf] this profile's history, with coverage read at [at]
-  /// against unrestricted General Fluency, the pilot's scope, whatever goal or
+  /// against unrestricted General Fluency, the scope allocation decides, whatever goal or
   /// focus this session is practising under.
   ///
   /// Throws [PracticeStateError] when General Fluency does not resolve over

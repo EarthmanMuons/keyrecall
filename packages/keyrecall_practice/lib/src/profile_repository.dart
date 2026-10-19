@@ -178,10 +178,11 @@ abstract interface class ProfileRepository {
   /// Throws [ArgumentError] when no such profile exists.
   Future<Profile> restyle(String profileId, String? presentationHint);
 
-  /// Assigns a profile the scheduling policy [scheduling], and nothing else.
+  /// Chooses the scheduling policy [scheduling] for a profile, or the
+  /// production policy when it is null, and changes nothing else.
   ///
   /// Throws [ArgumentError] when no such profile exists.
-  Future<Profile> assign(String profileId, SchedulingAssignment scheduling);
+  Future<Profile> assign(String profileId, SchedulingAssignment? scheduling);
 
   /// Makes [profileId] the active profile.
   ///
@@ -319,7 +320,7 @@ class InMemoryProfileRepository implements ProfileRepository {
   @override
   Future<Profile> assign(
     String profileId,
-    SchedulingAssignment scheduling,
+    SchedulingAssignment? scheduling,
   ) async => _replace(profileId, (profile) => profile.scheduledBy(scheduling));
 
   Profile _replace(String profileId, Profile Function(Profile) change) {

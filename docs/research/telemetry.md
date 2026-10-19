@@ -152,7 +152,7 @@ erasing for this purpose, since the history the subject described is gone.
 question is always answered within one version or across a replay that states
 which.
 
-## The allocation pilot
+## Allocation
 
 Whether allocation broadens retained repertoire without an unacceptable cost to
 progression or participation is a question the table's rows answer once attempts
@@ -178,11 +178,12 @@ first report, on the device and from nothing recorded for it:
 - evidence: events observed, gaps by reason, and stale decisions, which say
   whether concurrency artifacts limit what the rest can be read as.
 
-Coverage is read against unrestricted General Fluency, the pilot's scope,
-whatever goal or focus the profile is practising under, so changing a focus
-cannot make breadth appear lost. The week and the five tries are provisional and
-descriptive: a return after an interval, not evidence of retention, and repeated
-unsuccessful execution, not evidence that practice has stopped helping.
+Coverage is read against unrestricted General Fluency, the scope allocation
+decides, whatever goal or focus the profile is practising under, so changing a
+focus cannot make breadth appear lost. The week and the five tries are
+provisional and descriptive: a return after an interval, not evidence of
+retention, and repeated unsuccessful execution, not evidence that practice has
+stopped helping.
 
 It carries catalog ids and counts, and time only as days and attempts since the
 first attempt, so it passes the [field test](#the-test-for-a-field) and the

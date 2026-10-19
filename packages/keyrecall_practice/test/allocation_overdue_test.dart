@@ -21,6 +21,7 @@ void main() {
       final host = _Overdue(make());
       final session = await openSession(
         InMemoryPracticeStore(createdAt: t0),
+        profile: alice.scheduledBy(SchedulingAssignment.v1_14),
         scheduler: host,
         materials: allPracticeMaterials,
       );
@@ -129,7 +130,7 @@ class _Overdue implements SchedulerHost {
         );
 
     final observed = await ask(overdueUnder(null));
-    final allocated = await ask(overdueUnder(AllocationPolicy.pilot));
+    final allocated = await ask(overdueUnder(AllocationPolicy.production));
     if (ordinary.chosen == null) return observed;
     overdue++;
     if (observed.chosen?.exercise != ordinary.chosen!.exercise) {

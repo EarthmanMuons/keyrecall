@@ -278,7 +278,7 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
     }
   }
 
-  /// Allocation's fold over histories of pilot length, on the UI isolate
+  /// Allocation's fold over histories of a long-term learner's length, on the UI isolate
   /// where the session runs it: whole when a session opens, and carried on by
   /// what each decision adds.
   Future<void> _measureAllocationFold(List<String> lines) async {

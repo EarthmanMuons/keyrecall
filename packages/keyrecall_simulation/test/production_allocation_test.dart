@@ -28,7 +28,7 @@ void main() {
         player: player,
         sessions: sessions,
         playerSeed: 100,
-        scheduling: SchedulingAssignment.allocationPilot,
+        scheduling: SchedulingAssignment.allocation,
       );
 
       expect(characterized.substitutions, hasLength(14));
@@ -53,8 +53,8 @@ void main() {
         expect(
           record.allocation.policy,
           AllocationPolicyIdentity(
-            assigned: SchedulingAssignment.allocationPilot.id,
-            effective: SchedulingAssignment.allocationPilot.id,
+            assigned: SchedulingAssignment.allocation.id,
+            effective: SchedulingAssignment.allocation.id,
           ),
         );
       }

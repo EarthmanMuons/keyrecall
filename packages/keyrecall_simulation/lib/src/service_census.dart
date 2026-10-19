@@ -772,7 +772,7 @@ Future<ServiceCensus> runServiceCensus({
       displayName: 'Census',
       createdAt: demoHistoryStart,
       placement: player.placement,
-      scheduling: scheduling,
+      schedulingOverride: scheduling,
     ),
     player: player,
     materials: catalog,

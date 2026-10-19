@@ -470,7 +470,7 @@ class _SelectionRefusesOnce implements ProfileRepository {
       _repository.restyle(profileId, presentationHint);
 
   @override
-  Future<Profile> assign(String profileId, SchedulingAssignment scheduling) =>
+  Future<Profile> assign(String profileId, SchedulingAssignment? scheduling) =>
       _repository.assign(profileId, scheduling);
 
   @override

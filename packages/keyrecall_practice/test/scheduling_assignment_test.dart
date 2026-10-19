@@ -8,14 +8,20 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'support/fixtures.dart';
 
 void main() {
-  final pilot = alice.scheduledBy(SchedulingAssignment.allocationPilot);
-  final assignedPilot = AllocationPolicyIdentity(
-    assigned: SchedulingAssignment.allocationPilot.id,
-    effective: SchedulingAssignment.allocationPilot.id,
+  final following = alice.scheduledBy(null);
+  final ordinary = alice.scheduledBy(SchedulingAssignment.v1_14);
+  final allocating = alice.scheduledBy(SchedulingAssignment.allocation);
+  AllocationPolicyIdentity decided(
+    SchedulingAssignment assigned,
+    SchedulingAssignment effective,
+  ) => AllocationPolicyIdentity(assigned: assigned.id, effective: effective.id);
+  final byAllocation = decided(
+    SchedulingAssignment.allocation,
+    SchedulingAssignment.allocation,
   );
-  final assignedButOrdinary = AllocationPolicyIdentity(
-    assigned: SchedulingAssignment.allocationPilot.id,
-    effective: SchedulingAssignment.v1_14.id,
+  final byOrdinaryRanking = decided(
+    SchedulingAssignment.v1_14,
+    SchedulingAssignment.v1_14,
   );
   final focus = PracticeFocus(
     exclusiveRequirementIds: {
@@ -26,76 +32,128 @@ void main() {
     },
   );
 
-  Future<AllocationPolicyIdentity?> policyOf(PracticeSession session) async =>
-      ((await session.decideOutcome(at: t0.plusDays(1))) as PresentedAttempt)
+  Future<AllocationPolicyIdentity?> policyOf(
+    PracticeSession session, {
+    double day = 1,
+  }) async =>
+      ((await session.decideOutcome(at: t0.plusDays(day))) as PresentedAttempt)
           .decision
           .allocation
           .policy;
 
-  test('a profile nobody assigned is decided by v1-14', () async {
-    final session = await openSession(InMemoryPracticeStore(createdAt: t0));
-
-    expect(
-      await policyOf(session),
-      AllocationPolicyIdentity(
-        assigned: SchedulingAssignment.v1_14.id,
-        effective: SchedulingAssignment.v1_14.id,
-      ),
-    );
+  test('production decides unrestricted General Fluency by allocation', () {
+    expect(SchedulingAssignment.production, SchedulingAssignment.allocation);
+    expect(following.scheduling, SchedulingAssignment.allocation);
   });
 
   test(
-    'an assigned profile allocates in unrestricted General Fluency',
+    'a profile nobody chose for is decided as one chosen for allocation',
     () async {
-      final session = await openSession(
-        InMemoryPracticeStore(createdAt: t0),
-        profile: pilot,
+      expect(
+        await policyOf(
+          await openSession(
+            InMemoryPracticeStore(createdAt: t0),
+            profile: following,
+          ),
+        ),
+        byAllocation,
       );
-
-      expect(await policyOf(session), assignedPilot);
+      expect(
+        await policyOf(
+          await openSession(
+            InMemoryPracticeStore(createdAt: t0),
+            profile: ordinary,
+          ),
+        ),
+        byOrdinaryRanking,
+      );
     },
   );
 
-  test('a focus or another goal leaves an assigned profile to v1-14', () async {
+  test('a history ordinary ranking decided, once it follows production, '
+      'is kept as written and decided as one chosen for allocation', () async {
+    Future<List<Map<String, Object?>>> continued(Profile after) async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      await practise(
+        await openSession(
+          store,
+          profile: ordinary,
+          materials: allPracticeMaterials,
+        ),
+        attempts: 30,
+      );
+      final before = [
+        for (final record in (await store.loadJournal(alice.id)).records)
+          record.toJson(),
+      ];
+      final session = await openSession(
+        store,
+        profile: after,
+        sessionId: 'after',
+        ids: countingIds('after'),
+        materials: allPracticeMaterials,
+      );
+      await practise(session, attempts: 30, startDay: 20);
+      final all = [
+        for (final record in session.journal.records) record.toJson(),
+      ];
+      expect(all.take(before.length), before);
+      return all;
+    }
+
+    final adopted = await continued(following);
+    expect(adopted, await continued(allocating));
+    expect(
+      AllocationRecord.fromJson(
+        adopted.last['allocation']! as Map<String, Object?>,
+      ).policy,
+      byAllocation,
+    );
+  });
+
+  test('a focus or another goal is decided by v1-14', () async {
     final focused =
-        await openSession(InMemoryPracticeStore(createdAt: t0), profile: pilot)
+        await openSession(
+            InMemoryPracticeStore(createdAt: t0),
+            profile: following,
+          )
           ..updateScope(goal: PracticeGoal.generalFluency, focus: focus);
     final elsewhere =
         await openSession(
             InMemoryPracticeStore(createdAt: t0),
-            profile: pilot,
+            profile: following,
             materials: allPracticeMaterials,
           )
           ..updateScope(goal: supportedGoals['FOUNDATIONS']!);
+    final notAllocating = decided(
+      SchedulingAssignment.allocation,
+      SchedulingAssignment.v1_14,
+    );
 
-    expect(await policyOf(focused), assignedButOrdinary);
-    expect(await policyOf(elsewhere), assignedButOrdinary);
+    expect(await policyOf(focused), notAllocating);
+    expect(await policyOf(elsewhere), notAllocating);
   });
 
-  test(
-    'a decision pending across a reassignment commits as it was made',
-    () async {
-      final store = InMemoryPracticeStore(createdAt: t0);
-      final before = await openSession(store, profile: pilot);
-      final presented =
-          await before.decideOutcome(at: t0.plusDays(1)) as PresentedAttempt;
+  test('a decision pending across a change of policy commits as it was made, '
+      'and the next is decided by the new one', () async {
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final before = await openSession(store, profile: following);
+    final presented =
+        await before.decideOutcome(at: t0.plusDays(1)) as PresentedAttempt;
 
-      final after = await openSession(store, sessionId: 'reassigned');
-      final record = await after.closeWithOutcome(
-        outcomeFor(after.pending!.exercise),
-      );
+    final after = await openSession(
+      store,
+      profile: ordinary,
+      sessionId: 'reassigned',
+    );
+    final record = await after.closeWithOutcome(
+      outcomeFor(after.pending!.exercise),
+    );
 
-      expect(record.allocation, presented.decision.allocation);
-      expect(record.allocation.policy, assignedPilot);
-      expect(
-        await policyOf(after),
-        AllocationPolicyIdentity(
-          assigned: SchedulingAssignment.v1_14.id,
-          effective: SchedulingAssignment.v1_14.id,
-        ),
-      );
-    },
-  );
+    expect(record.allocation, presented.decision.allocation);
+    expect(record.allocation.policy, byAllocation);
+    expect(await policyOf(after, day: 2), byOrdinaryRanking);
+  });
 
   test(
     'a focus suspends what it leaves out, and keeps it for return',
@@ -103,7 +161,7 @@ void main() {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(
         store,
-        profile: pilot,
+        profile: following,
         materials: allPracticeMaterials,
       );
       await practise(session, attempts: 16);
@@ -130,16 +188,18 @@ void main() {
     },
   );
 
-  test('an assignment survives the profile round trip, and is written only '
-      'when made', () {
-    expect(Profile.fromJson(pilot.toJson()).scheduling, pilot.scheduling);
-    expect(alice.toJson().containsKey('scheduling'), isFalse);
+  test('either choice survives the profile round trip, and following '
+      'production writes nothing', () {
+    for (final chosen in [ordinary, allocating]) {
+      expect(
+        Profile.fromJson(chosen.toJson()).schedulingOverride,
+        chosen.schedulingOverride,
+      );
+    }
+    expect(following.toJson().containsKey('scheduling'), isFalse);
+    expect(Profile.fromJson(following.toJson()).schedulingOverride, isNull);
     expect(
-      Profile.fromJson(alice.toJson()).scheduling,
-      SchedulingAssignment.v1_14,
-    );
-    expect(
-      () => Profile.fromJson(pilot.toJson()..['scheduling'] = 'v2'),
+      () => Profile.fromJson(allocating.toJson()..['scheduling'] = 'v2'),
       throwsA(isA<JournalFormatException>()),
     );
   });

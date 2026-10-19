@@ -282,7 +282,7 @@ class _Tools extends ConsumerWidget {
       _Tool(
         icon: Icons.summarize,
         title: 'Pilot report',
-        subtitle: 'What this history says about the allocation pilot',
+        subtitle: 'What this history says about allocation',
         onTap: () {
           final loop = ref.read(practiceLoopProvider).value;
           if (loop == null) return;
@@ -385,7 +385,8 @@ class _DemoProfileTool extends ConsumerWidget {
   }
 }
 
-/// The tester's opt-in to the allocation pilot, for the active profile.
+/// Which scheduling policy decides the active profile: production's, or one
+/// chosen for it, which is how a rollback to v1-14 is made and kept.
 class _SchedulingSwitch extends ConsumerWidget {
   const _SchedulingSwitch();
 
@@ -393,23 +394,25 @@ class _SchedulingSwitch extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(practiceLoopProvider).value?.profile;
     final busy = ref.watch(profileMutationProvider);
-    return SwitchListTile(
+    return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: const Text('Allocation pilot'),
-      subtitle: const Text(
-        'General Fluency without a focus; the next decision onward',
+      title: const Text('Scheduling'),
+      subtitle: const Text('From the next decision on'),
+      trailing: DropdownButton<SchedulingAssignment?>(
+        value: profile?.schedulingOverride,
+        onChanged: profile == null || busy
+            ? null
+            : (chosen) => ref
+                  .read(profileRosterProvider.notifier)
+                  .assign(profile.id, chosen),
+        items: [
+          DropdownMenuItem(
+            child: Text('Production (${SchedulingAssignment.production.id})'),
+          ),
+          for (final assignment in SchedulingAssignment.values)
+            DropdownMenuItem(value: assignment, child: Text(assignment.id)),
+        ],
       ),
-      value: profile?.scheduling == SchedulingAssignment.allocationPilot,
-      onChanged: profile == null || busy
-          ? null
-          : (on) => ref
-                .read(profileRosterProvider.notifier)
-                .assign(
-                  profile.id,
-                  on
-                      ? SchedulingAssignment.allocationPilot
-                      : SchedulingAssignment.v1_14,
-                ),
     );
   }
 }

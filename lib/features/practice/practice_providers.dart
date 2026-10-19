@@ -552,7 +552,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// under, and is resumed as it was.
   Future<ProfileMutation<Profile>> assign(
     String profileId,
-    SchedulingAssignment scheduling,
+    SchedulingAssignment? scheduling,
   ) => _mutate((lifecycle) async {
     final active = await _isActive(lifecycle.repository, profileId);
     final assigned = await lifecycle.repository.assign(profileId, scheduling);

@@ -25,8 +25,8 @@ syntheticAllocationHistory({
       catalogRequirementId(PracticeGoal.generalFluency.id, material.materialId),
   ];
   final policy = AllocationPolicyIdentity(
-    assigned: SchedulingAssignment.allocationPilot.id,
-    effective: SchedulingAssignment.allocationPilot.id,
+    assigned: SchedulingAssignment.allocation.id,
+    effective: SchedulingAssignment.allocation.id,
   );
   AllocationObserved evidence(int attemptsBefore, int acquired, int? served) {
     final missed = [

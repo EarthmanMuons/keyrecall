@@ -74,6 +74,7 @@ Future<List<LadderSlot>> traceGuidanceLadder({
     displayName: player.id,
     createdAt: at0,
     placement: player.placement,
+    schedulingOverride: SchedulingAssignment.v1_14,
   );
   final plan = scope.plan;
   final catalog = <TechnicalMaterial>[

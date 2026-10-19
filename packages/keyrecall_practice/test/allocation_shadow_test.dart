@@ -18,6 +18,7 @@ void main() {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(
       store,
+      profile: alice.scheduledBy(SchedulingAssignment.v1_14),
       scheduler: host,
       materials: allPracticeMaterials,
     );

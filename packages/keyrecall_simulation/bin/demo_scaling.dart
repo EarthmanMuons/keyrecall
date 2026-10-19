@@ -55,7 +55,7 @@ Future<void> main(List<String> arguments) async {
     displayName: 'Demo',
     createdAt: demoHistoryStart,
     placement: PlayerArchetypes.developing.placement,
-    scheduling: scheduling,
+    schedulingOverride: scheduling,
   );
   final pipeline = _TimedPipeline();
   final host = _TimedHost(pipeline);

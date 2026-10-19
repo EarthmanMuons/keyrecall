@@ -205,21 +205,43 @@ void main() {
 
       final assigned = await repository.assign(
         created.id,
-        SchedulingAssignment.allocationPilot,
+        SchedulingAssignment.allocation,
       );
 
-      expect(
-        assigned,
-        created.scheduledBy(SchedulingAssignment.allocationPilot),
-      );
+      expect(assigned, created.scheduledBy(SchedulingAssignment.allocation));
       expect(
         (await repository.find(created.id))!.scheduling,
-        SchedulingAssignment.allocationPilot,
+        SchedulingAssignment.allocation,
       );
       expect(
         () => repository.assign('nobody', SchedulingAssignment.v1_14),
         throwsArgumentError,
       );
+    });
+
+    test('an explicit v1-14 survives a restart, a rename, and a restyle, and '
+        'clearing it follows production again', () async {
+      final first = FileProfileRepository(root, now: () => t0);
+      final created = await first.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      expect(created.schedulingOverride, isNull);
+      expect(created.scheduling, SchedulingAssignment.production);
+      await first.assign(created.id, SchedulingAssignment.v1_14);
+      await first.rename(created.id, 'Alicia');
+      await first.restyle(created.id, 'rose');
+
+      final second = FileProfileRepository(root, now: () => t0);
+      final kept = (await second.find(created.id))!;
+      expect(kept.schedulingOverride, SchedulingAssignment.v1_14);
+      expect(kept.displayName, 'Alicia');
+      expect(kept.presentationHint, 'rose');
+      await second.assign(created.id, null);
+
+      final third = FileProfileRepository(root, now: () => t0);
+      expect((await third.find(created.id))!.schedulingOverride, isNull);
     });
 
     test('survives a restart, and comes off again', () async {
@@ -229,12 +251,12 @@ void main() {
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
-      await first.assign(created.id, SchedulingAssignment.allocationPilot);
+      await first.assign(created.id, SchedulingAssignment.allocation);
 
       final second = FileProfileRepository(root, now: () => t0);
       expect(
         (await second.find(created.id))!.scheduling,
-        SchedulingAssignment.allocationPilot,
+        SchedulingAssignment.allocation,
       );
       await second.assign(created.id, SchedulingAssignment.v1_14);
 

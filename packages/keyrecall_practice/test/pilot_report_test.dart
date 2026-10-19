@@ -136,19 +136,16 @@ void main() {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(
         store,
-        profile: alice.scheduledBy(SchedulingAssignment.allocationPilot),
+        profile: alice.scheduledBy(SchedulingAssignment.allocation),
         materials: allPracticeMaterials,
       );
       final records = await practise(session, attempts: 12);
       final report = session.pilotReport(at: t0.plusDays(30));
       final encoded = jsonEncode(report);
 
-      expect(
-        report['assigned policy'],
-        SchedulingAssignment.allocationPilot.id,
-      );
+      expect(report['assigned policy'], SchedulingAssignment.allocation.id);
       expect(report['attempts by effective policy'], {
-        SchedulingAssignment.allocationPilot.id: 12,
+        SchedulingAssignment.allocation.id: 12,
       });
       expect(
         (report['evidence']! as Map<String, Object?>)['observed'],
@@ -236,7 +233,7 @@ void main() {
       'focused on', () async {
     final session = await openSession(
       InMemoryPracticeStore(createdAt: t0),
-      profile: alice.scheduledBy(SchedulingAssignment.allocationPilot),
+      profile: alice.scheduledBy(SchedulingAssignment.allocation),
       materials: allPracticeMaterials,
     );
     await practise(session, attempts: 12);

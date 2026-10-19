@@ -19,8 +19,8 @@ class AllocationPolicy {
 
   const AllocationPolicy({required this.k, required this.protectionFloor});
 
-  /// The General Fluency pilot's.
-  static const pilot = AllocationPolicy(k: 2, protectionFloor: 0.6);
+  /// General Fluency's in production.
+  static const production = AllocationPolicy(k: 2, protectionFloor: 0.6);
 }
 
 /// Whether [result] is an allocation opportunity: a decision that becomes a
@@ -416,7 +416,7 @@ class AllocationVerdict {
     pipeline: pipeline,
     state: state,
     at: at,
-    policy: policy ?? AllocationPolicy.pilot,
+    policy: policy ?? AllocationPolicy.production,
   );
   final resolution = slot.resolve(request.counters, allocating: policy != null);
   return (

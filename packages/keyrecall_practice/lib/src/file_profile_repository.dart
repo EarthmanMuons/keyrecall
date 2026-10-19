@@ -223,7 +223,7 @@ class FileProfileRepository implements ProfileRepository {
       );
 
   @override
-  Future<Profile> assign(String profileId, SchedulingAssignment scheduling) =>
+  Future<Profile> assign(String profileId, SchedulingAssignment? scheduling) =>
       _serialize(
         () => _replace(profileId, (profile) => profile.scheduledBy(scheduling)),
       );

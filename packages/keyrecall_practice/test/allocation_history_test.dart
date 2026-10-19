@@ -10,8 +10,8 @@ import 'support/fixtures.dart';
 
 void main() {
   final policy = AllocationPolicyIdentity(
-    assigned: SchedulingAssignment.allocationPilot.id,
-    effective: SchedulingAssignment.allocationPilot.id,
+    assigned: SchedulingAssignment.allocation.id,
+    effective: SchedulingAssignment.allocation.id,
   );
   final exercise = Exercise.linear(
     material: fixtureMaterials.first,

@@ -225,6 +225,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
     displayName: player.id,
     createdAt: at0,
     placement: placement ?? player.placement,
+    schedulingOverride: SchedulingAssignment.v1_14,
   );
   final playing = player.begin();
   final random = PythonCompatibleRandom(seed);

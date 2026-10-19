@@ -13,8 +13,9 @@ import '../support/scheduler_override.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('assigning the pilot reopens practice, resuming what was on screen '
-      'under the policy it was decided by', () async {
+  test('a new profile is decided by allocation, and choosing v1-14 reopens '
+      'practice, resuming what was on screen under the policy it was decided '
+      'by', () async {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith(
@@ -37,33 +38,34 @@ void main() {
         .place(PlacementTier.someExperience);
     final before = await container.read(practiceLoopProvider.future);
     final presented = before.presented!;
-    final ordinary = AllocationPolicyIdentity(
-      assigned: SchedulingAssignment.v1_14.id,
-      effective: SchedulingAssignment.v1_14.id,
+    final allocating = AllocationPolicyIdentity(
+      assigned: SchedulingAssignment.allocation.id,
+      effective: SchedulingAssignment.allocation.id,
     );
-    expect(presented.decision.allocation.policy, ordinary);
+    expect(before.profile.schedulingOverride, isNull);
+    expect(presented.decision.allocation.policy, allocating);
 
     await container
         .read(profileRosterProvider.notifier)
-        .assign(before.profile.id, SchedulingAssignment.allocationPilot);
+        .assign(before.profile.id, SchedulingAssignment.v1_14);
     final after = await container.read(practiceLoopProvider.future);
 
-    expect(after.profile.scheduling, SchedulingAssignment.allocationPilot);
+    expect(after.profile.schedulingOverride, SchedulingAssignment.v1_14);
     expect(after.pending!.attemptId, presented.decision.attemptId);
     expect(after.pending!.allocation, presented.decision.allocation);
 
     final record = await after.session.closeUnmeasured(
       termination: AttemptTermination.learnerStopped,
     );
-    expect(record.allocation.policy, ordinary);
+    expect(record.allocation.policy, allocating);
     final next = await after.session.decideOutcome(
       at: record.identity.occurredAt.add(const Duration(minutes: 2)),
     );
     expect(
       (next as PresentedAttempt).decision.allocation.policy,
       AllocationPolicyIdentity(
-        assigned: SchedulingAssignment.allocationPilot.id,
-        effective: SchedulingAssignment.allocationPilot.id,
+        assigned: SchedulingAssignment.v1_14.id,
+        effective: SchedulingAssignment.v1_14.id,
       ),
     );
   });
