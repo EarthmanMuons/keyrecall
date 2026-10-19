@@ -787,7 +787,7 @@ class _ProgressStatement extends StatelessWidget {
       label: '$heading. $statement',
       child: ExcludeSemantics(
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           decoration: BoxDecoration(
             color: colors.primaryContainer,
             borderRadius: BorderRadius.circular(12),
