@@ -188,6 +188,25 @@ void main() {
     expect(folded.counters.asMap, {'missed': 2});
   });
 
+  test('a decision another session overtook cannot commit, so it leaves no '
+      'evidence', () async {
+    final store = InMemoryPracticeStore();
+    final overtaken = await open(store);
+    final overtaking = await open(store, sessionId: 'switched');
+    final late = await decide(overtaken, 1);
+    final early = await decide(overtaking, 1);
+    await commit(overtaking, early.exercise);
+
+    await expectLater(
+      commit(overtaken, late.exercise),
+      throwsA(isA<JournalFormatException>()),
+    );
+    final folded = history(await open(store, sessionId: 'audit'));
+    expect(folded.observed, 1);
+    expect(folded.staleDecisions, 0);
+    expect(folded.counters.asMap, {'missed': 1});
+  });
+
   group('the store', () {
     AcquisitionAttemptRecord placedAt(int attemptsBefore, {int repairs = 0}) =>
         AcquisitionAttemptRecord(
