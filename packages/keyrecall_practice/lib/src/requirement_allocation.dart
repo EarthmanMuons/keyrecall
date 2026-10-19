@@ -18,6 +18,9 @@ class AllocationPolicy {
   final double protectionFloor;
 
   const AllocationPolicy({required this.k, required this.protectionFloor});
+
+  /// The General Fluency pilot's.
+  static const pilot = AllocationPolicy(k: 2, protectionFloor: 0.6);
 }
 
 /// Whether [result] is an allocation opportunity: a decision that becomes a
@@ -385,13 +388,6 @@ class AllocationVerdict {
   });
 }
 
-/// The shadow policy's parameters: evidence is the same under any, and
-/// nothing is chosen.
-const AllocationPolicy _observing = AllocationPolicy(
-  k: 2,
-  protectionFloor: 0.6,
-);
-
 /// [result] as [request] resolves it, and what that records for allocation.
 ///
 /// What every host runs, wherever it decides.
@@ -408,7 +404,7 @@ const AllocationPolicy _observing = AllocationPolicy(
     pipeline: pipeline,
     state: state,
     at: at,
-    policy: request.policy ?? _observing,
+    policy: request.policy ?? AllocationPolicy.pilot,
   ).resolve(request.counters, allocating: request.policy != null);
   return (
     result: resolution.result,

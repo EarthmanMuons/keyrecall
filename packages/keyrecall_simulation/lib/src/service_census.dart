@@ -739,6 +739,7 @@ Future<ServiceCensus> runServiceCensus({
   PracticeGoal goal = PracticeGoal.generalFluency,
   List<TechnicalMaterial>? materials,
   ServiceIntervention? intervention,
+  SchedulingAssignment scheduling = SchedulingAssignment.v1_14,
   int playerSeed = 0,
   void Function(PracticeSession session, PlayerState playing, DateTime at)?
   onArrival,
@@ -771,6 +772,7 @@ Future<ServiceCensus> runServiceCensus({
       displayName: 'Census',
       createdAt: demoHistoryStart,
       placement: player.placement,
+      scheduling: scheduling,
     ),
     player: player,
     materials: catalog,

@@ -740,6 +740,7 @@ class PracticeSession {
     // that follows carries the new epoch, so an old-scope verdict passes the
     // check that exists to catch exactly that. Marking the binding current
     // afterwards would also undo the invalidation the scope change performed.
+    final scheduling = _scheduling(scope, focus);
     final epoch = _epoch;
     if (!_bound) {
       await scheduler.bind(
@@ -772,7 +773,7 @@ class PracticeSession {
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
       history: history,
-      allocation: _allocationRequest(evaluated),
+      allocation: _allocationRequest(evaluated, scheduling.policy),
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.
@@ -786,7 +787,7 @@ class PracticeSession {
       exclusiveRequirementIds: focus.exclusiveRequirementIds,
       emphasisByRequirementId: focus.emphasisByRequirementId,
     );
-    final allocation = _allocationOf(verdict.allocation);
+    final allocation = _allocationOf(verdict.allocation, scheduling.identity);
     if (verdict.acquisitionTask case final task?) {
       final offered = PresentedAcquisition(
         attemptId: _nextId(),
@@ -1119,22 +1120,50 @@ class PracticeSession {
     return _allocation = AllocationHistory.of(_journal, _acquisition);
   }
 
+  /// The policy this profile is assigned and the one that decides under
+  /// [scope] and [focus].
+  ///
+  /// Allocation decides only unrestricted General Fluency. Anywhere else an
+  /// assigned profile is decided by v1-14, keeping its counters for when it
+  /// returns.
+  ({AllocationPolicyIdentity identity, AllocationPolicy? policy}) _scheduling(
+    ResolvedPracticeScope scope,
+    PracticeFocus focus,
+  ) {
+    final assigned = profile.scheduling;
+    final allocating =
+        assigned == SchedulingAssignment.allocationPilot &&
+        scope.goalId == PracticeGoal.generalFluency.id &&
+        focus.exclusiveRequirementIds == null &&
+        focus.emphasisByRequirementId.isEmpty;
+    return (
+      identity: AllocationPolicyIdentity(
+        assigned: assigned.id,
+        effective: allocating ? assigned.id : SchedulingAssignment.v1_14.id,
+      ),
+      policy: allocating ? AllocationPolicy.pilot : null,
+    );
+  }
+
   /// What a decision under [evaluated] asks allocation, with the counters and
   /// the history they came from read together.
-  AllocationRequest _allocationRequest(EvaluatedPracticeScope evaluated) {
+  AllocationRequest _allocationRequest(
+    EvaluatedPracticeScope evaluated,
+    AllocationPolicy? policy,
+  ) {
     final history = _allocationHistory;
     return AllocationRequest(
       requirements: evaluated.requirements,
       counters: history.counters,
       basis: history.basis,
+      policy: policy,
     );
   }
 
-  AllocationRecord _allocationOf(AllocationVerdict? verdict) {
-    final policy = AllocationPolicyIdentity(
-      assigned: pipeline.config.modelVersion,
-      effective: pipeline.config.modelVersion,
-    );
+  AllocationRecord _allocationOf(
+    AllocationVerdict? verdict,
+    AllocationPolicyIdentity policy,
+  ) {
     if (verdict == null) {
       return AllocationUnobserved(
         AllocationGap.notInstrumented,

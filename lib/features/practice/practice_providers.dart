@@ -545,6 +545,20 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
     return (false, ProfileChanged(restyled));
   }, touchesPractice: false);
 
+  /// Assigns a profile the scheduling policy [scheduling].
+  ///
+  /// Reopens practice for the active profile, so the next decision is made
+  /// under it. A decision already presented keeps the policy it was made
+  /// under, and is resumed as it was.
+  Future<ProfileMutation<Profile>> assign(
+    String profileId,
+    SchedulingAssignment scheduling,
+  ) => _mutate((lifecycle) async {
+    final active = await _isActive(lifecycle.repository, profileId);
+    final assigned = await lifecycle.repository.assign(profileId, scheduling);
+    return (active, ProfileChanged(assigned));
+  });
+
   /// Makes [profileId] the profile the practice loop runs as.
   ///
   /// The result reports the profile that is actually selected afterwards, so a

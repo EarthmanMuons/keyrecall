@@ -4,6 +4,29 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 import 'canonical_json.dart';
+import 'schema.dart';
+
+/// A scheduling policy a profile can be assigned.
+enum SchedulingAssignment {
+  /// Ordinary ranking, the default.
+  v1_14('v1-14'),
+
+  /// Allocation at `k` of 2 with protection floor 0.60 over v1-14, for the
+  /// General Fluency pilot.
+  allocationPilot('v1-14+alloc-k2-p60');
+
+  const SchedulingAssignment(this.id);
+
+  final String id;
+
+  static SchedulingAssignment fromId(String id) => values.firstWhere(
+    (assignment) => assignment.id == id,
+    orElse: () => throw JournalFormatException(
+      'unknown scheduling assignment $id',
+      location: 'profile',
+    ),
+  );
+}
 
 /// One person using this install.
 ///
@@ -48,12 +71,20 @@ class Profile {
   /// nothing here interprets it.
   final String? presentationHint;
 
+  /// The scheduling policy a tester assigned this profile.
+  ///
+  /// Nothing assigns it but a tester: the scheduler never moves a profile
+  /// between policies. Which policy decides a given slot also depends on what
+  /// is being practised, so each decision records both.
+  final SchedulingAssignment scheduling;
+
   Profile({
     required String id,
     required this.displayName,
     required DateTime createdAt,
     required this.placement,
     this.presentationHint,
+    this.scheduling = SchedulingAssignment.v1_14,
   }) : id = requireProfileId(id, 'id'),
        createdAt = createdAt.toUtc() {
     if (displayName.isEmpty) {
@@ -89,6 +120,7 @@ class Profile {
     createdAt: createdAt,
     placement: placement,
     presentationHint: presentationHint,
+    scheduling: scheduling,
   );
 
   /// This profile shown differently, keeping everything it is.
@@ -101,6 +133,17 @@ class Profile {
     createdAt: createdAt,
     placement: placement,
     presentationHint: presentationHint,
+    scheduling: scheduling,
+  );
+
+  /// This profile assigned to [scheduling], keeping everything it is.
+  Profile scheduledBy(SchedulingAssignment scheduling) => Profile(
+    id: id,
+    displayName: displayName,
+    createdAt: createdAt,
+    placement: placement,
+    presentationHint: presentationHint,
+    scheduling: scheduling,
   );
 
   /// Writes the profile.
@@ -110,6 +153,7 @@ class Profile {
     'created_at': encodeTime(createdAt),
     'placement': placement.id,
     'presentation_hint': presentationHint,
+    if (scheduling != SchedulingAssignment.v1_14) 'scheduling': scheduling.id,
   };
 
   /// Reads a profile back.
@@ -133,6 +177,13 @@ class Profile {
         'presentation_hint',
         location: 'profile',
       ),
+      // Absent for every profile nobody assigned, which is what v1-14 means.
+      scheduling: switch (json['scheduling']) {
+        null => SchedulingAssignment.v1_14,
+        final id => SchedulingAssignment.fromId(
+          asString(id, 'scheduling', location: 'profile'),
+        ),
+      },
     ),
     'profile',
     location: 'profile',
@@ -145,11 +196,18 @@ class Profile {
       other.displayName == displayName &&
       other.createdAt == createdAt &&
       other.placement == placement &&
-      other.presentationHint == presentationHint;
+      other.presentationHint == presentationHint &&
+      other.scheduling == scheduling;
 
   @override
-  int get hashCode =>
-      Object.hash(id, displayName, createdAt, placement, presentationHint);
+  int get hashCode => Object.hash(
+    id,
+    displayName,
+    createdAt,
+    placement,
+    presentationHint,
+    scheduling,
+  );
 
   @override
   String toString() => 'Profile($displayName, $id)';

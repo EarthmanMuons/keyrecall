@@ -222,6 +222,12 @@ class FileProfileRepository implements ProfileRepository {
             _replace(profileId, (profile) => profile.shownAs(presentationHint)),
       );
 
+  @override
+  Future<Profile> assign(String profileId, SchedulingAssignment scheduling) =>
+      _serialize(
+        () => _replace(profileId, (profile) => profile.scheduledBy(scheduling)),
+      );
+
   /// Rewrites one profile's record of itself, and no other file.
   Future<Profile> _replace(
     String profileId,

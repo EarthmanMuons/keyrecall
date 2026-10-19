@@ -61,6 +61,10 @@ class _Loop extends ConsumerWidget {
           _Field('id', loop.profile.id),
           _Field('attempts recorded', '${loop.attemptsRecorded}'),
           _Field('session', loop.session.sessionId),
+          _Field('scheduling', loop.profile.scheduling.id),
+          if (loop.presented?.decision.allocation.policy case final policy?)
+            _Field('decided by', policy.effective),
+          const _SchedulingSwitch(),
           // A decision an earlier run persisted and never closed. The practice
           // screen presents it like any other, under this same id, so it is
           // reported here rather than being something to resolve.
@@ -313,6 +317,35 @@ class _DemoProfileTool extends ConsumerWidget {
       onTap: generation is DemoRunning
           ? null
           : () => ref.read(demoGenerationProvider.notifier).start(),
+    );
+  }
+}
+
+/// The tester's opt-in to the allocation pilot, for the active profile.
+class _SchedulingSwitch extends ConsumerWidget {
+  const _SchedulingSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(practiceLoopProvider).value?.profile;
+    final busy = ref.watch(profileMutationProvider);
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Allocation pilot'),
+      subtitle: const Text(
+        'General Fluency without a focus; the next decision onward',
+      ),
+      value: profile?.scheduling == SchedulingAssignment.allocationPilot,
+      onChanged: profile == null || busy
+          ? null
+          : (on) => ref
+                .read(profileRosterProvider.notifier)
+                .assign(
+                  profile.id,
+                  on
+                      ? SchedulingAssignment.allocationPilot
+                      : SchedulingAssignment.v1_14,
+                ),
     );
   }
 }

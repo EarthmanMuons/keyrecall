@@ -3,8 +3,10 @@
 > **Status:** in integration as an opt-in General Fluency pilot at `k` of 2 with
 > protection floor 0.60; scheduler v1-14 stays the default. The choice and its
 > waiting fold are shared code in `keyrecall_practice`, and attempt and
-> acquisition records carry its evidence from schema 11. No host computes
-> evidence yet, so nothing presents an allocation choice. It answers
+> acquisition records carry its evidence from schema 11. Every decision records
+> shadow evidence; a profile a tester assigns to the pilot is decided by
+> allocation in unrestricted General Fluency and by v1-14 anywhere else, and
+> each decision records both policies. It answers
 > [`service-census.md`](../research/experiments/service-census.md) and
 > [`service-pressure.md`](../research/experiments/service-pressure.md).
 
@@ -243,6 +245,13 @@ accounting, and evidence is never invented to repair an ordering race. An
 ordinary decision whose counters missed an acquisition attempt that landed first
 commits as made, and the fold counts it as a stale decision rather than altering
 it.
+
+A decision reads allocation from one request: the requirement states the
+evaluation scoping it produced, in scope order, and the counters with the
+history they were folded from. Either host resolves it the same way and returns
+the evidence with that history, which is what the decision records, so its claim
+about what it read is what it read. Under v1-14 the request is observed and
+never chosen from.
 
 A record without evidence names why, `legacy` before schema 11, and contributes
 nothing; it is not a decision that served and missed nothing. Counters before
