@@ -93,7 +93,20 @@ class AllocationEvidence {
   final List<String> served;
   final List<String> missed;
 
-  const AllocationEvidence({required this.served, required this.missed});
+  /// Throws [ArgumentError] when a requirement is named twice, in either list
+  /// or both.
+  AllocationEvidence({
+    required Iterable<String> served,
+    required Iterable<String> missed,
+  }) : served = List.unmodifiable(served),
+       missed = List.unmodifiable(missed) {
+    final named = <String>{};
+    for (final id in [...this.served, ...this.missed]) {
+      if (!named.add(id)) {
+        throw ArgumentError.value(id, 'requirementId', 'named twice');
+      }
+    }
+  }
 
   @override
   bool operator ==(Object other) =>

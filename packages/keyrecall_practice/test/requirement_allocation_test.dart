@@ -58,7 +58,7 @@ void main() {
         evidence.fold(const WaitCounters.empty(), (c, e) => c.advance(e));
 
     test('counts missed opportunities and clears on service', () {
-      final counters = fold(const [
+      final counters = fold([
         AllocationEvidence(served: [], missed: ['r', 's']),
         AllocationEvidence(served: ['r'], missed: ['s']),
         AllocationEvidence(served: [], missed: ['r']),
@@ -69,7 +69,7 @@ void main() {
     });
 
     test('keeps a requirement the evidence does not name', () {
-      final counters = fold(const [
+      final counters = fold([
         AllocationEvidence(served: [], missed: ['r', 's']),
         AllocationEvidence(served: [], missed: ['r']),
         AllocationEvidence(served: [], missed: []),
@@ -80,13 +80,30 @@ void main() {
     });
 
     test('keeps the order requirements began waiting in', () {
-      final counters = fold(const [
+      final counters = fold([
         AllocationEvidence(served: [], missed: ['a', 'b']),
         AllocationEvidence(served: [], missed: ['b', 'a']),
       ]);
 
       expect(counters.asMap.keys, ['a', 'b']);
     });
+  });
+
+  test('evidence is fixed when made, and names each requirement once', () {
+    final served = ['r'];
+    final evidence = AllocationEvidence(served: served, missed: const ['s']);
+    served.add('t');
+
+    expect(evidence.served, ['r']);
+    expect(() => evidence.missed.add('t'), throwsUnsupportedError);
+    expect(
+      () => AllocationEvidence(served: const ['r'], missed: const ['r']),
+      throwsArgumentError,
+    );
+    expect(
+      () => AllocationEvidence(served: const [], missed: const ['s', 's']),
+      throwsArgumentError,
+    );
   });
 
   test('a blocked slot is not an allocation opportunity', () {
