@@ -838,6 +838,20 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
     await _midi.disconnect();
   }
 
+  /// Drops the remembered device so no trigger reconnects to it, first
+  /// disconnecting from it or abandoning an attempt to reach it.
+  Future<void> forget() async {
+    final prefs = ref.read(midiPreferencesProvider.notifier);
+    final rememberedId = ref
+        .read(midiPreferencesProvider)
+        .lastConnectedDeviceId;
+    final targetsRemembered =
+        (state.isConnected || state.isAttemptingConnection) &&
+        state.device?.id == rememberedId;
+    if (targetsRemembered) await disconnect();
+    await prefs.clearLastConnectedDevice();
+  }
+
   /// Manually trigger a reconnection attempt.
   Future<bool> reconnect() async {
     if (_debugLog) debugPrint('[CONN] manual reconnect');

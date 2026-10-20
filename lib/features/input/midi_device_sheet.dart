@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/semantics.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
@@ -29,6 +31,7 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
   late final MidiConnectionNotifier _connection;
   String? _error;
   int _selectionGeneration = 0;
+  String? _swipedAwayId;
 
   @override
   void initState() {
@@ -56,11 +59,17 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
     }
   }
 
-  Future<void> _connect(MidiDevice device) async {
+  /// Connects to [device], reaching one the scan has not [found] through the
+  /// reconnect path, which waits for it to appear.
+  Future<void> _connect(MidiDevice device, {required bool found}) async {
     final generation = ++_selectionGeneration;
     setState(() => _error = null);
     try {
-      await _connection.connect(device);
+      if (found) {
+        await _connection.connect(device);
+      } else {
+        await _connection.reconnect();
+      }
     } catch (error) {
       if (!mounted || generation != _selectionGeneration) return;
       setState(() {
@@ -78,16 +87,114 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
     }
   }
 
+  Future<void> _forget(MidiDevice remembered) async {
+    final connection = ref.read(midiConnectionStateProvider);
+    if (connection.isAttemptingConnection &&
+        connection.device?.id == remembered.id) {
+      _selectionGeneration++;
+    }
+    await _connection.forget();
+    if (mounted) {
+      setState(() {
+        _error = null;
+        _swipedAwayId = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final manager = ref.watch(midiDeviceManagerProvider);
     final connection = ref.watch(midiConnectionStateProvider);
     final connected = connection.isConnected ? connection.device : null;
-    final devices = [
-      ?connected,
-      ...manager.devices.where((device) => device.id != connected?.id),
-    ];
+    final remembered = ref.watch(lastConnectedMidiDeviceProvider);
+    final found = {for (final device in manager.devices) device.id: device};
+    final listedRemembered =
+        remembered?.id == connected?.id || remembered?.id == _swipedAwayId
+        ? null
+        : found[remembered?.id] ?? remembered;
+    final yours = [?connected, ?listedRemembered];
+    final others = manager.devices
+        .where(
+          (device) => device.id != connected?.id && device.id != remembered?.id,
+        )
+        .toList();
     final theme = Theme.of(context);
+
+    Widget deviceTile(MidiDevice device) {
+      final isConnected = device.id == connected?.id;
+      final isConnecting =
+          connection.isAttemptingConnection &&
+          device.id == connection.device?.id;
+      final isRemembered = device.id == remembered?.id;
+      final isFound = found.containsKey(device.id);
+      // Keep tile ink inside the scroll viewport.
+      final tile = Material(
+        type: MaterialType.transparency,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          // A swipeable row is rounded by its clip instead, so the tile's
+          // edge meets the swipe background flush.
+          shape: isRemembered
+              ? null
+              : RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          selected: isConnected,
+          selectedTileColor: theme.colorScheme.primaryContainer,
+          selectedColor: theme.colorScheme.onPrimaryContainer,
+          title: Text(device.displayName ?? device.id),
+          subtitle: Text(
+            isConnected
+                ? '${device.transport.label} · Connected'
+                : !isFound && !isConnecting
+                ? '${device.transport.label} · Not found'
+                : device.transport.label,
+          ),
+          trailing: isConnecting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : isConnected
+              ? const Icon(Icons.check_circle_outline)
+              : null,
+          onTap: isConnecting
+              ? null
+              : () => _connect(device, found: isConnected || isFound),
+        ),
+      );
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: !isRemembered
+            ? tile
+            : Semantics(
+                customSemanticsActions: {
+                  const CustomSemanticsAction(label: 'Forget'): () =>
+                      unawaited(_forget(device)),
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Dismissible(
+                    key: ValueKey('remembered ${device.id}'),
+                    direction: DismissDirection.endToStart,
+                    background: const _ForgetSwipeBackground(),
+                    // A device the scan sees stays listed, so its row
+                    // springs back rather than leaving.
+                    confirmDismiss: (_) async {
+                      if (!isConnected && !isFound) return true;
+                      await _forget(device);
+                      return false;
+                    },
+                    onDismissed: (_) {
+                      setState(() => _swipedAwayId = device.id);
+                      unawaited(_forget(device));
+                    },
+                    child: tile,
+                  ),
+                ),
+              ),
+      );
+    }
 
     return SafeArea(
       child: Padding(
@@ -148,89 +255,68 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
               ),
             ],
             const SizedBox(height: 16),
-            if (devices.isEmpty)
+            if (yours.isEmpty && others.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Text('No instruments found yet.'),
               )
             else
               Flexible(
-                child: ListView.separated(
+                child: ListView(
                   padding: EdgeInsets.zero,
                   shrinkWrap: true,
-                  itemCount: devices.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 4),
-                  itemBuilder: (context, index) {
-                    final device = devices[index];
-                    final isConnected = device.id == connected?.id;
-                    final isConnecting =
-                        connection.isAttemptingConnection &&
-                        device.id == connection.device?.id;
-                    // Keep tile ink inside the scroll viewport.
-                    return Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        selected: isConnected,
-                        selectedTileColor: theme.colorScheme.primaryContainer,
-                        selectedColor: theme.colorScheme.onPrimaryContainer,
-                        title: Text(device.displayName ?? device.id),
-                        subtitle: Text(
-                          isConnected
-                              ? '${device.transport.label} · Connected'
-                              : device.transport.label,
-                        ),
-                        trailing: isConnecting
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : isConnected
-                            ? const Icon(Icons.check_circle_outline)
-                            : null,
-                        onTap: isConnecting ? null : () => _connect(device),
-                      ),
-                    );
-                  },
+                  children: [
+                    if (yours.isNotEmpty) ...[
+                      const _SectionLabel('Saved'),
+                      for (final device in yours) deviceTile(device),
+                      if (others.isNotEmpty) const _SectionLabel('Available'),
+                    ],
+                    for (final device in others) deviceTile(device),
+                  ],
                 ),
               ),
-            if (connection.isAttemptingConnection || connection.isConnected)
+            if (connection.isAttemptingConnection ||
+                connection.isConnected ||
+                remembered != null) ...[
               const Padding(
                 padding: EdgeInsets.only(top: 12),
                 child: Divider(height: 1),
               ),
-            if (connection.isAttemptingConnection)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    _selectionGeneration++;
-                    setState(() => _error = null);
-                    unawaited(_connection.cancelConnectionAttempt());
-                  },
-                  child: const Text('Cancel'),
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: remembered == null
+                      ? WrapAlignment.end
+                      : WrapAlignment.spaceBetween,
+                  children: [
+                    if (remembered != null)
+                      TextButton.icon(
+                        onPressed: () => _forget(remembered),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Forget'),
+                      ),
+                    if (connection.isAttemptingConnection)
+                      TextButton(
+                        onPressed: () {
+                          _selectionGeneration++;
+                          setState(() => _error = null);
+                          unawaited(_connection.cancelConnectionAttempt());
+                        },
+                        child: const Text('Cancel'),
+                      )
+                    else if (connection.isConnected)
+                      TextButton.icon(
+                        onPressed: () async {
+                          await _connection.disconnect();
+                          if (context.mounted) setState(() => _error = null);
+                        },
+                        icon: const Icon(Icons.link_off, size: 18),
+                        label: const Text('Disconnect'),
+                      ),
+                  ],
                 ),
               ),
-            if (connection.isConnected)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () async {
-                    await _connection.disconnect();
-                    if (context.mounted) setState(() => _error = null);
-                  },
-                  icon: const Icon(Icons.link_off, size: 18),
-                  label: const Text('Disconnect'),
-                ),
-              ),
+            ],
           ],
         ),
       ),
@@ -247,6 +333,55 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
         MidiConnectionPhase.error => connection.message ?? 'Could not connect.',
         _ => 'Not connected',
       };
+}
+
+class _ForgetSwipeBackground extends StatelessWidget {
+  const _ForgetSwipeBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: colors.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Forget',
+              style: TextStyle(
+                color: colors.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.delete_outline, color: colors.onErrorContainer),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Text(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
 }
 
 class _ScanningStatus extends StatefulWidget {

@@ -412,6 +412,86 @@ void main() {
     });
   });
 
+  test('forgetting the connected device leaves no reconnect target', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      h.connectNow(async, _deviceA);
+      expect(h.state.phase, MidiConnectionPhase.connected);
+
+      unawaited(h.notifier.forget());
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.idle);
+      expect(h.ble.connectedIds, isEmpty);
+      expect(h.container.read(hasLastConnectedMidiDeviceProvider), isFalse);
+      expect(prefs.getString(MidiPreferencesKeys.lastConnectedDeviceId), null);
+
+      final connectCalls = h.ble.connectCalls;
+      unawaited(
+        h.notifier.tryAutoReconnect(reason: MidiReconnectTrigger.manual),
+      );
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 10));
+      async.flushMicrotasks();
+      expect(h.ble.connectCalls, connectCalls);
+      expect(h.state.phase, MidiConnectionPhase.idle);
+      h.dispose(async);
+    });
+  });
+
+  test('forgetting during backoff stops the reconnect loop', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      h.seedLastConnected(async, _deviceA);
+      h.ble.discoverable = const [];
+
+      unawaited(
+        h.notifier.tryAutoReconnect(reason: MidiReconnectTrigger.startup),
+      );
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 5));
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.retrying);
+
+      unawaited(h.notifier.forget());
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.idle);
+
+      h.ble.discoverable = const [_deviceA];
+      async.elapse(const Duration(minutes: 2));
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.idle);
+      expect(h.ble.connectedIds, isEmpty);
+      expect(h.container.read(hasLastConnectedMidiDeviceProvider), isFalse);
+      h.dispose(async);
+    });
+  });
+
+  test('forgetting leaves a selection of another device in flight', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      h.seedLastConnected(async, _deviceA);
+      final gate = Completer<void>();
+      h.ble.connectGate = gate;
+      h.ble.discoverable = const [deviceB];
+
+      unawaited(h.notifier.connect(deviceB).catchError((_) {}));
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.connecting);
+
+      unawaited(h.notifier.forget());
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.connecting);
+      expect(h.state.device?.id, deviceB.id);
+
+      gate.complete();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(h.state.phase, MidiConnectionPhase.connected);
+      expect(h.container.read(lastConnectedMidiDeviceIdProvider), deviceB.id);
+      h.dispose(async);
+    });
+  });
+
   test('losing Bluetooth mid-reconnect surfaces unavailable; recovery '
       'reconnects', () {
     fakeAsync((async) {
