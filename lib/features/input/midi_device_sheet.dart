@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/semantics.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
@@ -28,6 +29,12 @@ class MidiDeviceSheet extends ConsumerStatefulWidget {
 }
 
 class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
+  /// How long the sheet shows a new connection before closing, so the row
+  /// visibly settles as connected.
+  static const _connectedHold = Duration(milliseconds: 800);
+
+  final _listKey = GlobalKey();
+
   late final MidiConnectionNotifier _connection;
   String? _error;
   int _selectionGeneration = 0;
@@ -80,10 +87,15 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
     if (!mounted || generation != _selectionGeneration) return;
 
     final state = ref.read(midiConnectionStateProvider);
-    if (state.isConnected && state.device?.id == device.id) {
-      Navigator.of(context).pop(state.device);
-    } else {
+    if (!state.isConnected || state.device?.id != device.id) {
       setState(() => _error = state.message ?? 'Could not connect.');
+      return;
+    }
+    await Future<void>.delayed(_connectedHold);
+    if (!mounted || generation != _selectionGeneration) return;
+    final settled = ref.read(midiConnectionStateProvider);
+    if (settled.isConnected && settled.device?.id == device.id) {
+      Navigator.of(context).pop(settled.device);
     }
   }
 
@@ -177,6 +189,8 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                   child: Dismissible(
                     key: ValueKey('remembered ${device.id}'),
                     direction: DismissDirection.endToStart,
+                    // The rows below slide into the gap themselves.
+                    resizeDuration: null,
                     background: const _ForgetSwipeBackground(),
                     // A device the scan sees stays listed, so its row
                     // springs back rather than leaving.
@@ -195,6 +209,28 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
               ),
       );
     }
+
+    Widget slidingTile(MidiDevice device) => _SlideIntoPlace(
+      key: ValueKey(device.id),
+      relativeTo: _listKey,
+      child: deviceTile(device),
+    );
+
+    final list = SingleChildScrollView(
+      child: Column(
+        key: _listKey,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (yours.isNotEmpty) ...[
+            const _SectionLabel('Saved', key: ValueKey('saved')),
+            for (final device in yours) slidingTile(device),
+            if (others.isNotEmpty)
+              const _SectionLabel('Available', key: ValueKey('available')),
+          ],
+          for (final device in others) slidingTile(device),
+        ],
+      ),
+    );
 
     return SafeArea(
       child: Padding(
@@ -262,18 +298,14 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
               )
             else
               Flexible(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  children: [
-                    if (yours.isNotEmpty) ...[
-                      const _SectionLabel('Saved'),
-                      for (final device in yours) deviceTile(device),
-                      if (others.isNotEmpty) const _SectionLabel('Available'),
-                    ],
-                    for (final device in others) deviceTile(device),
-                  ],
-                ),
+                child: Motion.of(context).reduced
+                    ? list
+                    : AnimatedSize(
+                        duration: _settle,
+                        curve: _settleCurve,
+                        alignment: Alignment.topCenter,
+                        child: list,
+                      ),
               ),
             if (connection.isAttemptingConnection ||
                 connection.isConnected ||
@@ -364,23 +396,156 @@ class _ForgetSwipeBackground extends StatelessWidget {
   }
 }
 
+const _settle = Duration(milliseconds: 300);
+const _settleCurve = Curves.easeInOutCubic;
+
+/// Fades in when it first appears in the list.
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+  const _SectionLabel(this.text, {super.key});
 
   final String text;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Text(
-        text,
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _settle,
+      curve: _settleCurve,
+      builder: (context, opacity, child) =>
+          Opacity(opacity: opacity, child: child),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: Text(
+          text,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Slides its child from where it last painted to where it is laid out now,
+/// so a row the list reorders travels there rather than jumping.
+///
+/// Positions are measured within [relativeTo], which must be an ancestor that
+/// does not itself move when the rows do.
+class _SlideIntoPlace extends StatefulWidget {
+  const _SlideIntoPlace({
+    required this.relativeTo,
+    required this.child,
+    super.key,
+  });
+
+  final GlobalKey relativeTo;
+  final Widget child;
+
+  @override
+  State<_SlideIntoPlace> createState() => _SlideIntoPlaceState();
+}
+
+class _SlideIntoPlaceState extends State<_SlideIntoPlace>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(vsync: this, duration: _settle);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => _SlideIntoPlaceBox(
+    controller: _controller,
+    relativeTo: widget.relativeTo,
+    enabled: !Motion.of(context).reduced,
+    child: widget.child,
+  );
+}
+
+class _SlideIntoPlaceBox extends SingleChildRenderObjectWidget {
+  const _SlideIntoPlaceBox({
+    required this.controller,
+    required this.relativeTo,
+    required this.enabled,
+    super.child,
+  });
+
+  final AnimationController controller;
+  final GlobalKey relativeTo;
+  final bool enabled;
+
+  @override
+  _RenderSlideIntoPlace createRenderObject(BuildContext context) =>
+      _RenderSlideIntoPlace(controller, relativeTo)..enabled = enabled;
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderSlideIntoPlace renderObject,
+  ) {
+    renderObject
+      ..relativeTo = relativeTo
+      ..enabled = enabled;
+  }
+}
+
+class _RenderSlideIntoPlace extends RenderProxyBox {
+  _RenderSlideIntoPlace(this._controller, this.relativeTo)
+    : _progress = CurvedAnimation(parent: _controller, curve: _settleCurve);
+
+  final AnimationController _controller;
+  final CurvedAnimation _progress;
+  GlobalKey relativeTo;
+  bool enabled = true;
+
+  Offset? _laidOutAt;
+  Offset _from = Offset.zero;
+  bool _startPending = false;
+
+  Offset get _shift => _startPending ? _from : _from * (1 - _progress.value);
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _controller.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _controller.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  void dispose() {
+    _progress.dispose();
+    super.dispose();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final ancestor = relativeTo.currentContext?.findRenderObject();
+    final position = ancestor == null
+        ? null
+        : localToGlobal(Offset.zero, ancestor: ancestor);
+    final previous = _laidOutAt;
+    if (enabled &&
+        previous != null &&
+        position != null &&
+        position != previous) {
+      _from = previous + _shift - position;
+      _startPending = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!attached) return;
+        _startPending = false;
+        _controller.forward(from: 0);
+      });
+    }
+    _laidOutAt = position;
+    super.paint(context, offset + (enabled ? _shift : Offset.zero));
   }
 }
 

@@ -79,6 +79,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
+  Future<void> waitOutConnectedHold(WidgetTester tester) async {
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('selected row paint stays inside the scrolling list', (
     tester,
   ) async {
@@ -99,7 +104,7 @@ void main() {
 
     final list = find.descendant(
       of: find.byType(MidiDeviceSheet),
-      matching: find.byType(ListView),
+      matching: find.byType(SingleChildScrollView),
     );
     final headingPoint = tester.getTopLeft(list) + const Offset(40, -8);
     final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -206,6 +211,7 @@ void main() {
     await tester.tap(find.text('Stage Piano'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 6));
+    await waitOutConnectedHold(tester);
     expect(find.byType(MidiDeviceSheet), findsNothing);
     expect(ble.connectedIds, {_otherInstrument.id});
     expect(tester.takeException(), isNull);
@@ -238,6 +244,9 @@ void main() {
     await tester.pump();
     gate.complete();
     await tester.pumpAndSettle();
+    expect(find.byType(MidiDeviceSheet), findsOneWidget);
+    expect(find.text('Bluetooth · Connected'), findsOneWidget);
+    await waitOutConnectedHold(tester);
     expect(find.byType(MidiDeviceSheet), findsNothing);
     expect(ble.connectedIds, {_otherInstrument.id});
     expect(tester.takeException(), isNull);
@@ -266,6 +275,7 @@ void main() {
 
     secondGate.complete();
     await tester.pumpAndSettle();
+    await waitOutConnectedHold(tester);
     expect(find.byType(MidiDeviceSheet), findsNothing);
     expect(ble.connectedIds, {_otherInstrument.id});
     expect(tester.takeException(), isNull);
