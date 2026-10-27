@@ -26,7 +26,7 @@ environment:
   sdk: ^3.13.5
 
 dependencies:
-  crisp_notation: ^0.7.0
+  crisp_notation: ^0.13.0
   cupertino_icons: ^2.0.0
   fl_chart: ^1.2.0
   flutter_pcm_sound: ^3.3.3
